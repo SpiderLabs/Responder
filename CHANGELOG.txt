@@ -1,0 +1,35 @@
+ChangeLog from 0.6 to 1.9:
+- Added: WPAD transparent proxy server.
+- Fix: minor bug fix
+- Fix: Fixed bug in HTTP server.
+- Added: Rogue LDAP auth server. Supports clear text password and NTLMSSP.
+- Added: Ability to turn on/off the DNS server.
+- Added: Icmp-Redirect.py for MITM Windows =< 5.2 Domain members.
+- Added: SMB Clear Text function for NT4 specific.
+- Added: DNS server module. 
+- Added: FTP server module.
+- Added: Ability to find the PDC in stealth mode with the Browser listener.
+- Several changes.
+- Removed: -d option (Domain), useless for now.
+- Added: SMB Extended Security NTLMSSP authentication. 
+- Added: Fingerprint module.
+- Added: Ability to turn off independently capture services.(mubix)
+- Added: Function to grab HTTP cookies.
+- Fix: Typo in logfile description.
+- Added: Option for logging to a file (ravenium).
+- Added: Basic exception handling for server sockets (ravenium).
+- Added: Logging functionality, now logs all Responder activity to a file with date and time.
+- Added: Print IP address to stdout for each protocol.
+- Improvement: Added new line on Writedata (atucom).
+- Improvement: final Hash is now printed to stdout instead of NT and LM. 
+- Fix: Fixed spelling in README (atucom).
+- Fix: Removed hardcoded challenge for SQL NTLM.
+- Fix: Removed hardcoded challenge for HTTP NTLM.
+- Added an HTTP server with support for ntlmv1/v2 and basic Auth.
+- Added command line switch support with optparse.
+- Added -r switch, which allows turning On/Off Wredir answers.
+- Added the possibility to turn off HTTP server using the -s switch.
+- Added LLMNR module.
+- Fixed bug in NTLMv1 hash parsing when clientOs and ClientVersion are
+  empty.
+- Several minor changes.
