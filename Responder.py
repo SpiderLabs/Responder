@@ -965,23 +965,28 @@ def ParseSearch(data):
 
 def ParseLDAPHash(data,client):
     SSPIStarts = data[42:]
-    LMhashLen = struct.unpack('<H',data[56:58])[0]
-    LMhashOffset = struct.unpack('<H',data[58:60])[0]
-    LMHash = SSPIStarts[LMhashOffset:LMhashOffset+LMhashLen].encode("hex").upper()
-    NthashLen = struct.unpack('<H',data[64:66])[0]
-    NthashOffset = struct.unpack('<H',data[66:68])[0]
-    NtHash = SSPIStarts[NthashOffset:NthashOffset+NthashLen].encode("hex").upper()
-    DomainLen = struct.unpack('<H',data[72:74])[0]
-    DomainOffset = struct.unpack('<H',data[74:76])[0]
-    Domain = SSPIStarts[DomainOffset:DomainOffset+DomainLen].replace('\x00','')
-    UserLen = struct.unpack('<H',data[80:82])[0]
-    UserOffset = struct.unpack('<H',data[82:84])[0]
-    User = SSPIStarts[UserOffset:UserOffset+UserLen].replace('\x00','')
-    writehash = User+"::"+Domain+":"+LMHash+":"+NtHash+":"+NumChal
-    Outfile = "LDAP-NTLMv1-"+client+".txt"
-    WriteData(Outfile,writehash)
-    print "[LDAP] NTLMv1 complete hash is :", writehash
-    logging.warning('[LDAP] NTLMv1 complete hash is :%s'%(writehash))
+    LMhashLen = struct.unpack('<H',data[54:56])[0]
+    if LMhashLen > 10:
+       LMhashOffset = struct.unpack('<H',data[58:60])[0]
+       LMHash = SSPIStarts[LMhashOffset:LMhashOffset+LMhashLen].encode("hex").upper()
+       NthashLen = struct.unpack('<H',data[64:66])[0]
+       NthashOffset = struct.unpack('<H',data[66:68])[0]
+       NtHash = SSPIStarts[NthashOffset:NthashOffset+NthashLen].encode("hex").upper()
+       DomainLen = struct.unpack('<H',data[72:74])[0]
+       DomainOffset = struct.unpack('<H',data[74:76])[0]
+       Domain = SSPIStarts[DomainOffset:DomainOffset+DomainLen].replace('\x00','')
+       UserLen = struct.unpack('<H',data[80:82])[0]
+       UserOffset = struct.unpack('<H',data[82:84])[0]
+       User = SSPIStarts[UserOffset:UserOffset+UserLen].replace('\x00','')
+       writehash = User+"::"+Domain+":"+LMHash+":"+NtHash+":"+NumChal
+       Outfile = "LDAP-NTLMv1-"+client+".txt"
+       WriteData(Outfile,writehash)
+       print "[LDAP] NTLMv1 complete hash is :", writehash
+       logging.warning('[LDAP] NTLMv1 complete hash is :%s'%(writehash))
+    if LMhashLen <2 :
+       Message = '[+]LDAP Anonymous NTLM authentication, ignoring..'
+       print Message
+       logging.warning(Message)
 
 def ParseNTLM(data,client):
     Search1 = re.search('(NTLMSSP\x00\x01\x00\x00\x00)', data)
