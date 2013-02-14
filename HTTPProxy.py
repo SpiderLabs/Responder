@@ -39,7 +39,7 @@ class WPADScript(Packet):
         ("Code",          "HTTP/1.1 200 OK\r\n"),
         ("ServerType",    "Server: Microsoft-IIS/6.0\r\n"),
         ("Date",          "Date: Wed, 12 Sep 2012 13:06:55 GMT\r\n"),
-        ("Type",          "Content-Type: text/html\r\n"),
+        ("Type",          "Content-Type: application/x-ns-proxy-autoconfig\r\n"),
         ("PoweredBy",     "X-Powered-By: ASP.NET\r\n"),
         ("ContentLen",    "Content-Length: "),
         ("ActualLen",     "76"), 
@@ -62,14 +62,6 @@ class IIS_Auth_407_Ans(Packet):
         ("Len",           "Content-Length: 0\r\n"), 
         ("CRLF",          "\r\n"),                               
     ])
-
-#HTTP Packet Granted auth.
-class IIS_Proxy_Auth_Failed(Packet):
-    fields = OrderedDict([
-        ("Code",          "HTTP/1.1 500 Server Error\r\n"),
-    ])
-    def calculate(self):
-        self.fields["ActualLen"] = len(str(self.fields["Payload"]))
 
 #HTTP NTLM packet.
 class IIS_407_NTLM_Challenge_Ans(Packet):
