@@ -851,7 +851,7 @@ def ProxyPacketSequence(data,client):
           Cookie = GrabCookie(data,client)
           DomainName = re.search('^(.*:)//([a-z\-.]+)(:[0-9]+)?(.*)$', Host)
           Message = "Requested URL: %s\nComplete Cookie: %s\nClient IP is: %s"%(Host, Cookie, client)
-          OutFile = "HTTPCookies/HTTP-Cookie-"+DomainName.group(2)+".txt"
+          OutFile = "HTTPCookies/HTTP-Cookie-"+DomainName.group(2)+"-"+client+".txt"
           WriteData(OutFile,Message)
           r = NTLM_Challenge(ServerChallenge=Challenge)
           r.calculate()
@@ -870,7 +870,7 @@ def ProxyPacketSequence(data,client):
        Cookie = GrabCookie(data,client)
        DomainName = re.search('^(.*:)//([a-z\-.]+)(:[0-9]+)?(.*)$', Host)
        Message = "Requested URL: %s\nComplete Cookie: %s\nClient IP is: %s"%(Host, Cookie, client)
-       OutFile = "HTTPCookies/HTTP-Cookie-"+DomainName.group(2)+".txt"
+       OutFile = "HTTPCookies/HTTP-Cookie-"+DomainName.group(2)+"-"+client+".txt"
        WriteData(OutFile,Message)
        outfile = "HTTP-Clear-Text-Password-"+client+".txt"
        WriteData(outfile,b64decode(''.join(b)))
