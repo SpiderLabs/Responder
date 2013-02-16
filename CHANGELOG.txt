@@ -1,4 +1,5 @@
 ChangeLog from 0.6 to 1.9:
+- Added: Support for LM Hash downgrade.
 - Added: WPAD transparent proxy server.
 - Fix: minor bug fix
 - Fix: Fixed bug in HTTP server.

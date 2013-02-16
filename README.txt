@@ -11,25 +11,27 @@ suffix (see: http://support.microsoft.com/kb/163409). By default, the
 tool will only answers to File Server Service request, which is for SMB.
 The concept behind this, is to target our answers, and be stealthier on
 the network. This also helps to ensure that we don't break legitimate
-NBT-NS behavior.
-You can set the -r option to 1 via command line if you want this tool to
-answer to the Workstation Service request name suffix.
+NBT-NS behavior. You can set the -r option to 1 via command line if 
+you want this tool to answer to the Workstation Service request name
+suffix.
 
 FEATURES
 ========
 
 - Built-in SMB Auth server.
-  Supports NTLMv1, NTLMv2 hashes with Extended Security NTLMSSP. Successfully tested from NT4
-  to Server 2012 RC, Samba and Mac OSX Lion. Clear text password is supported for NT4.
-  This functionality is enabled by default when the tool is launched.
+  Supports NTLMv1, NTLMv2 hashes with Extended Security NTLMSSP by default.
+  Successfully tested from Windows 95 to Server 2012 RC, Samba and Mac OSX Lion.
+  Clear text password is supported for NT4, and LM hashing downgrade when the 
+  --lm option is set to 1. This functionality is enabled by default when the
+  tool is launched.
 
 - Built-in MSSQL Auth server.
   In order to redirect SQL Authentication to this tool, you will need to
-  set the option -r to 1(NBT-NS queries for SQL Server lookup are
-  using the Workstation Service name suffix) for systems older than
-  windows Vista (LLMNR will be used for Vista and higher). This server
-  supports NTLMv1, LMv2 hashes. This functionality was successfully tested
-  on Windows SQL Server 2005 & 2008.
+  set the option -r to 1(NBT-NS queries for SQL Server lookup are using
+  the Workstation Service name suffix) for systems older than windows 
+  Vista (LLMNR will be used for Vista and higher). This server supports
+  NTLMv1, LMv2 hashes. This functionality was successfully tested on 
+  Windows SQL Server 2005 & 2008.
 
 - Built-in HTTP Auth server.
   In order to redirect HTTP Authentication to this tool, you will need
@@ -46,8 +48,8 @@ FEATURES
   to set the option -r to 1 for Windows version older than Vista (NBT-NS
   queries for HTTP server lookup are sent using the Workstation Service
   name suffix). For Vista and higher, LLMNR will be used. This server 
-  supports NTLMSSP hashes and Simple Authentication (clear text authentication). This server
-  was successfully tested on Windows Support tool "ldp" and LdapAdmin.
+  supports NTLMSSP hashes and Simple Authentication (clear text authentication).
+  This server was successfully tested on Windows Support tool "ldp" and LdapAdmin.
 
 - Built-in FTP Auth server.
   This module will collect FTP clear text credentials.
@@ -62,19 +64,22 @@ FEATURES
 
 - Responder will logs all its activity to a file Responder-Session.log.
 
-- When the option -f is set to "On", Responder will fingerprint every host who issued an LLMNR/NBT-NS query.
-  All capture modules still work while in fingerprint mode. 
+- When the option -f is set to "On", Responder will fingerprint every host who issued
+  an LLMNR/NBT-NS query. All capture modules still work while in fingerprint mode. 
 
 - Browser Listener finds the PDC in stealth mode.
 
-- Icmp Redirect for MITM on Windows =< 5.2 Domain members. This attack combined with the DNS module is pretty effective.
+- Icmp Redirect for MITM on Windows =< 5.2 Domain members. This attack combined with
+  the DNS module is pretty effective.
 
-- WPAD rogue transparent proxy server. This module will *silently* grab the encrypted credentials of anyone launching Internet Explorer on the network. It will also grab the cookie of the requested page. This module is higly effective.
+- WPAD rogue transparent proxy server. This module will *silently* grab the encrypted
+  credentials of anyone launching Internet Explorer on the network. It will also grab
+  the cookie of the requested page. This module is higly effective.
 
 CONSIDERATIONS
 ==============
 
-- This tool listen on several port: UDP 137, UDP 138, UDP 53, TCP 1433, TCP 389,
+- This tool listen on several port: UDP 137, UDP 138, UDP 53, UDP/TCP 389,TCP 1433,
   TCP 80, TCP 139, TCP 445, TCP 21, TCP 3141 Multicast UDP 5553.
   If you run Samba on your system, stop smbd and nmbd and all other 
   services listening on these ports.
@@ -146,12 +151,14 @@ Options List:
 -w On, --wpad=On                     Set this to On or Off to start/stop the WPAD rogue
                                      proxy server. Default value is On
 
-
+--lm=0                               Set this to 1 if you want to force LM hashing
+                                     downgrade for Windows <= 5.2. Default value is False (0)
 
 
 For more information read these posts: 
 http://blog.spiderlabs.com/2012/10/introducing-responder-10.html
 http://blog.spiderlabs.com/2013/01/owning-windows-networks-with-responder-17.html
+http://blog.spiderlabs.com/2013/02/owning-windows-network-with-responder-part-2.html
 
 Follow our latest updates on twitter:
 https://twitter.com/PythonResponder
