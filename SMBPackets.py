@@ -75,6 +75,39 @@ class SMBHeader(Packet):
         ("mid", "\x00\x00"),
     ])
 ##################################################################################
+#SMB Negotiate Answer LM packet.
+class SMBNegoAnsLM(Packet):
+    fields = OrderedDict([
+        ("Wordcount",    "\x11"),
+        ("Dialect",      ""),
+        ("Securitymode", "\x03"),
+        ("MaxMpx",       "\x32\x00"),
+        ("MaxVc",        "\x01\x00"),
+        ("Maxbuffsize",  "\x04\x41\x00\x00"),
+        ("Maxrawbuff",   "\x00\x00\x01\x00"),
+        ("Sessionkey",   "\x00\x00\x00\x00"),
+        ("Capabilities", "\xfc\x3e\x01\x00"),
+        ("Systemtime",   "\x84\xd6\xfb\xa3\x01\x35\xcd\x01"),
+        ("Srvtimezone",  "\x2c\x01"),
+        ("Keylength",    "\x08"),
+        ("Bcc",          "\x10\x00"),
+        ("Key",          ""),
+        ("Domain",       "SMB"),
+        ("DomainNull",   "\x00\x00"),
+        ("Server",       "SMB-TOOLKIT"),
+        ("ServerNull",   "\x00\x00"),
+    ])
+
+    def calculate(self):
+        ##Convert first..
+        self.fields["Domain"] = self.fields["Domain"].encode('utf-16le')
+        self.fields["Server"] = self.fields["Server"].encode('utf-16le')
+        ##Then calculate.
+        CompleteBCCLen =  str(self.fields["Key"])+str(self.fields["Domain"])+str(self.fields["DomainNull"])+str(self.fields["Server"])+str(self.fields["ServerNull"])
+        self.fields["Bcc"] = struct.pack("<h",len(CompleteBCCLen))
+        self.fields["Keylength"] = struct.pack("<h",len(self.fields["Key"]))[0]
+##################################################################################
+#SMB Negotiate Answer LM packet.
 class SMBNegoAns(Packet):
     fields = OrderedDict([
         ("Wordcount",    "\x11"),
@@ -322,9 +355,44 @@ class SMBTreeData(Packet):
     def calculate(self):
         #Complete Packet Len
         CompletePacket= str(self.fields["Wordcount"])+str(self.fields["AndXCommand"])+str(self.fields["Reserved"])+str(self.fields["Andxoffset"])+str(self.fields["OptionalSupport"])+str(self.fields["MaxShareAccessRight"])+str(self.fields["GuestShareAccessRight"])+str(self.fields["Bcc"])+str(self.fields["Service"])+str(self.fields["ServiceTerminator"])
-
+        ## AndXOffset
         self.fields["Andxoffset"] = struct.pack("<H", len(CompletePacket)+32)
         ## BCC Len Calc
         BccLen= str(self.fields["Service"])+str(self.fields["ServiceTerminator"])
- 
         self.fields["Bcc"] = struct.pack("<H", len(BccLen))
+
+# SMB Session/Tree Answer.
+class SMBSessTreeAns(Packet):
+    fields = OrderedDict([
+        ("Wordcount",       "\x03"),
+        ("Command",         "\x75"), 
+        ("Reserved",        "\x00"),
+        ("AndXoffset",      "\x4e\x00"),
+        ("Action",          "\x01\x00"),
+        ("Bcc",             "\x25\x00"),
+        ("NativeOs",        "Windows 5.1"),
+        ("NativeOsNull",    "\x00"),
+        ("NativeLan",       "Windows 2000 LAN Manager"),
+        ("NativeLanNull",   "\x00"),
+        ("WordcountTree",   "\x03"),
+        ("AndXCommand",     "\xff"),
+        ("Reserved1",       "\x00"),
+        ("AndxOffset",      "\x00\x00"),
+        ("OptionalSupport", "\x01\x00"),
+        ("Bcc2",            "\x08\x00"),
+        ("Service",         "A:"),
+        ("ServiceNull",     "\x00"),
+        ("FileSystem",      "NTFS"),
+        ("FileSystemNull",  "\x00"),
+
+    ])
+
+    def calculate(self):
+        ##AndxOffset
+        CalculateCompletePacket = str(self.fields["Wordcount"])+str(self.fields["Command"])+str(self.fields["Reserved"])+str(self.fields["AndXoffset"])+str(self.fields["Action"])+str(self.fields["Bcc"])+str(self.fields["NativeOs"])+str(self.fields["NativeOsNull"])+str(self.fields["NativeLan"])+str(self.fields["NativeLanNull"])
+        self.fields["AndXoffset"] = struct.pack("<i", len(CalculateCompletePacket)+32)[:2]
+        ##BCC 1 and 2
+        CompleteBCCLen =  str(self.fields["NativeOs"])+str(self.fields["NativeOsNull"])+str(self.fields["NativeLan"])+str(self.fields["NativeLanNull"])
+        self.fields["Bcc"] = struct.pack("<h",len(CompleteBCCLen))
+        CompleteBCC2Len = str(self.fields["Service"])+str(self.fields["ServiceNull"])+str(self.fields["FileSystem"])+str(self.fields["FileSystemNull"])
+        self.fields["Bcc2"] = struct.pack("<h",len(CompleteBCC2Len))
