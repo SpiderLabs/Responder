@@ -69,7 +69,7 @@ FEATURES
 
 - Browser Listener finds the PDC in stealth mode.
 
-- Icmp Redirect for MITM on Windows =< 5.2 Domain members. This attack combined with
+- Icmp Redirect for MITM on Windows XP/2003 and earlier Domain members. This attack combined with
   the DNS module is pretty effective.
 
 - WPAD rogue transparent proxy server. This module will *silently* grab the encrypted
@@ -152,7 +152,7 @@ Options List:
                                      proxy server. Default value is On
 
 --lm=0                               Set this to 1 if you want to force LM hashing
-                                     downgrade for Windows <= 5.2. Default value is False (0)
+                                     downgrade for Windows XP/2003 and earlier. Default value is False (0)
 
 
 For more information read these posts: 

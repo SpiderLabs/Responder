@@ -51,7 +51,7 @@ parser.add_option('-D','--dns', action="store", dest="DNS_On_Off", help = "Set t
 
 parser.add_option('-w','--wpad', action="store", dest="WPAD_On_Off", help = "Set this to On or Off to start/stop the WPAD rogue proxy server. Default value is Off", metavar="Off", choices=['On','Off'], default="Off")
 
-parser.add_option('--lm',action="store", help="Set this to 1 if you want to force LM hashing downgrade for Windows <= 5.2. Default value is False (0)", metavar="0",dest="LM_On_Off", choices=['0','1'], default="0")
+parser.add_option('--lm',action="store", help="Set this to 1 if you want to force LM hashing downgrade for Windows XP/2003 and earlier. Default value is False (0)", metavar="0",dest="LM_On_Off", choices=['0','1'], default="0")
 
 options, args = parser.parse_args()
 
