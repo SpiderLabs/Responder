@@ -49,7 +49,7 @@ parser.add_option('-L','--ldap', action="store", dest="LDAP_On_Off", help = "Set
 
 parser.add_option('-D','--dns', action="store", dest="DNS_On_Off", help = "Set this to On or Off to start/stop the DNS server. Default value is On", metavar="On", choices=['On','Off'], default="On")
 
-parser.add_option('-w','--wpad', action="store", dest="WPAD_On_Off", help = "Set this to On or Off to start/stop the WPAD rogue proxy server. Default value is On", metavar="On", choices=['On','Off'], default="On")
+parser.add_option('-w','--wpad', action="store", dest="WPAD_On_Off", help = "Set this to On or Off to start/stop the WPAD rogue proxy server. Default value is Off", metavar="Off", choices=['On','Off'], default="Off")
 
 parser.add_option('--lm',action="store", help="Set this to 1 if you want to force LM hashing downgrade for Windows <= 5.2. Default value is False (0)", metavar="0",dest="LM_On_Off", choices=['0','1'], default="0")
 
@@ -84,7 +84,6 @@ WPAD_On_Off = options.WPAD_On_Off.upper()
 LM_On_Off = options.LM_On_Off.upper()
 Wredirect = options.Wredirect
 NumChal = options.optChal
-
 
 def Show_Help(ExtraHelpData):
    help = "NBT Name Service/LLMNR Answerer 1.0.\nPlease send bugs/comments to: lgaffie@trustwave.com\nTo kill this script hit CRTL-C\n\n"
@@ -851,17 +850,24 @@ def GrabCookie(data,host):
           logging.warning(NoCookies)
           return NoCookies
 
-def WpadCustom(data,client):
-    b = re.search('(/wpad.dat)', data)
-    if b:
-       Message = "[+]WPAD file sent to: %s"%(client)
-       print Message
-       logging.warning(Message)
-       buffer1 = WPADScript()
-       buffer1.calculate()
-       return str(buffer1)
-    else:
+def ServeWPADOrNot(on_off):
+    if on_off == "ON":
+       return True
+    if on_off == "OFF":
        return False
+
+def WpadCustom(data,client):
+    if ServeWPADOrNot(WPAD_On_Off):
+       b = re.search('(/wpad.dat)', data)
+       if b:
+          Message = "[+]WPAD file sent to: %s"%(client)
+          print Message
+          logging.warning(Message)
+          buffer1 = WPADScript()
+          buffer1.calculate()
+          return str(buffer1)
+       else:
+          return False
 
 # Function used to check if we answer with a Basic or NTLM auth. 
 def Basic_Ntlm(Basic):
