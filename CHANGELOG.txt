@@ -5,7 +5,7 @@ ChangeLog from 0.6 to 1.9:
 - Fix: Fixed bug in HTTP server.
 - Added: Rogue LDAP auth server. Supports clear text password and NTLMSSP.
 - Added: Ability to turn on/off the DNS server.
-- Added: Icmp-Redirect.py for MITM Windows =< 5.2 Domain members.
+- Added: Icmp-Redirect.py for MITM Windows XP/2003 and earlier Domain members.
 - Added: SMB Clear Text function for NT4 specific.
 - Added: DNS server module. 
 - Added: FTP server module.
