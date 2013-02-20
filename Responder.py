@@ -935,25 +935,28 @@ def GrabHost(data,host):
     GET = re.findall('(?<=GET )[^HTTP]*', data)
     CONNECT = re.findall('(?<=CONNECT )[^HTTP]*', data)
     POST = re.findall('(?<=POST )[^HTTP]*', data)
+    POSTDATA = re.findall('(?<=\r\n\r\n)[^*.*]*', data)
     if GET:
           HostStr = "[+]HTTP Proxy sent from: %s The requested URL was: %s"%(host,''.join(GET))
           logging.warning(HostStr)
           print HostStr
-          return ''.join(GET)
+          return ''.join(GET),None
     if CONNECT:
           Host2Str = "[+]HTTP Proxy sent from: %s The requested URL was: %s"%(host,''.join(CONNECT))
           logging.warning(Host2Str)
           print Host2Str
-          return ''.join(CONNECT)
+          return ''.join(CONNECT), None
     if POST:
           Host3Str = "[+]HTTP Proxy sent from: %s The requested URL was: %s"%(host,''.join(POST))
           logging.warning(Host3Str)
           print Host3Str
-          return ''.join(POST)
+          if POSTDATA:
+             print '[+]HTTP Proxy POST DATA in this request was:',''.join(POSTDATA)
+          return ''.join(POST), ''.join(POSTDATA)
     else:
           NoHost = "[+]No host url sent with this request"
           logging.warning(NoHost)
-          return "NO HOST"
+          return "NO HOST", None
 
 def HostDidntAuthBefore(client):
     f = os.path.exists("HTTP-NTLMv2-Client-"+client+".txt")
@@ -969,15 +972,15 @@ def ProxyBasic_Ntlm(Basic):
        return IIS_Auth_407_Ans()
 
 def ParseDomain(data,client):
-    Host = GrabHost(data,client)
+    Host,PostData = GrabHost(data,client)
     Cookie = GrabCookie(data,client)
-    Message = "Requested URL: %s\nComplete Cookie: %s\nClient IP is: %s"%(Host, Cookie, client)
+    Message = "Requested URL: %s\nComplete Cookie: %s\nClient IP is: %s\nPOST DATA: %s"%(Host, Cookie, client,PostData)
     DomainName = re.search('^(.*:)//([a-z\-.]+)(:[0-9]+)?(.*)$', Host)
     if DomainName:
        OutFile = "HTTPCookies/HTTP-Cookie-"+DomainName.group(2)+"-"+client+".txt"
        WriteData(OutFile,Message)
     else:
-       OutFile = "HTTPCookies/HTTP-Cookie-"+Host+"-"+client+".txt"
+       OutFile = "HTTPCookies/HTTP-Cookie-"+Host.replace('/','')+"-"+client+".txt"
        WriteData(OutFile,Message)
 
 #Handle HTTP packet sequence.
@@ -1225,7 +1228,7 @@ def Is_LDAP_On(LDAP_On_Off):
 #Function name self-explanatory
 def Is_DNS_On(DNS_On_Off):
     if DNS_On_Off == "ON":
-       return thread.start_new(serve_thread_udp,('', 53,DNS))
+       return thread.start_new(serve_thread_udp,('', 53,DNS)),thread.start_new(serve_thread_tcp,('', 53,DNS))
     if DNS_On_Off == "OFF":
        return False
 
