@@ -935,7 +935,7 @@ def GrabHost(data,host):
     GET = re.findall('(?<=GET )[^HTTP]*', data)
     CONNECT = re.findall('(?<=CONNECT )[^HTTP]*', data)
     POST = re.findall('(?<=POST )[^HTTP]*', data)
-    POSTDATA = re.findall('(?<=\r\n\r\n)[^*.*]*', data)
+    POSTDATA = re.findall('(?<=\r\n\r\n)[^*]*', data)
     if GET:
           HostStr = "[+]HTTP Proxy sent from: %s The requested URL was: %s"%(host,''.join(GET))
           logging.warning(HostStr)
