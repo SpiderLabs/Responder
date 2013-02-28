@@ -43,6 +43,18 @@ FEATURES
   Note: This module also works for WebDav NTLM authentication issued from
   Windows WebDav clients (WebClient).
 
+- Built-in HTTPS Auth server.
+  In order to redirect HTTPS Authentication to this tool, you will need
+  to set the -r option to 1 for Windows versions older than Vista (NBT-NS
+  queries for HTTP server lookups are sent using the Workstation Service
+  name suffix). For Vista and higher, LLMNR will be used. This server 
+  supports NTLMv1, NTLMv2, *and* Basic Authentication. This server
+  was successfully tested on IE 6 to IE 10, Firefox, Chrome, and Safari.
+  The folder Cert/ was added and contain 2 default keys, including a dummy
+  private key. This is *intentional*, the purpose is to have Responder 
+  working out of the box. A script was added in case you need to generate
+  your own self signed key pair.
+
 - Built-in LDAP Auth server.
   In order to redirect LDAP Authentication to this tool, you will need
   to set the option -r to 1 for Windows version older than Vista (NBT-NS
