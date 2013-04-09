@@ -102,7 +102,7 @@ def WriteData(outfile,data, user):
           outf.close()
     if os.path.isfile(outfile) == True:
        with open(outfile,"r") as filestr:
-          if re.search(user, filestr.read()):
+          if re.search(user.encode('hex'), filestr.read().encode('hex')):
              filestr.close()
              return None
           else:
@@ -1430,4 +1430,5 @@ if __name__ == '__main__':
     except:
         raise
     raw_input()
+
 
