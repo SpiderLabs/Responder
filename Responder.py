@@ -907,16 +907,18 @@ def PacketSequence(data,client):
        if packetNtlm == "\x03":
           NTLM_Auth= b64decode(''.join(a))
           ParseHTTPHash(NTLM_Auth,client)
-          buffer1 = str(IIS_Auth_Granted())
-          return buffer1
+          buffer1 = IIS_Auth_Granted()
+          buffer1.calculate()
+          return str(buffer1)
     if b:
        GrabCookie(data,client)
        outfile = "HTTP-Clear-Text-Password-"+client+".txt"
        WriteData(outfile,b64decode(''.join(b)), b64decode(''.join(b)))
        print "[+]HTTP-User & Password:", b64decode(''.join(b))
        logging.warning('[+]HTTP-User & Password: %s'%(b64decode(''.join(b))))
-       buffer1 = str(IIS_Auth_Granted())
-       return buffer1
+       buffer1 = IIS_Auth_Granted()
+       buffer1.calculate()
+       return str(buffer1)
 
     else:
        return str(Basic_Ntlm(Basic))
@@ -1430,5 +1432,6 @@ if __name__ == '__main__':
     except:
         raise
     raw_input()
+
 
 

