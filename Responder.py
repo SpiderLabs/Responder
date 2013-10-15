@@ -27,6 +27,8 @@ parser = optparse.OptionParser(usage='python %prog -i 10.20.30.40 -b 1 -s On -r 
                                )
 parser.add_option('-i','--ip', action="store", help="The ip address to redirect the traffic to. (usually yours)", metavar="10.20.30.40",dest="OURIP")
 
+parser.add_option('-I','--interfaceIP', action="store", help="The IP you want Responder to listen on, default is 0.0.0.0 (all interfaces)", metavar="10.20.30.40",dest="BOUND_TO_IP")
+
 parser.add_option('-b', '--basic',action="store", help="Set this to 1 if you want to return a Basic HTTP authentication. 0 will return an NTLM authentication.This option is mandatory.", metavar="0",dest="Basic", choices=['0','1'], default="0")
 
 parser.add_option('-s', '--http',action="store", help="Set this to On or Off to start/stop the HTTP server. Default value is On", metavar="Off",dest="on_off", choices=['On','Off'], default="On")
@@ -74,6 +76,7 @@ logging.warning('Responder Started')
 
 # Set some vars.
 OURIP = options.OURIP
+BOUND_TO_IP = options.BOUND_TO_IP
 Basic = options.Basic
 On_Off = options.on_off.upper()
 SSL_On_Off = options.SSL_On_Off.upper()
@@ -87,6 +90,9 @@ WPAD_On_Off = options.WPAD_On_Off.upper()
 LM_On_Off = options.LM_On_Off.upper()
 Wredirect = options.Wredirect
 NumChal = options.optChal
+
+if BOUND_TO_IP == None:
+   BOUND_TO_IP = ''
 
 def Show_Help(ExtraHelpData):
    help = "NBT Name Service/LLMNR Answerer 1.0.\nPlease send bugs/comments to: lgaffie@trustwave.com\nTo kill this script hit CRTL-C\n\n"
@@ -207,7 +213,7 @@ class NB(SocketServer.BaseRequestHandler):
                     logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
                  except Exception:
                     logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
-                    pass
+                    raise
 
 ##################################################################################
 #Browser Listener
@@ -1351,21 +1357,21 @@ class LDAP(SocketServer.BaseRequestHandler):
 #Function name self-explanatory
 def Is_HTTP_On(on_off):
     if on_off == "ON":
-       return thread.start_new(serve_thread_tcp,('', 80,HTTP))
+       return thread.start_new(serve_thread_tcp,(BOUND_TO_IP, 80,HTTP))
     if on_off == "OFF":
        return False
 
 #Function name self-explanatory
 def Is_HTTPS_On(SSL_On_Off):
     if SSL_On_Off == "ON":
-       return thread.start_new(serve_thread_SSL,('', 443,DoSSL))
+       return thread.start_new(serve_thread_SSL,(BOUND_TO_IP, 443,DoSSL))
     if SSL_On_Off == "OFF":
        return False
 
 #Function name self-explanatory
 def Is_WPAD_On(on_off):
     if on_off == "ON":
-       return thread.start_new(serve_thread_tcp,('', 3141,HTTPProxy))
+       return thread.start_new(serve_thread_tcp,(BOUND_TO_IP, 3141,HTTPProxy))
     if on_off == "OFF":
        return False
 
@@ -1373,37 +1379,37 @@ def Is_WPAD_On(on_off):
 def Is_SMB_On(SMB_On_Off):
     if SMB_On_Off == "ON":
        if LM_On_Off == "1":
-          return thread.start_new(serve_thread_tcp, ('', 445,SMB1LM)),thread.start_new(serve_thread_tcp,('', 139,SMB1LM))
+          return thread.start_new(serve_thread_tcp, (BOUND_TO_IP, 445,SMB1LM)),thread.start_new(serve_thread_tcp,('', 139,SMB1LM))
        else:
-          return thread.start_new(serve_thread_tcp, ('', 445,SMB1)),thread.start_new(serve_thread_tcp,('', 139,SMB1))
+          return thread.start_new(serve_thread_tcp, (BOUND_TO_IP, 445,SMB1)),thread.start_new(serve_thread_tcp,('', 139,SMB1))
     if SMB_On_Off == "OFF":
        return False
 
 #Function name self-explanatory
 def Is_SQL_On(SQL_On_Off):
     if SQL_On_Off == "ON":
-       return thread.start_new(serve_thread_tcp,('', 1433,MSSQL))
+       return thread.start_new(serve_thread_tcp,(BOUND_TO_IP, 1433,MSSQL))
     if SQL_On_Off == "OFF":
        return False
 
 #Function name self-explanatory
 def Is_FTP_On(FTP_On_Off):
     if FTP_On_Off == "ON":
-       return thread.start_new(serve_thread_tcp,('', 21,FTP))
+       return thread.start_new(serve_thread_tcp,(BOUND_TO_IP, 21,FTP))
     if FTP_On_Off == "OFF":
        return False
 
 #Function name self-explanatory
 def Is_LDAP_On(LDAP_On_Off):
     if LDAP_On_Off == "ON":
-       return thread.start_new(serve_thread_tcp,('', 389,LDAP))
+       return thread.start_new(serve_thread_tcp,(BOUND_TO_IP, 389,LDAP))
     if LDAP_On_Off == "OFF":
        return False
 
 #Function name self-explanatory
 def Is_DNS_On(DNS_On_Off):
     if DNS_On_Off == "ON":
-       return thread.start_new(serve_thread_udp,('', 53,DNS)),thread.start_new(serve_thread_tcp,('', 53,DNSTCP))
+       return thread.start_new(serve_thread_udp,(BOUND_TO_IP, 53,DNS)),thread.start_new(serve_thread_tcp,('', 53,DNSTCP))
     if DNS_On_Off == "OFF":
        return False
 
@@ -1443,9 +1449,9 @@ def main():
       Is_LDAP_On(LDAP_On_Off)
       Is_DNS_On(DNS_On_Off)
       #Browser listener loaded by default
-      thread.start_new(serve_thread_udp,('', 138,Browser))
+      thread.start_new(serve_thread_udp,(BOUND_TO_IP, 138,Browser))
       ## Poisoner loaded by default, it's the purpose of this tool...
-      thread.start_new(serve_thread_udp,('', 137,NB))
+      thread.start_new(serve_thread_udp,(BOUND_TO_IP, 137,NB))
       thread.start_new(RunLLMNR())
     except KeyboardInterrupt:
         exit()
