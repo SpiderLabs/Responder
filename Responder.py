@@ -213,7 +213,7 @@ class NB(SocketServer.BaseRequestHandler):
                     logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
                  except Exception:
                     logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
-                    raise
+                    pass
 
 ##################################################################################
 #Browser Listener
