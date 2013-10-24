@@ -339,7 +339,7 @@ def ParseSMBHash(data,client):
 
     if NthashLen == 24:
        print "[+]SMB-NTLMv1 hash captured from : ",client
-       outfile = "SMB-NTLMv1-Client-"+client+".txt"
+       outfile = "SMB-NTLMv1ESS-Client-"+client+".txt"
        NtHash = SSPIStart[NthashOffset:NthashOffset+NthashLen].encode("hex").upper()
        DomainLen = struct.unpack('<H',data[105:107])[0]
        DomainOffset = struct.unpack('<H',data[107:109])[0]
