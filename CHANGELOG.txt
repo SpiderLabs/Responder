@@ -1,4 +1,8 @@
 ChangeLog from 0.6 to 1.9:
+- Added: Bind shell which when executed on a victim workstation, will bind cmd.exe to port 140.
+- Added: -e, --exe, --file option for serving specific files via the HTTP and WPAD server.
+- Added: Ability to bind Responder to a specific interface
+- Fix: Several fixes
 - Added: HTTPS module.
 - Added: Support for LM Hash downgrade.
 - Added: WPAD transparent proxy server.

@@ -49,6 +49,49 @@ class WPADScript(Packet):
     def calculate(self):
         self.fields["ActualLen"] = len(str(self.fields["Payload"]))
 
+class ServerExeFile(Packet):
+    fields = OrderedDict([
+        ("Code",          "HTTP/1.1 200 OK\r\n"),
+        ("ContentType",   "Content-Type: application/octet-stream\r\n"),
+        ("LastModified",  "Last-Modified: Wed, 24 Nov 2010 00:39:06 GMT\r\n"),
+        ("AcceptRanges",  "Accept-Ranges: bytes\r\n"),
+        ("Server",        "Server: Microsoft-IIS/7.5\r\n"),
+        ("PoweredBy",     "X-Powered-By: ASP.NET\r\n"),
+        ("ContentLen",    "Content-Length: "),
+        ("ActualLen",     "76"), 
+        ("Date",          "\r\nDate: Thu, 24 Oct 2013 22:35:46 GMT\r\n"),
+        ("Connection",    "Connection: keep-alive\r\n"),
+        ("X-CCC",         "US\r\n"),
+        ("X-CID",         "2\r\n"),
+        ("CRLF",          "\r\n"),
+        ("Payload",       "jj"),
+    ])
+    def calculate(self):
+        self.fields["ActualLen"] = len(str(self.fields["Payload"]))
+
+class ServeAlwaysExeFile(Packet):
+    fields = OrderedDict([
+        ("Code",          "HTTP/1.1 200 OK\r\n"),
+        ("ContentType",   "Content-Type: application/octet-stream\r\n"),
+        ("LastModified",  "Last-Modified: Wed, 24 Nov 2010 00:39:06 GMT\r\n"),
+        ("AcceptRanges",  "Accept-Ranges: bytes\r\n"),
+        ("Server",        "Server: Microsoft-IIS/7.5\r\n"),
+        ("PoweredBy",     "X-Powered-By: ASP.NET\r\n"),
+        ("ContentDisp",   "Content-Disposition: attachment; filename="),
+        ("ContentDiFile", ""),
+        ("FileCRLF",      ";\r\n"),
+        ("ContentLen",    "Content-Length: "),
+        ("ActualLen",     "76"), 
+        ("Date",          "\r\nDate: Thu, 24 Oct 2013 22:35:46 GMT\r\n"),
+        ("Connection",    "Connection: keep-alive\r\n"),
+        ("X-CCC",         "US\r\n"),
+        ("X-CID",         "2\r\n"),
+        ("CRLF",          "\r\n"),
+        ("Payload",       "jj"),
+    ])
+    def calculate(self):
+        self.fields["ActualLen"] = len(str(self.fields["Payload"]))
+
 #HTTP Packet used for further NTLM auth.
 class IIS_Auth_407_Ans(Packet):
     fields = OrderedDict([
