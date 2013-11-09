@@ -1,4 +1,8 @@
-ChangeLog from 0.6 to 1.9:
+ChangeLog Responder 1.9:
+- Added: Ability to change the HTML payload returned after authentication. See Responder.conf
+- Added: Ability to change the pac script in Responder.conf
+- Added: Configuration file for Responder. See Responder.conf
+- Removed: Several options removed.
 - Added: Bind shell which when executed on a victim workstation, will bind cmd.exe to port 140.
 - Added: -e, --exe, --file option for serving specific files via the HTTP and WPAD server.
 - Added: Ability to bind Responder to a specific interface

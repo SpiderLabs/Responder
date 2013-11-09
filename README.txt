@@ -11,7 +11,7 @@ suffix (see: http://support.microsoft.com/kb/163409). By default, the
 tool will only answers to File Server Service request, which is for SMB.
 The concept behind this, is to target our answers, and be stealthier on
 the network. This also helps to ensure that we don't break legitimate
-NBT-NS behavior. You can set the -r option to 1 via command line if 
+NBT-NS behavior. You can set the -r option to "On" via command line if 
 you want this tool to answer to the Workstation Service request name
 suffix.
 
@@ -22,12 +22,12 @@ FEATURES
   Supports NTLMv1, NTLMv2 hashes with Extended Security NTLMSSP by default.
   Successfully tested from Windows 95 to Server 2012 RC, Samba and Mac OSX Lion.
   Clear text password is supported for NT4, and LM hashing downgrade when the 
-  --lm option is set to 1. This functionality is enabled by default when the
+  --lm option is set to On. This functionality is enabled by default when the
   tool is launched.
 
 - Built-in MSSQL Auth server.
   In order to redirect SQL Authentication to this tool, you will need to
-  set the option -r to 1(NBT-NS queries for SQL Server lookup are using
+  set the option -r to On(NBT-NS queries for SQL Server lookup are using
   the Workstation Service name suffix) for systems older than windows 
   Vista (LLMNR will be used for Vista and higher). This server supports
   NTLMv1, LMv2 hashes. This functionality was successfully tested on 
@@ -35,7 +35,7 @@ FEATURES
 
 - Built-in HTTP Auth server.
   In order to redirect HTTP Authentication to this tool, you will need
-  to set the option -r to 1 for Windows version older than Vista (NBT-NS
+  to set the option -r to On for Windows version older than Vista (NBT-NS
   queries for HTTP server lookup are sent using the Workstation Service
   name suffix). For Vista and higher, LLMNR will be used. This server 
   supports NTLMv1, NTLMv2 hashes *and* Basic Authentication. This server
@@ -45,7 +45,7 @@ FEATURES
 
 - Built-in HTTPS Auth server.
   In order to redirect HTTPS Authentication to this tool, you will need
-  to set the -r option to 1 for Windows versions older than Vista (NBT-NS
+  to set the -r option to On for Windows versions older than Vista (NBT-NS
   queries for HTTP server lookups are sent using the Workstation Service
   name suffix). For Vista and higher, LLMNR will be used. This server 
   supports NTLMv1, NTLMv2, *and* Basic Authentication. This server
@@ -57,7 +57,7 @@ FEATURES
 
 - Built-in LDAP Auth server.
   In order to redirect LDAP Authentication to this tool, you will need
-  to set the option -r to 1 for Windows version older than Vista (NBT-NS
+  to set the option -r to On for Windows version older than Vista (NBT-NS
   queries for HTTP server lookup are sent using the Workstation Service
   name suffix). For Vista and higher, LLMNR will be used. This server 
   supports NTLMSSP hashes and Simple Authentication (clear text authentication).
@@ -86,7 +86,9 @@ FEATURES
 
 - WPAD rogue transparent proxy server. This module will *silently* grab the encrypted
   credentials of anyone launching Internet Explorer on the network. It will also grab
-  the cookie of the requested page. This module is higly effective. You can now send your custom files to a victim.
+  the cookie of the requested page. This module is higly effective. You can now send your custom Pac script to a victim. See Responder.conf.
+
+- Responder is now using a configuration file. See Responder.conf.
 
 CONSIDERATIONS
 ==============
@@ -107,13 +109,14 @@ CONSIDERATIONS
 USAGE
 =====
 
+First of all, please take a look at Responder.conf and set it for your needs.
 Running this tool:
 
 - python Responder.py [options]
 
 Usage Example:
 
-python Responder.py -i 10.20.30.40 -b 1 -r 0 -f On
+python Responder.py -i 10.20.30.40 -b On -r On
 
 Options List:
 
@@ -122,62 +125,24 @@ Options List:
 -i 10.20.30.40, --ip=10.20.30.40     The ip address to redirect the traffic to.
                                      (usually yours)
 
--b 0, --basic=0                      Set this to 1 if you want to return a 
-                                     Basic HTTP authentication. 0 will return 
+-b Off, --basic=Off                  Set this to On if you want to return a 
+                                     Basic HTTP authentication. Off will return 
                                      an NTLM authentication.
 
--s Off, --http=Off                   Set this to On or Off to start/stop the
-                                     HTTP server. Default value is On.
-
--S Off, --smb=Off                    Set this to On or Off to start/stop the
-                                     SMB server. Default value is On.
-
--q Off, --sql=Off                    Set this to On or Off to start/stop the
-                                     SQL server. Default value is On.
-
--r 0, --wredir=0                     Set this to enable answers for netbios 
+-r Off, --wredir=Off                 Set this to On to enable answers for netbios 
                                      wredir suffix queries. Answering to wredir
                                      will likely break stuff on the network 
                                      (like classics 'nbns spoofer' will).
-                                     Default value is therefore set to Off (0).
-
--c 1122334455667788, --challenge=    The server challenge to set for NTLM
-                                     authentication. If not set, then defaults
-                                     to 1122334455667788, the most common
-                                     challenge for existing Rainbow Tables.
-
--l file.log, --logfile=filename.log  Log file to use for Responder session.
+                                     Default value is therefore set to Off.
 
 -f Off, --fingerprint=Off            This option allows you to fingerprint a 
                                      host that issued an NBT-NS or LLMNR query.
 
--F On, --ftp=On                      Set this to On or Off to start/stop the FTP server.
-                                     Default value is On
-
--L On, --ldap=On                     Set this to On or Off to start/stop the LDAP server.
-                                     Default value is On
-
--D On, --dns=On                      Set this to On or Off to start/stop the DNS server.
-                                     Default value is On
-
 -w On, --wpad=On                     Set this to On or Off to start/stop the WPAD rogue
                                      proxy server. Default value is On
 
---lm=0                               Set this to 1 if you want to force LM hashing
-                                     downgrade for Windows XP/2003 and earlier. Default value is False (0)
-
--e 0                                 Set this option to 1 if you'd like to serve a specific
-                                     file via http & WPAD proxy server when  one of these
-                                     extensions are present in the url. Default value is
-                                     False (0)
-
---exe=0                              Set this option to 1 if you'd like to always serve a
-                                     specific file via http & WPAD proxy server. It's best
-                                     to use this option with the --file option. Default
-                                     value is False (0)
-
---file=backdoor.exe                  Serve a specific file when using -e option. Default is
-                                     FixInternet.exe (provided with Responder)
+--lm=Off                             Set this to On if you want to force LM hashing
+                                     downgrade for Windows XP/2003 and earlier. Default value is Off
 
 
 For more information read these posts: 

