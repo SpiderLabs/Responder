@@ -63,6 +63,8 @@ Exe_On_Off = config.get('HTTP Server', 'Serve-Exe').upper()
 Exec_Mode_On_Off = config.get('HTTP Server', 'Serve-Always').upper()
 FILENAME = config.get('HTTP Server', 'Filename')
 WPAD_Script = config.get('HTTP Server', 'WPADScript')
+RespondTo = config.get('Responder Core', 'RespondTo').strip()
+RespondTo.split(",")
 #Cli options.
 OURIP = options.OURIP
 LM_On_Off = options.LM_On_Off.upper()
@@ -141,6 +143,18 @@ def Is_Finger_On(Finger_On_Off):
     if Finger_On_Off == "OFF":
        return False
 
+def RespondToSpecificHost(RespondTo):
+    if len(RespondTo)>=1 and RespondTo != ['']:
+       return True
+    else:
+       return False
+
+def RespondToIPScope(RespondTo, ClientIp):
+    if ClientIp in RespondTo:
+       return True
+    else:
+       return False
+
 ##################################################################################
 #NBT NS Stuff
 ##################################################################################
@@ -188,22 +202,44 @@ class NB(SocketServer.BaseRequestHandler):
     def handle(self):
         request, socket = self.request
         data = request
-        if data[2:4] == "\x01\x10":
-           if Validate_NBT_NS(data,Wredirect):
-              buff = NBT_Ans()
-              buff.calculate(data)
-              for x in range(1):
-                 socket.sendto(str(buff), self.client_address)
-              print "NBT-NS Answer sent to: ", self.client_address[0]
-              logging.warning('NBT-NS Answer sent to: %s'%(self.client_address[0]))
-              if Is_Finger_On(Finger_On_Off):
-                 try:
-                    Finger = RunSmbFinger((self.client_address[0],445))
-                    logging.warning('[+] OsVersion is:%s'%(Finger[0]))
-                    logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
-                 except Exception:
-                    logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
-                    pass
+        if RespondToSpecificHost(RespondTo):
+           if RespondToIPScope(RespondTo, self.client_address[0]):
+              if data[2:4] == "\x01\x10":
+                 if Validate_NBT_NS(data,Wredirect):
+                    buff = NBT_Ans()
+                    buff.calculate(data)
+                    for x in range(1):
+                       socket.sendto(str(buff), self.client_address)
+                       print "NBT-NS Answer sent to: ", self.client_address[0]
+                       logging.warning('NBT-NS Answer sent to: %s'%(self.client_address[0]))
+                       if Is_Finger_On(Finger_On_Off):
+                          try:
+                             Finger = RunSmbFinger((self.client_address[0],445))
+                             logging.warning('[+] OsVersion is:%s'%(Finger[0]))
+                             logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
+                          except Exception:
+                             logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
+                             pass
+           else:
+              pass
+
+        else:
+           if data[2:4] == "\x01\x10":
+              if Validate_NBT_NS(data,Wredirect):
+                 buff = NBT_Ans()
+                 buff.calculate(data)
+                 for x in range(1):
+                    socket.sendto(str(buff), self.client_address)
+                 print "NBT-NS Answer sent to: ", self.client_address[0]
+                 logging.warning('NBT-NS Answer sent to: %s'%(self.client_address[0]))
+                 if Is_Finger_On(Finger_On_Off):
+                    try:
+                       Finger = RunSmbFinger((self.client_address[0],445))
+                       logging.warning('[+] OsVersion is:%s'%(Finger[0]))
+                       logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
+                    except Exception:
+                       logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
+                       pass
 
 ##################################################################################
 #Browser Listener
@@ -705,7 +741,7 @@ def Parse_IPV6_Addr(data):
        return True
 
 def RunLLMNR():
-   ALL = "0.0.0.0"
+   ALL = BIND_TO_IP
    MADDR = "224.0.0.252"
    MPORT = 5355
    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
@@ -717,22 +753,41 @@ def RunLLMNR():
    while True:
        try:
           data, addr = sock.recvfrom(1024)
-          if data[2:4] == "\x00\x00":
-             if Parse_IPV6_Addr(data):
-                global Name
-                Name = Parse_LLMNR_Name(data,addr)
-                buff = LLMNRAns(Tid=data[0:2],QuestionName=Name, AnswerName=Name)
-                buff.calculate()
-                for x in range(1):
-                   sock.sendto(str(buff), addr)
-                if Is_Finger_On(Finger_On_Off):
-                   try:
-                      Finger = RunSmbFinger((addr[0],445))
-                      logging.warning('[+] OsVersion is:%s'%(Finger[0]))
-                      logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
-                   except Exception:
-                      logging.warning('[+] Fingerprint failed for host: %s'%(addr[0]))
-                      pass
+          if RespondToSpecificHost(RespondTo):
+             if RespondToIPScope(RespondTo, addr[0]):
+                if data[2:4] == "\x00\x00":
+                   if Parse_IPV6_Addr(data):
+                      Name = Parse_LLMNR_Name(data,addr)
+                      buff = LLMNRAns(Tid=data[0:2],QuestionName=Name, AnswerName=Name)
+                      buff.calculate()
+                      for x in range(1):
+                         sock.sendto(str(buff), addr)
+                      if Is_Finger_On(Finger_On_Off):
+                         try:
+                            Finger = RunSmbFinger((addr[0],445))
+                            logging.warning('[+] OsVersion is:%s'%(Finger[0]))
+                            logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
+                         except Exception:
+                            logging.warning('[+] Fingerprint failed for host: %s'%(addr[0]))
+                            pass
+             else:
+                pass
+          else:
+             if data[2:4] == "\x00\x00":
+                if Parse_IPV6_Addr(data):
+                   Name = Parse_LLMNR_Name(data,addr)
+                   buff = LLMNRAns(Tid=data[0:2],QuestionName=Name, AnswerName=Name)
+                   buff.calculate()
+                   for x in range(1):
+                      sock.sendto(str(buff), addr)
+                   if Is_Finger_On(Finger_On_Off):
+                      try:
+                         Finger = RunSmbFinger((addr[0],445))
+                         logging.warning('[+] OsVersion is:%s'%(Finger[0]))
+                         logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
+                      except Exception:
+                         logging.warning('[+] Fingerprint failed for host: %s'%(addr[0]))
+                         pass
        except:
           raise
 
@@ -805,7 +860,7 @@ class DNSTCP(SocketServer.BaseRequestHandler):
               self.request.send(buff)
 
         except Exception:
-           raise
+           pass
 
 ##################################################################################
 #HTTP Stuff
