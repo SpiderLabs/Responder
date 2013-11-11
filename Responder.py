@@ -22,7 +22,7 @@ from odict import OrderedDict
 from socket import inet_aton
 from random import randrange
 
-parser = optparse.OptionParser(usage='python %prog -i 10.20.30.40 -b 1 -s On -r 0',
+parser = optparse.OptionParser(usage='python %prog -i 10.20.30.40 -b On -r On',
                                prog=sys.argv[0],
                                )
 parser.add_option('-i','--ip', action="store", help="The ip address to redirect the traffic to. (usually yours)", metavar="10.20.30.40",dest="OURIP")
@@ -1557,5 +1557,6 @@ if __name__ == '__main__':
     except:
         raise
     raw_input()
+
 
 
