@@ -17,6 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys,struct,SocketServer,re,optparse,socket,thread,Fingerprint,random,os,ConfigParser
+from SocketServer import TCPServer, UDPServer, ThreadingMixIn, StreamRequestHandler, BaseRequestHandler,BaseServer
 from Fingerprint import RunSmbFinger,OsNameClientVersion
 from odict import OrderedDict
 from socket import inet_aton
@@ -49,7 +50,7 @@ config = ConfigParser.ConfigParser()
 config.read('Responder.conf')
 
 # Set some vars.
-BIND_TO_IP = config.get('Responder Core', 'Bind_to')
+BIND_TO_Interface = config.get('Responder Core', 'Bind_to')
 On_Off = config.get('Responder Core', 'HTTP').upper()
 SSL_On_Off = config.get('Responder Core', 'HTTPS').upper()
 SMB_On_Off = config.get('Responder Core', 'SMB').upper()
@@ -73,8 +74,8 @@ Wredirect = options.Wredirect.upper()
 Basic = options.Basic.upper()
 Finger_On_Off = options.Finger.upper()
 
-if BIND_TO_IP == None:
-   BIND_TO_IP = ''
+if BIND_TO_Interface == None:
+   BIND_TO_Interface = 'eth0'
 
 if len(NumChal) is not 16:
    print "The challenge must be exactly 16 chars long.\nExample: -c 1122334455667788\n"
@@ -193,11 +194,7 @@ def Validate_NBT_NS(data,Wredirect):
        return False
 
 # NBT_NS Server class.
-class NB(SocketServer.BaseRequestHandler):
-    def server_bind(self):
-       self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR,SO_REUSEPORT, 1)
-       self.socket.bind(self.server_address)
-       self.socket.setblocking(0)
+class NB(BaseRequestHandler):
 
     def handle(self):
         request, socket = self.request
@@ -264,11 +261,7 @@ def FindPDC(data,Client):
     else:
        pass
 
-class Browser(SocketServer.BaseRequestHandler):
-    def server_bind(self):
-       self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR,SO_REUSEPORT, 1)
-       self.socket.bind(self.server_address)
-       self.socket.setblocking(0)
+class Browser(BaseRequestHandler):
 
     def handle(self):
         try:
@@ -460,12 +453,7 @@ def IsNT4ClearTxt(data):
              logging.warning("[SMB]Clear Text Credentials: %s:%s"%(User,Password))
 
 #SMB Server class, NTLMSSP
-class SMB1(SocketServer.BaseRequestHandler):
-    def server_bind(self):
-       self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR,SO_REUSEPORT, 1)
-       self.socket.bind(self.server_address)
-       self.socket.setblocking(0)
-       self.socket.setdefaulttimeout(2)
+class SMB1(BaseRequestHandler):
 
     def handle(self):
         try:
@@ -563,12 +551,7 @@ class SMB1(SocketServer.BaseRequestHandler):
            pass #no need to print errors..
 
 #SMB Server class, old version.
-class SMB1LM(SocketServer.BaseRequestHandler):
-    def server_bind(self):
-       self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR,SO_REUSEPORT, 1)
-       self.socket.bind(self.server_address)
-       self.socket.setblocking(0)
-       self.socket.setdefaulttimeout(0.5)
+class SMB1LM(BaseRequestHandler):
 
     def handle(self):
         try:
@@ -661,12 +644,7 @@ def ParseSQLHash(data,client):
        logging.warning('[+]MSSQL NTLMv2 Complete Hash is : %s'%(Writehash))
 
 #MS-SQL server class.
-class MSSQL(SocketServer.BaseRequestHandler):
-    def server_bind(self):
-       self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR,SO_REUSEPORT, 1)
-       self.socket.bind(self.server_address)
-       self.socket.setblocking(0)
-       self.socket.setdefaulttimeout(0.1)
+class MSSQL(BaseRequestHandler):
 
     def handle(self):
         try:
@@ -741,15 +719,23 @@ def Parse_IPV6_Addr(data):
        return True
 
 def RunLLMNR():
-   ALL = BIND_TO_IP
-   MADDR = "224.0.0.252"
-   MPORT = 5355
-   sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-   sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
-   sock.bind((ALL,MPORT))
-   sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
-   ## Join IGMP Group.
-   Join = sock.setsockopt(socket.IPPROTO_IP,socket.IP_ADD_MEMBERSHIP,inet_aton(MADDR) + inet_aton(ALL))
+   try:
+      ALL = '0.0.0.0'
+      MADDR = "224.0.0.252"
+      MPORT = 5355
+      sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+      try:
+         sock.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
+      except:
+         print "Non existant network interface provided in Responder.conf, please provide a valid interface."
+         sys.exit(1)
+      sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+      sock.bind((ALL,MPORT))
+      sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
+      ## Join IGMP Group.
+      Join = sock.setsockopt(socket.IPPROTO_IP,socket.IP_ADD_MEMBERSHIP,inet_aton(MADDR) + inet_aton(ALL))
+   except:
+      raise
    while True:
        try:
           data, addr = sock.recvfrom(1024)
@@ -769,9 +755,9 @@ def RunLLMNR():
                             logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
                          except Exception:
                             logging.warning('[+] Fingerprint failed for host: %s'%(addr[0]))
-                            pass
+                            raise
              else:
-                pass
+                raise
           else:
              if data[2:4] == "\x00\x00":
                 if Parse_IPV6_Addr(data):
@@ -787,7 +773,7 @@ def RunLLMNR():
                          logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
                       except Exception:
                          logging.warning('[+] Fingerprint failed for host: %s'%(addr[0]))
-                         pass
+                         raise
        except:
           raise
 
@@ -829,11 +815,7 @@ class DNSAns(Packet):
         self.fields["IPLen"] = struct.pack(">h",len(self.fields["IP"]))
 
 # DNS Server class.
-class DNS(SocketServer.BaseRequestHandler):
-    def server_bind(self):
-       self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR,SO_REUSEPORT, 1)
-       self.socket.bind(self.server_address)
-       self.socket.setblocking(0)
+class DNS(BaseRequestHandler):
 
     def handle(self):
         req, soc = self.request
@@ -845,11 +827,7 @@ class DNS(SocketServer.BaseRequestHandler):
            print "DNS Answer sent to: %s "%(self.client_address[0])
            logging.warning('DNS Answer sent to: %s'%(self.client_address[0]))
 
-class DNSTCP(SocketServer.BaseRequestHandler):
-    def server_bind(self):
-       self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR,SO_REUSEPORT, 1)
-       self.socket.bind(self.server_address)
-       self.socket.setblocking(0)
+class DNSTCP(BaseRequestHandler):
 
     def handle(self):
         try: 
@@ -1034,11 +1012,7 @@ def PacketSequence(data,client):
        return str(Basic_Ntlm(Basic))
 
 #HTTP Server Class
-class HTTP(SocketServer.BaseRequestHandler):
-    def server_bind(self):
-       self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR,SO_REUSEPORT, 1)
-       self.socket.bind(self.server_address)
-       self.socket.setblocking(0)
+class HTTP(BaseRequestHandler):
 
     def handle(self):
         try: 
@@ -1156,11 +1130,7 @@ def ProxyPacketSequence(data,client):
        return str(ProxyBasic_Ntlm(Basic))
 
 #HTTP Rogue Proxy Server Class
-class HTTPProxy(SocketServer.BaseRequestHandler):
-    def server_bind(self):
-       self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR,SO_REUSEPORT, 1)
-       self.socket.bind(self.server_address)
-       self.socket.setblocking(0)
+class HTTPProxy(BaseRequestHandler):
 
     def handle(self):
         try: 
@@ -1262,9 +1232,9 @@ def HTTPSPacketSequence(data,client):
     else:
        return str(Basic_Ntlm(Basic))
 
-class SSlSock(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
+class SSlSock(ThreadingMixIn, TCPServer):
     def __init__(self, server_address, RequestHandlerClass):
-        SocketServer.BaseServer.__init__(self, server_address, RequestHandlerClass)
+        BaseServer.__init__(self, server_address, RequestHandlerClass)
         ctx = SSL.Context(SSL.SSLv3_METHOD)
         cert = config.get('HTTPS Server', 'cert')
         key =  config.get('HTTPS Server', 'key')
@@ -1280,7 +1250,7 @@ class SSlSock(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
         except:
            pass
 
-class DoSSL(SocketServer.StreamRequestHandler):
+class DoSSL(StreamRequestHandler):
     def setup(self):
         self.exchange = self.request
         self.rfile = socket._fileobject(self.request, "rb", self.rbufsize)
@@ -1312,12 +1282,7 @@ class FTPPacket(Packet):
     ])
 
 #FTP server class.
-class FTP(SocketServer.BaseRequestHandler):
-    def server_bind(self):
-       self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR,SO_REUSEPORT, 1)
-       self.socket.bind(self.server_address)
-       self.socket.setblocking(0)
-       self.socket.setdefaulttimeout(1)
+class FTP(BaseRequestHandler):
 
     def handle(self):
         try:
@@ -1426,12 +1391,7 @@ def ParseLDAPPacket(data,client):
           print '[LDAP]Operation not supported'
 
 #LDAP Server Class
-class LDAP(SocketServer.BaseRequestHandler):
-    def server_bind(self):
-       self.socket.setsockopt(SOL_SOCKET, SO_REUSEADDR,SO_REUSEPORT, 1)
-       self.socket.bind(self.server_address)
-       self.socket.setblocking(0)
-       self.socket.setdefaulttimeout(0.5)
+class LDAP(BaseRequestHandler):
 
     def handle(self):
         try:
@@ -1451,21 +1411,21 @@ class LDAP(SocketServer.BaseRequestHandler):
 #Function name self-explanatory
 def Is_HTTP_On(on_off):
     if on_off == "ON":
-       return thread.start_new(serve_thread_tcp,(BIND_TO_IP, 80,HTTP))
+       return thread.start_new(serve_thread_tcp,('', 80,HTTP))
     if on_off == "OFF":
        return False
 
 #Function name self-explanatory
 def Is_HTTPS_On(SSL_On_Off):
     if SSL_On_Off == "ON":
-       return thread.start_new(serve_thread_SSL,(BIND_TO_IP, 443,DoSSL))
+       return thread.start_new(serve_thread_SSL,('', 443,DoSSL))
     if SSL_On_Off == "OFF":
        return False
 
 #Function name self-explanatory
 def Is_WPAD_On(on_off):
     if on_off == "ON":
-       return thread.start_new(serve_thread_tcp,(BIND_TO_IP, 3141,HTTPProxy))
+       return thread.start_new(serve_thread_tcp,('', 3141,HTTPProxy))
     if on_off == "OFF":
        return False
 
@@ -1473,65 +1433,82 @@ def Is_WPAD_On(on_off):
 def Is_SMB_On(SMB_On_Off):
     if SMB_On_Off == "ON":
        if LM_On_Off == "ON":
-          return thread.start_new(serve_thread_tcp, (BIND_TO_IP, 445,SMB1LM)),thread.start_new(serve_thread_tcp,(BIND_TO_IP, 139,SMB1LM))
+          return thread.start_new(serve_thread_tcp, ('', 445,SMB1LM)),thread.start_new(serve_thread_tcp,('', 139,SMB1LM))
        else:
-          return thread.start_new(serve_thread_tcp, (BIND_TO_IP, 445,SMB1)),thread.start_new(serve_thread_tcp,(BIND_TO_IP, 139,SMB1))
+          return thread.start_new(serve_thread_tcp, ('', 445,SMB1)),thread.start_new(serve_thread_tcp,('', 139,SMB1))
     if SMB_On_Off == "OFF":
        return False
 
 #Function name self-explanatory
 def Is_SQL_On(SQL_On_Off):
     if SQL_On_Off == "ON":
-       return thread.start_new(serve_thread_tcp,(BIND_TO_IP, 1433,MSSQL))
+       return thread.start_new(serve_thread_tcp,('', 1433,MSSQL))
     if SQL_On_Off == "OFF":
        return False
 
 #Function name self-explanatory
 def Is_FTP_On(FTP_On_Off):
     if FTP_On_Off == "ON":
-       return thread.start_new(serve_thread_tcp,(BIND_TO_IP, 21,FTP))
+       return thread.start_new(serve_thread_tcp,('', 21,FTP))
     if FTP_On_Off == "OFF":
        return False
 
 #Function name self-explanatory
 def Is_LDAP_On(LDAP_On_Off):
     if LDAP_On_Off == "ON":
-       return thread.start_new(serve_thread_tcp,(BIND_TO_IP, 389,LDAP))
+       return thread.start_new(serve_thread_tcp,('', 389,LDAP))
     if LDAP_On_Off == "OFF":
        return False
 
 #Function name self-explanatory
 def Is_DNS_On(DNS_On_Off):
     if DNS_On_Off == "ON":
-       return thread.start_new(serve_thread_udp,(BIND_TO_IP, 53,DNS)),thread.start_new(serve_thread_tcp,(BIND_TO_IP, 53,DNSTCP))
+       return thread.start_new(serve_thread_udp,('', 53,DNS)),thread.start_new(serve_thread_tcp,('', 53,DNSTCP))
     if DNS_On_Off == "OFF":
        return False
 
-SocketServer.UDPServer.allow_reuse_address = 1
-SocketServer.TCPServer.allow_reuse_address = 1
+class ThreadingUDPServer(ThreadingMixIn, UDPServer):
+    
+    def server_bind(self):
+        try:
+           self.socket.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
+           UDPServer.server_bind(self)
+        except:
+           print "Non existant network interface provided in Responder.conf, please provide a valid interface."
+
+class ThreadingTCPServer(ThreadingMixIn, TCPServer):
+    
+    def server_bind(self):
+        try:
+           self.socket.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
+           TCPServer.server_bind(self)
+        except:
+           print "Non existant network interface provided in Responder.conf, please provide a valid interface."
+
+ThreadingUDPServer.allow_reuse_address = 1
+ThreadingTCPServer.allow_reuse_address = 1
 
 
 def serve_thread_udp(host, port, handler):
 	try:
-		server = SocketServer.UDPServer((host, port), handler)
+		server = ThreadingUDPServer((host, port), handler)
 		server.serve_forever()
 	except:
-		print "Error starting UDP server on port " + str(port) + ". Check that you have the necessary permissions (i.e. root) and no other servers are running."
+		print "Error starting UDP server on port " + str(port) + ". Check that you have the necessary permissions (i.e. root), no other servers are running and the correct network interface is set in Responder.conf."
  
 def serve_thread_tcp(host, port, handler):
 	try:
-		server = SocketServer.TCPServer((host, port), handler)
+		server = ThreadingTCPServer((host, port), handler)
 		server.serve_forever()
 	except:
-		print "Error starting TCP server on port " + str(port) + ". Check that you have the necessary permissions (i.e. root) and no other servers are running."
-                raise
+		print "Error starting TCP server on port " + str(port) + ". Check that you have the necessary permissions (i.e. root), no other servers are running and the correct network interface is set in Responder.conf."
 
 def serve_thread_SSL(host, port, handler):
 	try:
 		server = SSlSock((host, port), handler)
 		server.serve_forever()
 	except:
-		print "Error starting TCP server on port " + str(port) + ". Check that you have the necessary permissions (i.e. root) and no other servers are running."
+		print "Error starting TCP server on port " + str(port) + ". Check that you have the necessary permissions (i.e. root), no other servers are running and the correct network interface is set in Responder.conf."
 
 def main():
     try:
@@ -1544,9 +1521,9 @@ def main():
       Is_LDAP_On(LDAP_On_Off)
       Is_DNS_On(DNS_On_Off)
       #Browser listener loaded by default
-      thread.start_new(serve_thread_udp,(BIND_TO_IP, 138,Browser))
+      thread.start_new(serve_thread_udp,('', 138,Browser))
       ## Poisoner loaded by default, it's the purpose of this tool...
-      thread.start_new(serve_thread_udp,(BIND_TO_IP, 137,NB))
+      thread.start_new(serve_thread_udp,('', 137,NB))
       thread.start_new(RunLLMNR())
     except KeyboardInterrupt:
         exit()

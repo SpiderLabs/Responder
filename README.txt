@@ -101,9 +101,11 @@ CONSIDERATIONS
   Edit this file /etc/NetworkManager/NetworkManager.conf and comment the line : "dns=dnsmasq".
   Then kill dnsmasq with this command (as root): killall dnsmasq -9
 
-- Any rogue server can be turn off via command line, see USAGE section.
+- Any rogue server can be turn off in Responder.conf.
 
-- This tool will *not* work on Windows by default.
+- Please set a valid network interface in Responder.conf. Default is eth0. 
+
+- This tool will *not* work on Windows.
 
 
 USAGE
