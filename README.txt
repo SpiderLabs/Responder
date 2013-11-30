@@ -118,7 +118,7 @@ Running this tool:
 
 Usage Example:
 
-python Responder.py -i 10.20.30.40 -b On -r On
+python Responder.py -i 10.20.30.40 -b On -r On -I eth0
 
 Options List:
 
@@ -126,6 +126,8 @@ Options List:
 
 -i 10.20.30.40, --ip=10.20.30.40     The ip address to redirect the traffic to.
                                      (usually yours)
+
+-I eth0, --interface=eth0            Network interface to use
 
 -b Off, --basic=Off                  Set this to On if you want to return a 
                                      Basic HTTP authentication. Off will return 

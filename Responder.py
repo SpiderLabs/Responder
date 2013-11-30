@@ -28,6 +28,8 @@ parser = optparse.OptionParser(usage='python %prog -i 10.20.30.40 -b On -r On',
                                )
 parser.add_option('-i','--ip', action="store", help="The ip address to redirect the traffic to. (usually yours)", metavar="10.20.30.40",dest="OURIP")
 
+parser.add_option('-I','--interface', action="store", help="Network interface to use", metavar="eth0", dest="INTERFACE", default="Not set")
+
 parser.add_option('-b', '--basic',action="store", help="Set this to On if you want to return a Basic HTTP authentication. Off will return an NTLM authentication.This option is mandatory.", metavar="Off",dest="Basic", choices=['On','ON','Off','OFF'], default="Off")
 
 parser.add_option('-r', '--wredir',action="store", help="Set this to enable answers for netbios wredir suffix queries. Answering to wredir will likely break stuff on the network (like classics 'nbns spoofer' will). Default value is therefore set to Off", metavar="Off",dest="Wredirect", choices=['On','ON','Off','OFF'], default="Off")
@@ -73,9 +75,13 @@ WPAD_On_Off = options.WPAD_On_Off.upper()
 Wredirect = options.Wredirect.upper()
 Basic = options.Basic.upper()
 Finger_On_Off = options.Finger.upper()
+INTERFACE = options.INTERFACE
 
 if BIND_TO_Interface == None:
    BIND_TO_Interface = 'eth0'
+
+if INTERFACE != "Not set":
+   BIND_TO_Interface = INTERFACE
 
 if len(NumChal) is not 16:
    print "The challenge must be exactly 16 chars long.\nExample: -c 1122334455667788\n"
@@ -115,7 +121,7 @@ Challenge = ""
 for i in range(0,len(NumChal),2):
     Challenge += NumChal[i:i+2].decode("hex")
 
-Show_Help("[+]NBT-NS & LLMNR responder started\n[+]Loading Responder.conf File..\nGlobal Parameters set:\nChallenge set is: %s\nWPAD Proxy Server is:%s\nWPAD script loaded:%s\nHTTP Server is:%s\nHTTPS Server is:%s\nSMB Server is:%s\nSMB LM support is set to:%s\nSQL Server is:%s\nFTP Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\nServing Executable via HTTP&WPAD is:%s\nAlways Serving a Specific File via HTTP&WPAD is:%s\n\n"%(NumChal,WPAD_On_Off,WPAD_Script,On_Off,SSL_On_Off,SMB_On_Off,LM_On_Off,SQL_On_Off,FTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off,Exe_On_Off,Exec_Mode_On_Off))
+Show_Help("[+]NBT-NS & LLMNR responder started\n[+]Loading Responder.conf File..\nGlobal Parameters set:\nResponder is bound to this interface:%s\nChallenge set is: %s\nWPAD Proxy Server is:%s\nWPAD script loaded:%s\nHTTP Server is:%s\nHTTPS Server is:%s\nSMB Server is:%s\nSMB LM support is set to:%s\nSQL Server is:%s\nFTP Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\nServing Executable via HTTP&WPAD is:%s\nAlways Serving a Specific File via HTTP&WPAD is:%s\n\n"%(BIND_TO_Interface, NumChal,WPAD_On_Off,WPAD_Script,On_Off,SSL_On_Off,SMB_On_Off,LM_On_Off,SQL_On_Off,FTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off,Exe_On_Off,Exec_Mode_On_Off))
 
 #Simple NBNS Services.
 W_REDIRECT   = "\x41\x41\x00"
@@ -1472,18 +1478,18 @@ class ThreadingUDPServer(ThreadingMixIn, UDPServer):
     def server_bind(self):
         try:
            self.socket.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
-           UDPServer.server_bind(self)
         except:
            print "Non existant network interface provided in Responder.conf, please provide a valid interface."
+        UDPServer.server_bind(self)
 
 class ThreadingTCPServer(ThreadingMixIn, TCPServer):
     
     def server_bind(self):
         try:
            self.socket.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
-           TCPServer.server_bind(self)
         except:
            print "Non existant network interface provided in Responder.conf, please provide a valid interface."
+        TCPServer.server_bind(self)
 
 ThreadingUDPServer.allow_reuse_address = 1
 ThreadingTCPServer.allow_reuse_address = 1
