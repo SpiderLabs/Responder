@@ -761,9 +761,7 @@ def RunLLMNR():
                             logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
                          except Exception:
                             logging.warning('[+] Fingerprint failed for host: %s'%(addr[0]))
-                            raise
-             else:
-                raise
+                            pass
           else:
              if data[2:4] == "\x00\x00":
                 if Parse_IPV6_Addr(data):
@@ -779,7 +777,7 @@ def RunLLMNR():
                          logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
                       except Exception:
                          logging.warning('[+] Fingerprint failed for host: %s'%(addr[0]))
-                         raise
+                         pass
        except:
           raise
 
