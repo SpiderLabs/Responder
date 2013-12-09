@@ -933,7 +933,7 @@ def ServeWPADOrNot(on_off):
 
 def WpadCustom(data,client):
     if ServeWPADOrNot(WPAD_On_Off):
-       b = re.search('(/wpad.dat)', data)
+       b = re.search('(/wpad.dat|/*\.pac)', data)
        if b:
           Message = "[+]WPAD file sent to: %s"%(client)
           print Message
