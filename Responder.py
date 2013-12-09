@@ -979,6 +979,24 @@ def IsExecutable(Filename):
     else:
        return False
 
+def GrabURL(data, host):
+    GET = re.findall('(?<=GET )[^HTTP]*', data)
+    POST = re.findall('(?<=POST )[^HTTP]*', data)
+    POSTDATA = re.findall('(?<=\r\n\r\n)[^*]*', data)
+    if GET:
+          HostStr = "[+]HTTP GET request from : %s. The HTTP URL requested was: %s"%(host, ''.join(GET))
+          logging.warning(HostStr)
+          print HostStr
+
+    if POST:
+          Host3Str = "[+]HTTP POST request from : %s. The HTTP URL requested was: %s"%(host,''.join(POST))
+          logging.warning(Host3Str)
+          print Host3Str
+          if len(''.join(POSTDATA)) >2:
+             PostData = '[+]The HTTP POST DATA in this request was: %s'%(''.join(POSTDATA).strip())
+             print PostData
+             logging.warning(PostData)
+
 #Handle HTTP packet sequence.
 def PacketSequence(data,client):
     a = re.findall('(?<=Authorization: NTLM )[^\\r]*', data)
@@ -1000,6 +1018,7 @@ def PacketSequence(data,client):
     if a:
        packetNtlm = b64decode(''.join(a))[8:9]
        if packetNtlm == "\x01":
+          GrabURL(data,client)
           GrabCookie(data,client)
           r = NTLM_Challenge(ServerChallenge=Challenge)
           r.calculate()
@@ -1015,6 +1034,7 @@ def PacketSequence(data,client):
           return str(buffer1)
     if b:
        GrabCookie(data,client)
+       GrabURL(data,client)
        outfile = "HTTP-Clear-Text-Password-"+client+".txt"
        WriteData(outfile,b64decode(''.join(b)), b64decode(''.join(b)))
        print "[+]HTTP-User & Password:", b64decode(''.join(b))
@@ -1067,8 +1087,10 @@ def GrabHost(data,host):
           Host3Str = "[+]HTTP Proxy sent from: %s The requested URL was: %s"%(host,''.join(POST))
           logging.warning(Host3Str)
           print Host3Str
-          if POSTDATA:
-             print '[+]HTTP Proxy POST DATA in this request was:',''.join(POSTDATA)
+          if len(''.join(POSTDATA)) >2:
+             PostData = '[+]The HTTP POST DATA in this request was: %s'%(''.join(POSTDATA))
+             print PostData
+             logging.warning(PostData)
           return ''.join(POST), ''.join(POSTDATA)
     else:
           NoHost = "[+]No host url sent with this request"
