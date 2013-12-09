@@ -199,12 +199,23 @@ def Validate_NBT_NS(data,Wredirect):
     else:
        return False
 
+def Decode_Name(nbname):
+    #From http://code.google.com/p/dpkt/ with author's permission.
+    if len(nbname) != 32:
+        return nbname
+    l = []
+    for i in range(0, 32, 2):
+        l.append(chr(((ord(nbname[i]) - 0x41) << 4) |
+                     ((ord(nbname[i+1]) - 0x41) & 0xf)))
+    return ''.join(l).split('\x00', 1)[0].strip()
+
 # NBT_NS Server class.
 class NB(BaseRequestHandler):
 
     def handle(self):
         request, socket = self.request
         data = request
+        Name = Decode_Name(data[13:45])
         if RespondToSpecificHost(RespondTo):
            if RespondToIPScope(RespondTo, self.client_address[0]):
               if data[2:4] == "\x01\x10":
@@ -213,8 +224,8 @@ class NB(BaseRequestHandler):
                     buff.calculate(data)
                     for x in range(1):
                        socket.sendto(str(buff), self.client_address)
-                       print "NBT-NS Answer sent to: ", self.client_address[0]
-                       logging.warning('NBT-NS Answer sent to: %s'%(self.client_address[0]))
+                       print "NBT-NS Answer sent to: %s. The requested name was : %s."%(self.client_address[0], Name)
+                       logging.warning('NBT-NS Answer sent to: %s. The requested name was : %s.'%(self.client_address[0], Name))
                        if Is_Finger_On(Finger_On_Off):
                           try:
                              Finger = RunSmbFinger((self.client_address[0],445))
@@ -233,8 +244,8 @@ class NB(BaseRequestHandler):
                  buff.calculate(data)
                  for x in range(1):
                     socket.sendto(str(buff), self.client_address)
-                 print "NBT-NS Answer sent to: ", self.client_address[0]
-                 logging.warning('NBT-NS Answer sent to: %s'%(self.client_address[0]))
+                 print "NBT-NS Answer sent to: %s. The requested name was : %s."%(self.client_address[0], Name)
+                 logging.warning('NBT-NS Answer sent to: %s. The requested name was : %s.'%(self.client_address[0], Name))
                  if Is_Finger_On(Finger_On_Off):
                     try:
                        Finger = RunSmbFinger((self.client_address[0],445))
@@ -1538,6 +1549,7 @@ if __name__ == '__main__':
     except:
         raise
     raw_input()
+
 
 
 
