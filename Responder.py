@@ -30,15 +30,15 @@ parser.add_option('-i','--ip', action="store", help="The ip address to redirect 
 
 parser.add_option('-I','--interface', action="store", help="Network interface to use", metavar="eth0", dest="INTERFACE", default="Not set")
 
-parser.add_option('-b', '--basic',action="store", help="Set this to On if you want to return a Basic HTTP authentication. Off will return an NTLM authentication.This option is mandatory.", metavar="Off",dest="Basic", choices=['On','ON','Off','OFF'], default="Off")
+parser.add_option('-b', '--basic',action="store", help="Set this to On if you want to return a Basic HTTP authentication. Off will return an NTLM authentication.This option is mandatory.", metavar="Off",dest="Basic", choices=['On','on','off','Off'], default="Off")
 
-parser.add_option('-r', '--wredir',action="store", help="Set this to enable answers for netbios wredir suffix queries. Answering to wredir will likely break stuff on the network (like classics 'nbns spoofer' will). Default value is therefore set to Off", metavar="Off",dest="Wredirect", choices=['On','ON','Off','OFF'], default="Off")
+parser.add_option('-r', '--wredir',action="store", help="Set this to enable answers for netbios wredir suffix queries. Answering to wredir will likely break stuff on the network (like classics 'nbns spoofer' will). Default value is therefore set to Off", metavar="Off",dest="Wredirect", choices=['On','on','off','Off'], default="Off")
 
-parser.add_option('-f','--fingerprint', action="store", dest="Finger", help = "This option allows you to fingerprint a host that issued an NBT-NS or LLMNR query.", metavar="Off", choices=['On','ON','Off','OFF'], default="Off")
+parser.add_option('-f','--fingerprint', action="store", dest="Finger", help = "This option allows you to fingerprint a host that issued an NBT-NS or LLMNR query.", metavar="Off", choices=['On','on','off','Off'], default="Off")
 
-parser.add_option('-w','--wpad', action="store", dest="WPAD_On_Off", help = "Set this to On or Off to start/stop the WPAD rogue proxy server. Default value is Off", metavar="Off", choices=['On','ON','Off','OFF'], default="Off")
+parser.add_option('-w','--wpad', action="store", dest="WPAD_On_Off", help = "Set this to On or Off to start/stop the WPAD rogue proxy server. Default value is Off", metavar="Off", choices=['On','on','off','Off'], default="Off")
 
-parser.add_option('--lm',action="store", help="Set this to Off if you want to force LM hashing downgrade for Windows XP/2003 and earlier. Default value is Off", metavar="Off",dest="LM_On_Off", choices=['On','ON','Off','OFF'], default="Off")
+parser.add_option('--lm',action="store", help="Set this to On if you want to force LM hashing downgrade for Windows XP/2003 and earlier. Default value is Off", metavar="Off",dest="LM_On_Off", choices=['On','on','off','Off'], default="Off")
 
 parser.add_option('-v',action="store_true", help="More verbose",dest="Verbose")
 
@@ -1594,6 +1594,7 @@ if __name__ == '__main__':
     except:
         raise
     raw_input()
+
 
 
 
