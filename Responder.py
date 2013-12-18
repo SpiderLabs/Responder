@@ -52,7 +52,6 @@ config = ConfigParser.ConfigParser()
 config.read('Responder.conf')
 
 # Set some vars.
-BIND_TO_Interface = config.get('Responder Core', 'Bind_to')
 On_Off = config.get('Responder Core', 'HTTP').upper()
 SSL_On_Off = config.get('Responder Core', 'HTTPS').upper()
 SMB_On_Off = config.get('Responder Core', 'SMB').upper()
@@ -77,16 +76,33 @@ Basic = options.Basic.upper()
 Finger_On_Off = options.Finger.upper()
 INTERFACE = options.INTERFACE
 
-if BIND_TO_Interface == None:
-   BIND_TO_Interface = 'eth0'
-
 if INTERFACE != "Not set":
    BIND_TO_Interface = INTERFACE
+
+if INTERFACE == "Not set":
+   BIND_TO_Interface = "ALL" 
 
 if len(NumChal) is not 16:
    print "The challenge must be exactly 16 chars long.\nExample: -c 1122334455667788\n"
    parser.print_help()
    exit(-1)
+
+def IsOsX():
+   Os_version = sys.platform
+   if Os_version == "darwin":
+      return True
+   else:
+      return False
+
+def OsInterfaceIsSupported(INTERFACE):
+    if INTERFACE != "Not set":
+       if IsOsX():
+          print "OsX Bind to interface is not supported.. listening on all interfaces."
+          return False
+       else:
+          return True
+    if INTERFACE == "Not set":
+       return False
 
 #Logger
 import logging
@@ -741,11 +757,12 @@ def RunLLMNR():
       MADDR = "224.0.0.252"
       MPORT = 5355
       sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-      try:
-         sock.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
-      except:
-         print "Non existant network interface provided in Responder.conf, please provide a valid interface."
-         sys.exit(1)
+      if OsInterfaceIsSupported(INTERFACE):
+         try:
+            sock.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
+         except:
+            print "Non existant network interface provided in Responder.conf, please provide a valid interface."
+            sys.exit(1)
       sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
       sock.bind((ALL,MPORT))
       sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
@@ -1507,19 +1524,21 @@ def Is_DNS_On(DNS_On_Off):
 class ThreadingUDPServer(ThreadingMixIn, UDPServer):
     
     def server_bind(self):
-        try:
-           self.socket.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
-        except:
-           print "Non existant network interface provided in Responder.conf, please provide a valid interface."
+        if OsInterfaceIsSupported(INTERFACE):
+           try:
+              self.socket.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
+           except:
+              print "Non existant network interface provided in Responder.conf, please provide a valid interface."
         UDPServer.server_bind(self)
 
 class ThreadingTCPServer(ThreadingMixIn, TCPServer):
     
     def server_bind(self):
-        try:
-           self.socket.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
-        except:
-           print "Non existant network interface provided in Responder.conf, please provide a valid interface."
+        if OsInterfaceIsSupported(INTERFACE):
+           try:
+              self.socket.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
+           except:
+              print "Non existant network interface provided in Responder.conf, please provide a valid interface."
         TCPServer.server_bind(self)
 
 ThreadingUDPServer.allow_reuse_address = 1
@@ -1571,6 +1590,7 @@ if __name__ == '__main__':
     except:
         raise
     raw_input()
+
 
 
 
