@@ -147,6 +147,9 @@ def PrintData(outfile,user):
           if re.search(user, filestr.read()):
              filestr.close()
              return False
+          if re.search("\$", user):
+             filestr.close()
+             return False
           else:
              return True
     else:
