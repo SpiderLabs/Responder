@@ -1133,7 +1133,8 @@ def GrabHost(data,host):
              print Host3Str
           if len(''.join(POSTDATA)) >2:
              PostData = '[+]The HTTP POST DATA in this request was: %s'%(''.join(POSTDATA))
-             print PostData
+             if Verbose:
+                print PostData
              logging.warning(PostData)
           return ''.join(POST), ''.join(POSTDATA)
     else:
