@@ -972,7 +972,8 @@ def WpadCustom(data,client):
        b = re.search('(/wpad.dat|/*\.pac)', data)
        if b:
           Message = "[+]WPAD file sent to: %s"%(client)
-          print Message
+          if Verbose:
+             print Message
           logging.warning(Message)
           buffer1 = WPADScript(Payload=WPAD_Script)
           buffer1.calculate()
@@ -1113,17 +1114,20 @@ def GrabHost(data,host):
     if GET:
           HostStr = "[+]HTTP Proxy sent from: %s The requested URL was: %s"%(host,''.join(GET))
           logging.warning(HostStr)
-          print HostStr
+          if Verbose:
+             print HostStr
           return ''.join(GET),None
     if CONNECT:
           Host2Str = "[+]HTTP Proxy sent from: %s The requested URL was: %s"%(host,''.join(CONNECT))
           logging.warning(Host2Str)
-          print Host2Str
+          if Verbose:
+             print Host2Str
           return ''.join(CONNECT), None
     if POST:
           Host3Str = "[+]HTTP Proxy sent from: %s The requested URL was: %s"%(host,''.join(POST))
           logging.warning(Host3Str)
-          print Host3Str
+          if Verbose:
+             print Host3Str
           if len(''.join(POSTDATA)) >2:
              PostData = '[+]The HTTP POST DATA in this request was: %s'%(''.join(POSTDATA))
              print PostData
