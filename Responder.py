@@ -100,7 +100,6 @@ def IsOsX():
 def OsInterfaceIsSupported(INTERFACE):
     if INTERFACE != "Not set":
        if IsOsX():
-          print "OsX Bind to interface is not supported.. listening on all interfaces."
           return False
        else:
           return True
@@ -757,28 +756,41 @@ def Parse_IPV6_Addr(data):
     else:
        return True
 
+def FindLocalIP(Iface):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setsockopt(socket.SOL_SOCKET, 25, Iface+'\0')
+    s.connect(("127.0.0.1",9))#RFC 863
+    return s.getsockname()[0]
+
 def RunLLMNR():
    try:
-      ALL = '0.0.0.0'
+      ALL = "0.0.0.0"
       MADDR = "224.0.0.252"
       MPORT = 5355
-      sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+      s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+      if OsInterfaceIsSupported(INTERFACE) == False:
+          print "OsX Bind to interface is not supported..Listening on all interfaces."
       if OsInterfaceIsSupported(INTERFACE):
          try:
-            sock.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
+            IP = FindLocalIP(BIND_TO_Interface)
+            s.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
+            s.bind((IP,MPORT))
+            s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+            s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
+            Join = s.setsockopt(socket.IPPROTO_IP,socket.IP_ADD_MEMBERSHIP,inet_aton(MADDR) + inet_aton(ALL))
          except:
             print "Non existant network interface provided in Responder.conf, please provide a valid interface."
             sys.exit(1)
-      sock.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
-      sock.bind((ALL,MPORT))
-      sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
-      ## Join IGMP Group.
-      Join = sock.setsockopt(socket.IPPROTO_IP,socket.IP_ADD_MEMBERSHIP,inet_aton(MADDR) + inet_aton(ALL))
+      else:
+         s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+         s.bind((ALL,MPORT))
+         s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
+         Join = s.setsockopt(socket.IPPROTO_IP,socket.IP_ADD_MEMBERSHIP,inet_aton(MADDR) + inet_aton(ALL))
    except:
       raise
    while True:
        try:
-          data, addr = sock.recvfrom(1024)
+          data, addr = s.recvfrom(1024)
           if RespondToSpecificHost(RespondTo):
              if RespondToIPScope(RespondTo, addr[0]):
                 if data[2:4] == "\x00\x00":
@@ -787,7 +799,7 @@ def RunLLMNR():
                       buff = LLMNRAns(Tid=data[0:2],QuestionName=Name, AnswerName=Name)
                       buff.calculate()
                       for x in range(1):
-                         sock.sendto(str(buff), addr)
+                         s.sendto(str(buff), addr)
                       if Is_Finger_On(Finger_On_Off):
                          try:
                             Finger = RunSmbFinger((addr[0],445))
@@ -803,7 +815,7 @@ def RunLLMNR():
                    buff = LLMNRAns(Tid=data[0:2],QuestionName=Name, AnswerName=Name)
                    buff.calculate()
                    for x in range(1):
-                      sock.sendto(str(buff), addr)
+                      s.sendto(str(buff), addr)
                    if Is_Finger_On(Finger_On_Off):
                       try:
                          Finger = RunSmbFinger((addr[0],445))
