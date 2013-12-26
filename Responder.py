@@ -240,13 +240,16 @@ def Validate_NBT_NS(data,Wredirect):
 
 def Decode_Name(nbname):
     #From http://code.google.com/p/dpkt/ with author's permission.
-    if len(nbname) != 32:
-        return nbname
-    l = []
-    for i in range(0, 32, 2):
-        l.append(chr(((ord(nbname[i]) - 0x41) << 4) |
+    try:
+       if len(nbname) != 32:
+          return nbname
+       l = []
+       for i in range(0, 32, 2):
+          l.append(chr(((ord(nbname[i]) - 0x41) << 4) |
                      ((ord(nbname[i+1]) - 0x41) & 0xf)))
-    return ''.join(l).split('\x00', 1)[0].strip()
+       return ''.join(l).split('\x00', 1)[0].strip()
+    except:
+       return "Illegal NetBIOS name"
 
 # NBT_NS Server class.
 class NB(BaseRequestHandler):
@@ -1610,4 +1613,5 @@ if __name__ == '__main__':
     except:
         raise
     raw_input()
+
 
