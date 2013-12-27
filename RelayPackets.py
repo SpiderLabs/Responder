@@ -108,13 +108,13 @@ class SMBSessionTreeData(Packet):
         ("Wordcount2","\x04"),
         ("Andxcmd2","\xff"),
         ("Reserved3","\x00"),
-        ("Andxoffset2","\x00\x00"),
-        ("Flags","\x00\x00"),
+        ("Andxoffset2","\x06\x01"),
+        ("Flags","\x08\x00"),
         ("PasswordLength","\x01\x00"),
         ("Bcc2","\x19\x00"),
         ("Passwd","\x00"),
         ("PrePath","\\\\"),
-        ("Targ", ""),
+        ("Targ", "CSCDSFCS"),
         ("IPC", "\\IPC$"),
         ("TerminatorPath","\x00\x00"),
         ("Service","?????"),
@@ -420,23 +420,19 @@ class SMBNegoAns(Packet):
         ("Maxbuffsize",  "\x04\x11\x00\x00"),
         ("Maxrawbuff",   "\x00\x00\x01\x00"),
         ("Sessionkey",   "\x00\x00\x00\x00"),
-        ("Capabilities", "\xfc\x3e\x01\x00"),
-        ("Systemtime",   "\x32\x19\xee\xd8\x33\xd6\xcd\x01\x6c\xfd"),
+        ("Capabilities", "\xfd\x43\x00\x00"),
+        ("Systemtime",   "\xc2\x74\xf2\x53\x70\x02\xcf\x01\x2c\x01"),
         ("Keylength",    "\x08"),
         ("Bcc",          "\x10\x00"),
         ("Key",          "\x0d\x0d\x0d\x0d\x0d\x0d\x0d\x0d"),
-        ("Domain",       "TOOLKIT"),
-        ("DomainNull",   "\x00\x00"),
-        ("Server",       "SMBTOOLKIT"),
-        ("ServerNull",   "\x00\x00"),
+        ("Domain",       ""),
+
     ])
 
     def calculate(self):
-        ##Convert first..
-        self.fields["Domain"] = self.fields["Domain"].encode('utf-16le')
-        self.fields["Server"] = self.fields["Server"].encode('utf-16le')
+
         ##Then calculate.
-        CompleteBCCLen =  str(self.fields["Key"])+str(self.fields["Domain"])+str(self.fields["DomainNull"])+str(self.fields["Server"])+str(self.fields["ServerNull"])
+        CompleteBCCLen =  str(self.fields["Key"])+str(self.fields["Domain"])
         self.fields["Bcc"] = struct.pack("<h",len(CompleteBCCLen))
         self.fields["Keylength"] = struct.pack("<h",len(self.fields["Key"]))[0]
 
