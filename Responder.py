@@ -132,7 +132,7 @@ def WriteData(outfile,data, user):
           if re.search(user.encode('hex'), filestr.read().encode('hex')):
              filestr.close()
              return False
-          if re.search("$".encode('hex'), user):
+          if re.search("\$", user):
              filestr.close()
              return False
           else:
