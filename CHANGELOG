@@ -1,4 +1,9 @@
-ChangeLog Responder 1.9:
+ChangeLog Responder 2.0:
+- Several improvements.
+- Added: SMTP module
+- Added: POP3 module
+- Added: SMB Relay
+- Added: NBT-NS name is now printed.
 - Added: -I command line switch (network interface). When set, this option override Responder.conf Bind_to setting.
 - Added: Ability to change the HTML payload returned after authentication. See Responder.conf
 - Added: Ability to change the pac script in Responder.conf
