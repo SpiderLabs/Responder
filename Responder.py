@@ -731,12 +731,9 @@ class MSSQL(BaseRequestHandler):
               self.request.settimeout(0.1)
               ##Pre-Login Message
               if data[0] == "\x12":
-                if data[0] == "\x10":
-                   t = MSSQLNTLMChallengeAnswer(ServerChallenge=Challenge)
-                   t.calculate()
-                   buffer1 = str(t) 
-                   self.request.send(buffer1)
-                   data = self.request.recv(1024)
+                 buffer0 = str(MSSQLPreLoginAnswer())        
+                 self.request.send(buffer0)
+                 data = self.request.recv(1024)
              ##NegoSSP
               if data[0] == "\x10":
                 if re.search("NTLMSSP",data):
