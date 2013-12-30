@@ -90,11 +90,15 @@ FEATURES
 
 - Responder is now using a configuration file. See Responder.conf.
 
+- Built-in POP3 auth server. This module will collect POP3 plaintext credentials
+
+- Built-in SMTP auth server. This module will collect PLAIN/LOGIN clear text credentials.
+
 CONSIDERATIONS
 ==============
 
 - This tool listen on several port: UDP 137, UDP 138, UDP 53, UDP/TCP 389,TCP 1433,
-  TCP 80, TCP 139, TCP 445, TCP 21, TCP 3141 Multicast UDP 5553.
+  TCP 80, TCP 139, TCP 445, TCP 21, TCP 3141,TCP 25, TCP 110, TCP 587 and Multicast UDP 5553.
   If you run Samba on your system, stop smbd and nmbd and all other 
   services listening on these ports.
   For Ubuntu users: 
@@ -103,9 +107,9 @@ CONSIDERATIONS
 
 - Any rogue server can be turn off in Responder.conf.
 
-- Please set a valid network interface in Responder.conf. Default is eth0. 
+- You can set a network interface via command line switch -I. Default is all. 
 
-- This tool will *not* work on Windows.
+- This tool is not meant to work on Windows.
 
 
 USAGE
@@ -118,7 +122,7 @@ Running this tool:
 
 Usage Example:
 
-python Responder.py -i 10.20.30.40 -b On -r On -I eth0
+python Responder.py -i 10.20.30.40 -r On -I eth0
 
 Options List:
 
