@@ -141,7 +141,7 @@ def WriteData(outfile,data, user):
                 outf2.write("\n")
                 outf2.close()
 
-def PrintData(outfile,str(user)):
+def PrintData(outfile,user):
     if Verbose == True:
        return True
     if os.path.isfile(outfile) == True:
