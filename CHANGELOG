@@ -2,6 +2,7 @@ ChangeLog Responder 2.0:
 - Several improvements.
 - Added: SMTP module
 - Added: POP3 module
+- Added: MSSQL plaintext auth support
 - Added: SMB Relay
 - Added: NBT-NS name is now printed.
 - Added: -I command line switch (network interface). When set, this option override Responder.conf Bind_to setting.
