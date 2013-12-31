@@ -116,6 +116,11 @@ import logging
 logging.basicConfig(filename=str(os.path.join(ResponderPATH,SessionLog)),level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
 logging.warning('Responder Started')
 
+Log2Filename = str(os.path.join(ResponderPATH,"LLMNR-NBT-NS.log"))
+logger2 = logging.getLogger('LLMNR/NBT-NS')
+logger2.addHandler(logging.FileHandler(Log2Filename,'w'))
+logger2.warning('hi')
+
 def Show_Help(ExtraHelpData):
    help = "NBT Name Service/LLMNR Answerer 1.0.\nPlease send bugs/comments to: lgaffie@trustwave.com\nTo kill this script hit CRTL-C\n\n"
    help+= ExtraHelpData
@@ -157,6 +162,20 @@ def PrintData(outfile,user):
              return True
     else:
        return True
+
+def PrintLLMNRNBTNS(outfile,Message):
+    if Verbose == True:
+       return True
+    if os.path.isfile(outfile) == True:
+       with open(outfile,"r") as filestr:
+          if re.search(Message, filestr.read()):
+             filestr.close()
+             return False
+          else:
+             return True
+    else:
+       return True
+
 
 # Break out challenge for the hexidecimally challenged.  Also, avoid 2 different challenges by accident.
 Challenge = ""
@@ -269,8 +288,11 @@ class NB(BaseRequestHandler):
                     buff.calculate(data)
                     for x in range(1):
                        socket.sendto(str(buff), self.client_address)
-                       print "NBT-NS Answer sent to: %s. The requested name was : %s."%(self.client_address[0], Name)
-                       logging.warning('NBT-NS Answer sent to: %s. The requested name was : %s.'%(self.client_address[0], Name))
+                       Message = 'NBT-NS Answer sent to: %s. The requested name was : %s.'%(self.client_address[0], Name)
+                       logging.warning(Message)
+                       if PrintLLMNRNBTNS(Log2Filename,Message):
+                          print Message
+                          logger2.warning(Message)
                        if Is_Finger_On(Finger_On_Off):
                           try:
                              Finger = RunSmbFinger((self.client_address[0],445))
@@ -289,8 +311,11 @@ class NB(BaseRequestHandler):
                  buff.calculate(data)
                  for x in range(1):
                     socket.sendto(str(buff), self.client_address)
-                 print "NBT-NS Answer sent to: %s. The requested name was : %s."%(self.client_address[0], Name)
-                 logging.warning('NBT-NS Answer sent to: %s. The requested name was : %s.'%(self.client_address[0], Name))
+                 Message = 'NBT-NS Answer sent to: %s. The requested name was : %s.'%(self.client_address[0], Name)
+                 logging.warning(Message)
+                 if PrintLLMNRNBTNS(Log2Filename,Message):
+                    print Message
+                    logger2.warning(Message)
                  if Is_Finger_On(Finger_On_Off):
                     try:
                        Finger = RunSmbFinger((self.client_address[0],445))
@@ -791,8 +816,6 @@ class LLMNRAns(Packet):
 def Parse_LLMNR_Name(data,addr):
    NameLen = struct.unpack('>B',data[12])[0]
    Name = data[13:13+NameLen]
-   print "LLMNR poisoned answer sent to this IP: %s. The requested name was : %s."%(addr[0],Name)
-   logging.warning('LLMNR poisoned answer sent to this IP: %s. The requested name was : %s.'%(addr[0],Name))
    return Name
 
 def Parse_IPV6_Addr(data):
@@ -847,6 +870,11 @@ def RunLLMNR():
                       buff.calculate()
                       for x in range(1):
                          s.sendto(str(buff), addr)
+                      Message =  "LLMNR poisoned answer sent to this IP: %s. The requested name was : %s."%(addr[0],Name)
+                      logging.warning(Message)
+                      if PrintLLMNRNBTNS(Log2Filename,Message):
+                         print Message
+                         logger2.warning(Message)
                       if Is_Finger_On(Finger_On_Off):
                          try:
                             Finger = RunSmbFinger((addr[0],445))
@@ -861,8 +889,12 @@ def RunLLMNR():
                    Name = Parse_LLMNR_Name(data,addr)
                    buff = LLMNRAns(Tid=data[0:2],QuestionName=Name, AnswerName=Name)
                    buff.calculate()
+                   Message =  "LLMNR poisoned answer sent to this IP: %s. The requested name was : %s."%(addr[0],Name)
                    for x in range(1):
                       s.sendto(str(buff), addr)
+                   if PrintLLMNRNBTNS(Log2Filename,Message):
+                      print Message
+                      logger2.warning(Message)
                    if Is_Finger_On(Finger_On_Off):
                       try:
                          Finger = RunSmbFinger((addr[0],445))
