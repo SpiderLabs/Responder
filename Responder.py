@@ -119,7 +119,6 @@ logging.warning('Responder Started')
 Log2Filename = str(os.path.join(ResponderPATH,"LLMNR-NBT-NS.log"))
 logger2 = logging.getLogger('LLMNR/NBT-NS')
 logger2.addHandler(logging.FileHandler(Log2Filename,'w'))
-logger2.warning('hi')
 
 def Show_Help(ExtraHelpData):
    help = "NBT Name Service/LLMNR Answerer 1.0.\nPlease send bugs/comments to: lgaffie@trustwave.com\nTo kill this script hit CRTL-C\n\n"
