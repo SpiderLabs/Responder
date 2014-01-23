@@ -121,7 +121,7 @@ logger2 = logging.getLogger('LLMNR/NBT-NS')
 logger2.addHandler(logging.FileHandler(Log2Filename,'w'))
 
 def Show_Help(ExtraHelpData):
-   help = "NBT Name Service/LLMNR Answerer 1.0.\nPlease send bugs/comments to: lgaffie@trustwave.com\nTo kill this script hit CRTL-C\n\n"
+   help = "NBT Name Service/LLMNR Responder 2.0.\nPlease send bugs/comments to: lgaffie@trustwave.com\nTo kill this script hit CRTL-C\n\n"
    help+= ExtraHelpData
    print help
 
