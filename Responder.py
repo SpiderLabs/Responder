@@ -948,7 +948,9 @@ class DNS(BaseRequestHandler):
     def handle(self):
         req, soc = self.request
         data = req
-        if ParseDNSType(data):
+        if self.client_address[0] == "127.0.0.1":
+           pass
+        elif ParseDNSType(data):
            buff = DNSAns()
            buff.calculate(data)
            soc.sendto(str(buff), self.client_address)
@@ -960,10 +962,14 @@ class DNSTCP(BaseRequestHandler):
     def handle(self):
         try: 
            data = self.request.recv(1024)
-           if ParseDNSType(data):
+           if self.client_address[0] == "127.0.0.1":
+              pass
+           elif ParseDNSType(data):
               buff = DNSAns()
               buff.calculate(data)
-              self.request.send(buff)
+              self.request.send(str(buff))
+              print "DNS Answer sent to: %s "%(self.client_address[0])
+              logging.warning('DNS Answer sent to: %s'%(self.client_address[0]))
 
         except Exception:
            pass
