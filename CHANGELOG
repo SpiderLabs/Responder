@@ -1,4 +1,6 @@
 ChangeLog Responder 2.0:
+- Added: Ability to inject custom HTML in HTTP responses.
+- Added: New WPAD proxy server. Enabled by default.
 - Several improvements.
 - Added: SMTP module
 - Added: POP3 module

@@ -84,9 +84,7 @@ FEATURES
 - Icmp Redirect for MITM on Windows XP/2003 and earlier Domain members. This attack combined with
   the DNS module is pretty effective.
 
-- WPAD rogue transparent proxy server. This module will *silently* grab the encrypted
-  credentials of anyone launching Internet Explorer on the network. It will also grab
-  the cookie of the requested page. This module is higly effective. You can now send your custom Pac script to a victim. See Responder.conf.
+- WPAD rogue transparent proxy server. This module will capture all HTTP requests from anyone launching Internet Explorer on the network. This module is higly effective. You can now send your custom Pac script to a victim and inject HTML into the server's responses. See Responder.conf. This module is now enabled by default.
 
 - Responder is now using a configuration file. See Responder.conf.
 
@@ -146,7 +144,7 @@ Options List:
 -f Off, --fingerprint=Off            This option allows you to fingerprint a 
                                      host that issued an NBT-NS or LLMNR query.
 
--w On, --wpad=On                     Set this to On or Off to start/stop the WPAD rogue
+-w On, --wpad=On                   Set this to On or Off to start/stop the WPAD rogue
                                      proxy server. Default value is On
 
 --lm=Off                             Set this to On if you want to force LM hashing
