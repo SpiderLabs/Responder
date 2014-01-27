@@ -1,4 +1,5 @@
 ChangeLog Responder 2.0:
+- Added: -F command line switch to force NTLM authentication on PAC file retrieval.
 - Added: Ability to inject custom HTML in HTTP responses.
 - Added: New WPAD proxy server. Enabled by default.
 - Several improvements.

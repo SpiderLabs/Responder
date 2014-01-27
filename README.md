@@ -144,11 +144,18 @@ Options List:
 -f Off, --fingerprint=Off            This option allows you to fingerprint a 
                                      host that issued an NBT-NS or LLMNR query.
 
--w On, --wpad=On                   Set this to On or Off to start/stop the WPAD rogue
+-w On, --wpad=On                     Set this to On or Off to start/stop the WPAD rogue
                                      proxy server. Default value is On
 
 --lm=Off                             Set this to On if you want to force LM hashing
                                      downgrade for Windows XP/2003 and earlier. Default value is Off
+
+-F Off, --ForceWpadAuth=Off          Set this to On or Off to force NTLM/Basic authentication on 
+                                     wpad.dat file retrieval. This might cause a login prompt in
+                                     some specific cases. Default value is Off
+
+-v                                   More verbose
+
 
 
 For more information read these posts: 
