@@ -1309,7 +1309,7 @@ class ProxyHandler (BaseHTTPServer.BaseHTTPRequestHandler):
                     try:
                       self._read_write(soc, netloc)
                     except:
-                      raise  
+                      pass
 
         finally:
             soc.close()
