@@ -36,7 +36,7 @@ parser.add_option('-r', '--wredir',action="store", help="Set this to enable answ
 
 parser.add_option('-f','--fingerprint', action="store", dest="Finger", help = "This option allows you to fingerprint a host that issued an NBT-NS or LLMNR query.", metavar="Off", choices=['On','on','off','Off'], default="Off")
 
-parser.add_option('-w','--wpad', action="store", dest="WPAD_On_Off", help = "Set this to On or Off to start/stop the WPAD rogue proxy server. Default value is On", metavar="Off", choices=['On','on','off','Off'], default="On")
+parser.add_option('-w','--wpad', action="store", dest="WPAD_On_Off", help = "Set this to On or Off to start/stop the WPAD rogue proxy server. Default value is Off", metavar="On", choices=['On','on','off','Off'], default="Off")
 
 parser.add_option('-F','--ForceWpadAuth', action="store", dest="Force_WPAD_Auth", help = "Set this to On or Off to force NTLM/Basic authentication on wpad.dat file retrieval. This might cause a login prompt in some specific cases. Default value is Off", metavar="Off", choices=['On','on','off','Off'], default="Off")
 
