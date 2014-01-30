@@ -918,8 +918,8 @@ def IsICMPRedirectPlausible(IP):
         if ip[0] == 'nameserver':
            dnsip.extend(ip[1:])
     for x in dnsip:
-        if IsOnTheSameSubnet(x,IP) == False:
-           print "[Analyze mode: ICMP]You can ICMP Redirect on this network. This workstation (%s) is not on the same subnet than the DNS server (%s). Use python Icmp-Redirect.py for more details."%(IP, x) 
+        if x !="127.0.0.1" and IsOnTheSameSubnet(x,IP) == False:
+           print "[Analyze mode: ICMP] You can ICMP Redirect on this network. This workstation (%s) is not on the same subnet than the DNS server (%s). Use python Icmp-Redirect.py for more details."%(IP, x) 
         else:
            pass
 
