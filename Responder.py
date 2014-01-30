@@ -903,11 +903,39 @@ def Parse_IPV6_Addr(data):
     else:
        return False
 
+def IsOnTheSameSubnet(ip, net):
+   net = net+'/24'
+   ipaddr = int(''.join([ '%02x' % int(x) for x in ip.split('.') ]), 16)
+   netstr, bits = net.split('/')
+   netaddr = int(''.join([ '%02x' % int(x) for x in netstr.split('.') ]), 16)
+   mask = (0xffffffff << (32 - int(bits))) & 0xffffffff
+   return (ipaddr & mask) == (netaddr & mask)
+
+def IsICMPRedirectPlausible(IP):
+    dnsip = []
+    for line in file('/etc/resolv.conf', 'r'):
+        ip = line.split()
+        if ip[0] == 'nameserver':
+           dnsip.extend(ip[1:])
+    for x in dnsip:
+        if IsOnTheSameSubnet(x,IP) == False:
+           print "[+]You can ICMP Redirect on this network. This workstation (%s) is not on the same subnet than the DNS server (%s). Use python Icmp-Redirect.py for more details."%(IP, x) 
+        else:
+           pass
+
 def FindLocalIP(Iface):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setsockopt(socket.SOL_SOCKET, 25, Iface+'\0')
     s.connect(("127.0.0.1",9))#RFC 863
     return s.getsockname()[0]
+
+def AnalyzeICMPRedirect():
+    if Analyze(AnalyzeMode) and OURIP is not None and INTERFACE == 'Not set':
+       IsICMPRedirectPlausible(OURIP)
+    if Analyze(AnalyzeMode) and INTERFACE != 'Not set':
+       IsICMPRedirectPlausible(FindLocalIP(INTERFACE))
+
+AnalyzeICMPRedirect()
 
 def RunLLMNR():
    try:
