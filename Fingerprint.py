@@ -15,7 +15,7 @@
 # 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import re,sys,socket,struct
+import re,sys,socket,struct,string
 from socket import *
 from odict import OrderedDict
 
@@ -101,13 +101,14 @@ class SMBSessionFingerData(Packet):
 
 
 def OsNameClientVersion(data):
-    lenght = struct.unpack('<H',data[43:45])[0]
-    pack = tuple(data[47+lenght:].split('\x00\x00\x00'))[:2]
-    var = [e.replace('\x00','') for e in data[47+lenght:].split('\x00\x00\x00')[:2]]
-    OsVersion, ClientVersion = tuple(var)
-    print "[+] Os version is:",OsVersion
-    print "[+] ClientVersion is:", ClientVersion
-    return OsVersion, ClientVersion
+    try:
+       lenght = struct.unpack('<H',data[43:45])[0]
+       pack = tuple(data[47+lenght:].split('\x00\x00\x00'))[:2]
+       var = [e.replace('\x00','') for e in data[47+lenght:].split('\x00\x00\x00')[:2]]
+       OsVersion, ClientVersion = tuple(var)
+       return OsVersion, ClientVersion
+    except:
+       return "Could not fingerprint Os version.", "Could not fingerprint LanManager Client version"
 
 def RunSmbFinger(host):
     s = socket(AF_INET, SOCK_STREAM)

