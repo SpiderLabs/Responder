@@ -282,7 +282,6 @@ def NBT_NS_Role(data):
 # Define what are we answering to.
 def Validate_NBT_NS(data,Wredirect):
     if Analyze(AnalyzeMode):
-       #print NBT_NS_Role(data[43:46])
        return False
     if NBT_NS_Role(data[43:46]) == "File Server Service":
        return True
