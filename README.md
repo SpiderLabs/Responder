@@ -86,6 +86,8 @@ FEATURES
 
 - WPAD rogue transparent proxy server. This module will capture all HTTP requests from anyone launching Internet Explorer on the network. This module is higly effective. You can now send your custom Pac script to a victim and inject HTML into the server's responses. See Responder.conf. This module is now enabled by default.
 
+- Analyze mode: This module allows you to see NBT-NS, BROWSER, LLMNR requests from which workstation to which workstation without poisoning any requests. Also, you can map domains, MSSQL servers, workstations passively, see if ICMP Redirects attacks are plausible on your subnet. 
+
 - Responder is now using a configuration file. See Responder.conf.
 
 - Built-in POP3 auth server. This module will collect POP3 plaintext credentials
@@ -120,7 +122,7 @@ Running this tool:
 
 Usage Example:
 
-python Responder.py -i 10.20.30.40 -r On -I eth0
+python Responder.py -i 10.20.30.40 -r On -F On -w On
 
 Options List:
 
@@ -145,7 +147,7 @@ Options List:
                                      host that issued an NBT-NS or LLMNR query.
 
 -w On, --wpad=On                     Set this to On or Off to start/stop the WPAD rogue
-                                     proxy server. Default value is On
+                                     proxy server. Default value is Off
 
 --lm=Off                             Set this to On if you want to force LM hashing
                                      downgrade for Windows XP/2003 and earlier. Default value is Off
@@ -153,6 +155,12 @@ Options List:
 -F Off, --ForceWpadAuth=Off          Set this to On or Off to force NTLM/Basic authentication on 
                                      wpad.dat file retrieval. This might cause a login prompt in
                                      some specific cases. Default value is Off
+
+-A, --analyze                        Analyze mode. This option allows you to see NBT-NS,BROWSER, 
+                                     LLMNR requests from which workstation to which workstation 
+                                     without poisoning any requests. Also, you can map domains, 
+                                     MSSQL servers, workstations passively.
+
 
 -v                                   More verbose
 
@@ -162,6 +170,7 @@ For more information read these posts:
 http://blog.spiderlabs.com/2012/10/introducing-responder-10.html
 http://blog.spiderlabs.com/2013/01/owning-windows-networks-with-responder-17.html
 http://blog.spiderlabs.com/2013/02/owning-windows-network-with-responder-part-2.html
+http://blog.spiderlabs.com/2014/02/responder-20-owning-windows-networks-part-3.html
 
 Follow our latest updates on twitter:
 https://twitter.com/PythonResponder
