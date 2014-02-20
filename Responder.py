@@ -1498,7 +1498,7 @@ def InjectData(data):
              return Gzip
           else:
              return data
-       if "Content-Type: text/html" in Headers:
+       if "content-type: text/html" in Headers.lower():
           Len = ''.join(re.findall('(?<=Content-Length: )[^\r\n]*', Headers))
           HasHTML = re.findall('(?<=<html)[^<]*', Content)
           if HasHTML :
