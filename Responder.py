@@ -444,7 +444,7 @@ def RAPThisDomain(Client,Domain):
                  l.append('   -'+x)
           WKST = RapFinger(Client,Domain,"\xff\xff\xff\xff")
           if WKST is not None:
-             l.append('[!]Workstation Server detected on Domain %s:'%(Domain))
+             l.append('[!]Workstations/Servers detected on Domain %s:'%(Domain))
              for x in WKST:
                  l.append('   -'+x)
           else:
@@ -484,7 +484,7 @@ def RapFinger(Host,Domain, Type):
              buffer1 = longueur(packet1)+packet1  
              s.send(buffer1)
              data = s.recv(1024)
-             ##Rap ServerEnum, domain forests and PDC
+             ##Rap ServerEnum.
              if data[8:10] == "\x75\x00":
                 head = SMBHeader(cmd="\x25",flag1="\x08", flag2="\x01\xc8",uid=data[32:34],tid=data[28:30],pid=data[30:32],mid="\x04\x00")
                 t = SMBTransRAPData(Data=RAPNetServerEnum3Data(ServerType=Type,DetailLevel="\x01\x00",TargetDomain=Domain))
@@ -493,7 +493,7 @@ def RapFinger(Host,Domain, Type):
                 buffer1 = longueur(packet1)+packet1  
                 s.send(buffer1)
                 data = s.recv(1024)
-                ##Rap ServerEnum, SQL servers
+                ##Rap ServerEnum, Get answer and return what we're looking for.
                 if data[8:10] == "\x25\x00":
                    s.close()
                    return ParsePacket(data)
@@ -858,8 +858,8 @@ class SMB1LM(BaseRequestHandler):
                  data = self.request.recv(1024)
 
         except Exception:
-           pass #no need to print errors..
            self.request.close()
+           pass #no need to print errors..
 
 ##################################################################################
 #SQL Stuff
