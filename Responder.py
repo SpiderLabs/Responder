@@ -134,7 +134,7 @@ logger2.addHandler(logging.FileHandler(Log2Filename,'w'))
 
 AnalyzeFilename = str(os.path.join(ResponderPATH,"Analyze-LLMNR-NBT-NS.log"))
 logger3 = logging.getLogger('Analyze LLMNR/NBT-NS')
-logger3.addHandler(logging.FileHandler(AnalyzeFilename,'w'))
+logger3.addHandler(logging.FileHandler(AnalyzeFilename,'a'))
 
 def Show_Help(ExtraHelpData):
    help = "NBT Name Service/LLMNR Responder 2.0.\nPlease send bugs/comments to: lgaffie@trustwave.com\nTo kill this script hit CRTL-C\n\n"
