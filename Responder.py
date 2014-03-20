@@ -492,7 +492,7 @@ def RapFinger(Host,Domain, Type):
                 packet1 = str(head)+str(t)
                 buffer1 = longueur(packet1)+packet1  
                 s.send(buffer1)
-                data = s.recv(1024)
+                data = s.recv(64736)
                 ##Rap ServerEnum, Get answer and return what we're looking for.
                 if data[8:10] == "\x25\x00":
                    s.close()
@@ -2155,6 +2155,7 @@ if __name__ == '__main__':
     except:
         raise
     raw_input()
+
 
 
 
