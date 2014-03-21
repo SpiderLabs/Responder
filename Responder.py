@@ -2108,25 +2108,40 @@ ThreadingTCPServer.allow_reuse_address = 1
 
 
 def serve_thread_udp(host, port, handler):
-	try:
-		server = ThreadingUDPServer((host, port), handler)
-		server.serve_forever()
-	except:
-		print "Error starting UDP server on port " + str(port) + ". Check that you have the necessary permissions (i.e. root), no other servers are running and the correct network interface is set in Responder.conf."
+   try:
+      if OsInterfaceIsSupported(INTERFACE):
+         IP = FindLocalIP(BIND_TO_Interface)
+         server = ThreadingUDPServer((IP, port), handler)
+         server.serve_forever()
+      else:
+         server = ThreadingUDPServer((host, port), handler)
+         server.serve_forever()
+   except:
+      print "Error starting UDP server on port " + str(port) + ". Check that you have the necessary permissions (i.e. root), no other servers are running and the correct network interface is set in Responder.conf."
  
 def serve_thread_tcp(host, port, handler):
-	try:
-		server = ThreadingTCPServer((host, port), handler)
-		server.serve_forever()
-	except:
-		print "Error starting TCP server on port " + str(port) + ". Check that you have the necessary permissions (i.e. root), no other servers are running and the correct network interface is set in Responder.conf."
+   try:
+      if OsInterfaceIsSupported(INTERFACE):
+         IP = FindLocalIP(BIND_TO_Interface)
+         server = ThreadingTCPServer((IP, port), handler)
+         server.serve_forever()
+      else:
+         server = ThreadingTCPServer((host, port), handler)
+         server.serve_forever()
+   except:
+      print "Error starting TCP server on port " + str(port) + ". Check that you have the necessary permissions (i.e. root), no other servers are running and the correct network interface is set in Responder.conf."
 
 def serve_thread_SSL(host, port, handler):
-	try:
-		server = SSlSock((host, port), handler)
-		server.serve_forever()
-	except:
-		print "Error starting TCP server on port " + str(port) + ". Check that you have the necessary permissions (i.e. root), no other servers are running and the correct network interface is set in Responder.conf."
+   try:
+      if OsInterfaceIsSupported(INTERFACE):
+         IP = FindLocalIP(BIND_TO_Interface)
+         server = SSlSock((IP, port), handler)
+         server.serve_forever()
+      else:
+         server = SSlSock((host, port), handler)
+         server.serve_forever()
+   except:
+      print "Error starting TCP server on port " + str(port) + ". Check that you have the necessary permissions (i.e. root), no other servers are running and the correct network interface is set in Responder.conf."
 
 def main():
     try:
@@ -2155,6 +2170,7 @@ if __name__ == '__main__':
     except:
         raise
     raw_input()
+
 
 
 
