@@ -5,7 +5,7 @@ http://www.spiderlabs.com
 INTRODUCTION
 ============
 
-This tool is first an LLMNR and NBT-NS responder, it will answer to 
+This tool is first an LLMNR, NBT-NS and MDNS responder, it will answer to 
 *specific* NBT-NS (NetBIOS Name Service) queries based on their name 
 suffix (see: http://support.microsoft.com/kb/163409). By default, the
 tool will only answers to File Server Service request, which is for SMB.

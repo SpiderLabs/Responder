@@ -197,10 +197,10 @@ Challenge = ""
 for i in range(0,len(NumChal),2):
     Challenge += NumChal[i:i+2].decode("hex")
 
-Show_Help("[+]NBT-NS & LLMNR responder started\n[+]Loading Responder.conf File..\nGlobal Parameters set:\nResponder is bound to this interface:%s\nChallenge set is:%s\nWPAD Proxy Server is:%s\nWPAD script loaded:%s\nHTTP Server is:%s\nHTTPS Server is:%s\nSMB Server is:%s\nSMB LM support is set to:%s\nSQL Server is:%s\nFTP Server is:%s\nIMAP Server is:%s\nPOP3 Server is:%s\nSMTP Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\nServing Executable via HTTP&WPAD is:%s\nAlways Serving a Specific File via HTTP&WPAD is:%s\n\n"%(BIND_TO_Interface, NumChal,WPAD_On_Off,WPAD_Script,On_Off,SSL_On_Off,SMB_On_Off,LM_On_Off,SQL_On_Off,FTP_On_Off,IMAP_On_Off,POP_On_Off,SMTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off,Exe_On_Off,Exec_Mode_On_Off))
+Show_Help("[+]NBT-NS, LLMNR & MDNS responder started\n[+]Loading Responder.conf File..\nGlobal Parameters set:\nResponder is bound to this interface:%s\nChallenge set is:%s\nWPAD Proxy Server is:%s\nWPAD script loaded:%s\nHTTP Server is:%s\nHTTPS Server is:%s\nSMB Server is:%s\nSMB LM support is set to:%s\nSQL Server is:%s\nFTP Server is:%s\nIMAP Server is:%s\nPOP3 Server is:%s\nSMTP Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\nServing Executable via HTTP&WPAD is:%s\nAlways Serving a Specific File via HTTP&WPAD is:%s\n\n"%(BIND_TO_Interface, NumChal,WPAD_On_Off,WPAD_Script,On_Off,SSL_On_Off,SMB_On_Off,LM_On_Off,SQL_On_Off,FTP_On_Off,IMAP_On_Off,POP_On_Off,SMTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off,Exe_On_Off,Exec_Mode_On_Off))
 
 if AnalyzeMode:
-   print '[+]Responder is in analyze mode. No NBT-NS/LLMNR requests will be poisoned.\n'
+   print '[+]Responder is in analyze mode. No NBT-NS, LLMNR, MDNS requests will be poisoned.\n'
 
 #Packet class handling all packet generation (see odict.py).
 class Packet():
