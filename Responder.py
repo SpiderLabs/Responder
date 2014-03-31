@@ -48,7 +48,7 @@ parser.add_option('-v',action="store_true", help="More verbose",dest="Verbose")
 
 options, args = parser.parse_args()
 
-if options.OURIP is None and options.Analyse is None:
+if options.OURIP is None:
    print "-i mandatory option is missing\n"
    parser.print_help()
    exit(-1)
