@@ -2241,6 +2241,7 @@ def serve_thread_SSL(host, port, handler):
 
 def main():
     try:
+      num_thrd = 1
       Is_FTP_On(FTP_On_Off)
       Is_HTTP_On(On_Off)
       Is_HTTPS_On(SSL_On_Off)
@@ -2258,17 +2259,16 @@ def main():
       thread.start_new(serve_thread_udp_MDNS,('', 5353,MDNS))   #MDNS
       thread.start_new(serve_thread_udp,('', 137,NB))           #NBNS
       thread.start_new(serve_thread_udp_LLMNR,('', 5355, LLMNR)) #LLMNR
+      while num_thrd > 0:
+         pass
     except KeyboardInterrupt:
-        exit()
+      exit()
 
 if __name__ == '__main__':
     try:
         main()
     except:
         raise
-    raw_input()
-
-
 
 
 
