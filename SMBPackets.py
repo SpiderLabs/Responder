@@ -107,7 +107,7 @@ class SMBNegoAnsLM(Packet):
         self.fields["Bcc"] = struct.pack("<h",len(CompleteBCCLen))
         self.fields["Keylength"] = struct.pack("<h",len(self.fields["Key"]))[0]
 ##################################################################################
-#SMB Negotiate Answer LM packet.
+#SMB Negotiate Answer ESS NTLM only packet.
 class SMBNegoAns(Packet):
     fields = OrderedDict([
         ("Wordcount",    "\x11"),
@@ -149,8 +149,6 @@ class SMBNegoAns(Packet):
         ("NegHintFinalASNId",         "\x1b"), 
         ("NegHintFinalASNLen",        "\x15"),
         ("NegHintFinalASNStr",        "server2008$@SMB.LOCAL"),
-##  END
-
     ])
 
     def calculate(self):
@@ -179,7 +177,86 @@ class SMBNegoAns(Packet):
         self.fields["NegHintFinalASNLen"] = struct.pack("<B", len(str(self.fields["NegHintFinalASNStr"])))
 
 ################################################################################
+#SMB Negotiate Answer ESS NTLM and Kerberos packet.
+class SMBNegoKerbAns(Packet):
+    fields = OrderedDict([
+        ("Wordcount",                "\x11"),
+        ("Dialect",                  ""),
+        ("Securitymode",             "\x03"),
+        ("MaxMpx",                   "\x32\x00"),
+        ("MaxVc",                    "\x01\x00"),
+        ("MaxBuffSize",              "\x04\x41\x00\x00"),
+        ("MaxRawBuff",               "\x00\x00\x01\x00"),
+        ("SessionKey",               "\x00\x00\x00\x00"),
+        ("Capabilities",             "\xfd\xf3\x01\x80"),
+        ("SystemTime",               "\x84\xd6\xfb\xa3\x01\x35\xcd\x01"),
+        ("SrvTimeZone",               "\xf0\x00"),
+        ("KeyLen",                    "\x00"),
+        ("Bcc",                       "\x57\x00"),
+        ("Guid",                      "\xc8\x27\x3d\xfb\xd4\x18\x55\x4f\xb2\x40\xaf\xd7\x61\x73\x75\x3b"),
+        ("InitContextTokenASNId",     "\x60"),
+        ("InitContextTokenASNLen",    "\x5b"),
+        ("ThisMechASNId",             "\x06"),
+        ("ThisMechASNLen",            "\x06"),
+        ("ThisMechASNStr",            "\x2b\x06\x01\x05\x05\x02"),
+        ("SpNegoTokenASNId",          "\xA0"),
+        ("SpNegoTokenASNLen",         "\x51"),
+        ("NegTokenASNId",             "\x30"),
+        ("NegTokenASNLen",            "\x4f"),
+        ("NegTokenTag0ASNId",         "\xA0"),
+        ("NegTokenTag0ASNLen",        "\x30"),
+        ("NegThisMechASNId",          "\x30"),
+        ("NegThisMechASNLen",         "\x2e"),
+        ("NegThisMech1ASNId",         "\x06"),
+        ("NegThisMech1ASNLen",        "\x09"),
+        ("NegThisMech1ASNStr",        "\x2a\x86\x48\x82\xf7\x12\x01\x02\x02"),
+        ("NegThisMech2ASNId",         "\x06"),
+        ("NegThisMech2ASNLen",        "\x09"),
+        ("NegThisMech2ASNStr",        "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02"),
+        ("NegThisMech3ASNId",         "\x06"),
+        ("NegThisMech3ASNLen",        "\x0a"),
+        ("NegThisMech3ASNStr",        "\x2a\x86\x48\x86\xf7\x12\x01\x02\x02\x03"),
+        ("NegThisMech4ASNId",         "\x06"),
+        ("NegThisMech4ASNLen",        "\x09"),
+        ("NegThisMech4ASNStr",        "\x2b\x06\x01\x04\x01\x82\x37\x02\x02\x0a"),
+        ("NegTokenTag3ASNId",         "\xA3"),
+        ("NegTokenTag3ASNLen",        "\x1b"),
+        ("NegHintASNId",              "\x30"),
+        ("NegHintASNLen",             "\x19"),
+        ("NegHintTag0ASNId",          "\xa0"),
+        ("NegHintTag0ASNLen",         "\x17"),
+        ("NegHintFinalASNId",         "\x1b"), 
+        ("NegHintFinalASNLen",        "\x15"),
+        ("NegHintFinalASNStr",        "server2008$@SMB.LOCAL"),
+    ])
 
+    def calculate(self):
+
+        CompleteBCCLen1 =  str(self.fields["Guid"])+str(self.fields["InitContextTokenASNId"])+str(self.fields["InitContextTokenASNLen"])+str(self.fields["ThisMechASNId"])+str(self.fields["ThisMechASNLen"])+str(self.fields["ThisMechASNStr"])+str(self.fields["SpNegoTokenASNId"])+str(self.fields["SpNegoTokenASNLen"])+str(self.fields["NegTokenASNId"])+str(self.fields["NegTokenASNLen"])+str(self.fields["NegTokenTag0ASNId"])+str(self.fields["NegTokenTag0ASNLen"])+str(self.fields["NegThisMechASNId"])+str(self.fields["NegThisMechASNLen"])+str(self.fields["NegThisMech1ASNId"])+str(self.fields["NegThisMech1ASNLen"])+str(self.fields["NegThisMech1ASNStr"])+str(self.fields["NegThisMech2ASNId"])+str(self.fields["NegThisMech2ASNLen"])+str(self.fields["NegThisMech2ASNStr"])+str(self.fields["NegThisMech3ASNId"])+str(self.fields["NegThisMech3ASNLen"])+str(self.fields["NegThisMech3ASNStr"])+str(self.fields["NegThisMech4ASNId"])+str(self.fields["NegThisMech4ASNLen"])+str(self.fields["NegThisMech4ASNStr"])+str(self.fields["NegTokenTag3ASNId"])+str(self.fields["NegTokenTag3ASNLen"])+str(self.fields["NegHintASNId"])+str(self.fields["NegHintASNLen"])+str(self.fields["NegHintTag0ASNId"])+str(self.fields["NegHintTag0ASNLen"])+str(self.fields["NegHintFinalASNId"])+str(self.fields["NegHintFinalASNLen"])+str(self.fields["NegHintFinalASNStr"])
+
+        AsnLenStart = str(self.fields["ThisMechASNId"])+str(self.fields["ThisMechASNLen"])+str(self.fields["ThisMechASNStr"])+str(self.fields["SpNegoTokenASNId"])+str(self.fields["SpNegoTokenASNLen"])+str(self.fields["NegTokenASNId"])+str(self.fields["NegTokenASNLen"])+str(self.fields["NegTokenTag0ASNId"])+str(self.fields["NegTokenTag0ASNLen"])+str(self.fields["NegThisMechASNId"])+str(self.fields["NegThisMechASNLen"])+str(self.fields["NegThisMech1ASNId"])+str(self.fields["NegThisMech1ASNLen"])+str(self.fields["NegThisMech1ASNStr"])+str(self.fields["NegThisMech2ASNId"])+str(self.fields["NegThisMech2ASNLen"])+str(self.fields["NegThisMech2ASNStr"])+str(self.fields["NegThisMech3ASNId"])+str(self.fields["NegThisMech3ASNLen"])+str(self.fields["NegThisMech3ASNStr"])+str(self.fields["NegThisMech4ASNId"])+str(self.fields["NegThisMech4ASNLen"])+str(self.fields["NegThisMech4ASNStr"])+str(self.fields["NegTokenTag3ASNId"])+str(self.fields["NegTokenTag3ASNLen"])+str(self.fields["NegHintASNId"])+str(self.fields["NegHintASNLen"])+str(self.fields["NegHintTag0ASNId"])+str(self.fields["NegHintTag0ASNLen"])+str(self.fields["NegHintFinalASNId"])+str(self.fields["NegHintFinalASNLen"])+str(self.fields["NegHintFinalASNStr"])
+
+        AsnLen2 = str(self.fields["NegTokenASNId"])+str(self.fields["NegTokenASNLen"])+str(self.fields["NegTokenTag0ASNId"])+str(self.fields["NegTokenTag0ASNLen"])+str(self.fields["NegThisMechASNId"])+str(self.fields["NegThisMechASNLen"])+str(self.fields["NegThisMech1ASNId"])+str(self.fields["NegThisMech1ASNLen"])+str(self.fields["NegThisMech1ASNStr"])+str(self.fields["NegThisMech2ASNId"])+str(self.fields["NegThisMech2ASNLen"])+str(self.fields["NegThisMech2ASNStr"])+str(self.fields["NegThisMech3ASNId"])+str(self.fields["NegThisMech3ASNLen"])+str(self.fields["NegThisMech3ASNStr"])+str(self.fields["NegThisMech4ASNId"])+str(self.fields["NegThisMech4ASNLen"])+str(self.fields["NegThisMech4ASNStr"])+str(self.fields["NegTokenTag3ASNId"])+str(self.fields["NegTokenTag3ASNLen"])+str(self.fields["NegHintASNId"])+str(self.fields["NegHintASNLen"])+str(self.fields["NegHintTag0ASNId"])+str(self.fields["NegHintTag0ASNLen"])+str(self.fields["NegHintFinalASNId"])+str(self.fields["NegHintFinalASNLen"])+str(self.fields["NegHintFinalASNStr"])
+
+        MechTypeLen = str(self.fields["NegThisMechASNId"])+str(self.fields["NegThisMechASNLen"])+str(self.fields["NegThisMech1ASNId"])+str(self.fields["NegThisMech1ASNLen"])+str(self.fields["NegThisMech1ASNStr"])+str(self.fields["NegThisMech2ASNId"])+str(self.fields["NegThisMech2ASNLen"])+str(self.fields["NegThisMech2ASNStr"])+str(self.fields["NegThisMech3ASNId"])+str(self.fields["NegThisMech3ASNLen"])+str(self.fields["NegThisMech3ASNStr"])+str(self.fields["NegThisMech4ASNId"])+str(self.fields["NegThisMech4ASNLen"])+str(self.fields["NegThisMech4ASNStr"])
+
+        Tag3Len = str(self.fields["NegHintASNId"])+str(self.fields["NegHintASNLen"])+str(self.fields["NegHintTag0ASNId"])+str(self.fields["NegHintTag0ASNLen"])+str(self.fields["NegHintFinalASNId"])+str(self.fields["NegHintFinalASNLen"])+str(self.fields["NegHintFinalASNStr"])
+
+        self.fields["Bcc"] = struct.pack("<h",len(CompleteBCCLen1))
+        self.fields["InitContextTokenASNLen"] = struct.pack("<B", len(AsnLenStart))
+        self.fields["ThisMechASNLen"] = struct.pack("<B", len(str(self.fields["ThisMechASNStr"])))
+        self.fields["SpNegoTokenASNLen"] = struct.pack("<B", len(AsnLen2))
+        self.fields["NegTokenASNLen"] = struct.pack("<B", len(AsnLen2)-2)
+        self.fields["NegTokenTag0ASNLen"] = struct.pack("<B", len(MechTypeLen))
+        self.fields["NegThisMechASNLen"] = struct.pack("<B", len(MechTypeLen)-2)
+        self.fields["NegThisMech1ASNLen"] = struct.pack("<B", len(str(self.fields["NegThisMech1ASNStr"])))
+        self.fields["NegThisMech2ASNLen"] = struct.pack("<B", len(str(self.fields["NegThisMech2ASNStr"])))
+        self.fields["NegThisMech3ASNLen"] = struct.pack("<B", len(str(self.fields["NegThisMech3ASNStr"])))
+        self.fields["NegThisMech4ASNLen"] = struct.pack("<B", len(str(self.fields["NegThisMech4ASNStr"])))
+        self.fields["NegTokenTag3ASNLen"] = struct.pack("<B", len(Tag3Len))
+        self.fields["NegHintASNLen"] = struct.pack("<B", len(Tag3Len)-2)
+        self.fields["NegHintFinalASNLen"] = struct.pack("<B", len(str(self.fields["NegHintFinalASNStr"])))
+################################################################################
 class SMBSession1Data(Packet):
     fields = OrderedDict([
         ("Wordcount",             "\x04"),

