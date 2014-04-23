@@ -11,7 +11,7 @@ suffix (see: http://support.microsoft.com/kb/163409). By default, the
 tool will only answers to File Server Service request, which is for SMB.
 The concept behind this, is to target our answers, and be stealthier on
 the network. This also helps to ensure that we don't break legitimate
-NBT-NS behavior. You can set the -r option to "On" via command line if 
+NBT-NS behavior. You can set the -r option via command line if 
 you want this tool to answer to the Workstation Service request name
 suffix.
 
@@ -22,12 +22,12 @@ FEATURES
   Supports NTLMv1, NTLMv2 hashes with Extended Security NTLMSSP by default.
   Successfully tested from Windows 95 to Server 2012 RC, Samba and Mac OSX Lion.
   Clear text password is supported for NT4, and LM hashing downgrade when the 
-  --lm option is set to On. This functionality is enabled by default when the
+  --lm option is set. This functionality is enabled by default when the
   tool is launched.
 
 - Built-in MSSQL Auth server.
   In order to redirect SQL Authentication to this tool, you will need to
-  set the option -r to On(NBT-NS queries for SQL Server lookup are using
+  set the option -r (NBT-NS queries for SQL Server lookup are using
   the Workstation Service name suffix) for systems older than windows 
   Vista (LLMNR will be used for Vista and higher). This server supports
   NTLMv1, LMv2 hashes. This functionality was successfully tested on 
@@ -35,7 +35,7 @@ FEATURES
 
 - Built-in HTTP Auth server.
   In order to redirect HTTP Authentication to this tool, you will need
-  to set the option -r to On for Windows version older than Vista (NBT-NS
+  to set the option -r for Windows version older than Vista (NBT-NS
   queries for HTTP server lookup are sent using the Workstation Service
   name suffix). For Vista and higher, LLMNR will be used. This server 
   supports NTLMv1, NTLMv2 hashes *and* Basic Authentication. This server
@@ -45,7 +45,7 @@ FEATURES
 
 - Built-in HTTPS Auth server.
   In order to redirect HTTPS Authentication to this tool, you will need
-  to set the -r option to On for Windows versions older than Vista (NBT-NS
+  to set the -r option for Windows versions older than Vista (NBT-NS
   queries for HTTP server lookups are sent using the Workstation Service
   name suffix). For Vista and higher, LLMNR will be used. This server 
   supports NTLMv1, NTLMv2, *and* Basic Authentication. This server
@@ -57,7 +57,7 @@ FEATURES
 
 - Built-in LDAP Auth server.
   In order to redirect LDAP Authentication to this tool, you will need
-  to set the option -r to On for Windows version older than Vista (NBT-NS
+  to set the option -r for Windows version older than Vista (NBT-NS
   queries for HTTP server lookup are sent using the Workstation Service
   name suffix). For Vista and higher, LLMNR will be used. This server 
   supports NTLMSSP hashes and Simple Authentication (clear text authentication).
@@ -118,52 +118,60 @@ USAGE
 First of all, please take a look at Responder.conf and set it for your needs.
 Running this tool:
 
-- python Responder.py [options]
+- ./Responder.py [options]
 
 Usage Example:
 
-python Responder.py -i 10.20.30.40 -r On -F On -w On
+./Responder.py -i 10.20.30.40 -w -r -f
+
+or:
+
+python Responder.py -i 10.20.30.40 -wrf
 
 Options List:
 
--h, --help                           show this help message and exit.
+  -h, --help            show this help message and exit
 
--i 10.20.30.40, --ip=10.20.30.40     The ip address to redirect the traffic to.
-                                     (usually yours)
+  -A, --analyze         Analyze mode. This option allows you to see NBT-NS,
+                        BROWSER, LLMNR requests from which workstation to
+                        which workstation without poisoning anything.
 
--I eth0, --interface=eth0            Network interface to use
+  -i 10.20.30.40, --ip=10.20.30.40
+                        The ip address to redirect the traffic to. (usually
+                        yours)
 
--b Off, --basic=Off                  Set this to On if you want to return a 
-                                     Basic HTTP authentication. Off will return 
-                                     an NTLM authentication.
+  -I eth0, --interface=eth0   Network interface to use
 
--r Off, --wredir=Off                 Set this to On to enable answers for netbios 
-                                     wredir suffix queries. Answering to wredir
-                                     will likely break stuff on the network 
-                                     (like classics 'nbns spoofer' will).
-                                     Default value is therefore set to Off.
+  -b, --basic           Set this if you want to return a Basic HTTP
+                        authentication. If not set, an NTLM authentication
+                        will be returned.
 
--f Off, --fingerprint=Off            This option allows you to fingerprint a 
-                                     host that issued an NBT-NS or LLMNR query.
+  -r, --wredir          Set this to enable answers for netbios wredir suffix
+                        queries. Answering to wredir will likely break stuff
+                        on the network (like classics 'nbns spoofer' would).
+                        Default value is therefore set to False
 
--w On, --wpad=On                     Set this to On or Off to start/stop the WPAD rogue
-                                     proxy server. Default value is Off
+  -d, --NBTNSdomain     Set this to enable answers for netbios domain suffix
+                        queries. Answering to domain suffixes will likely
+                        break stuff on the network (like a classic 'nbns
+                        spoofer' would). Default value is therefore set to
+                        False
 
---lm=Off                             Set this to On if you want to force LM hashing
-                                     downgrade for Windows XP/2003 and earlier. Default value is Off
+  -f, --fingerprint     This option allows you to fingerprint a host that
+                        issued an NBT-NS or LLMNR query.
 
--F Off, --ForceWpadAuth=Off          Set this to On or Off to force NTLM/Basic authentication on 
-                                     wpad.dat file retrieval. This might cause a login prompt in
-                                     some specific cases. Default value is Off
+  -w, --wpad            Set this to start the WPAD rogue proxy server. Default
+                        value is False
 
--A, --analyze                        Analyze mode. This option allows you to see NBT-NS,BROWSER, 
-                                     LLMNR requests from which workstation to which workstation 
-                                     without poisoning any requests. Also, you can map domains, 
-                                     MSSQL servers, workstations passively.
+  -F, --ForceWpadAuth   Set this if you want to force NTLM/Basic
+                        authentication on wpad.dat file retrieval. This might
+                        cause a login prompt in some specific cases.
+                        Therefore, default value is False
 
+  --lm                  Set this if you want to force LM hashing downgrade for
+                        Windows XP/2003 and earlier. Default value is False
 
--v                                   More verbose
-
+  -v                    More verbose
 
 
 For more information read these posts: 

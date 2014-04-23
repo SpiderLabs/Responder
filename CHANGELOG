@@ -1,4 +1,9 @@
-ChangeLog Responder 2.0:
+ChangeLog Responder 2.0.8:
+- Removed: Old style options (On/Off). Just use -r instead of -r On. 
+- Added [DHCP.py]: in-scope target, windows >= Vista support (-R) and unicast answers only.
+- Added: In-scope llmnr/nbt-ns name option
+- Added: Kerberos hash support
+- Added: DHCP INFORM take over tool (DHCP.py)
 - Added: MDNS Poisoner.
 - Added: -F command line switch to force NTLM authentication on PAC file retrieval.
 - Added: Ability to inject custom HTML in HTTP responses.
