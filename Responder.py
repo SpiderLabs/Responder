@@ -51,7 +51,7 @@ parser.add_option('-v',action="store_true", help="More verbose",dest="Verbose")
 options, args = parser.parse_args()
 
 if options.OURIP is None:
-   print "-i mandatory option is missing\n"
+   print "\n\033[1m\033[31m-i mandatory option is missing\033[0m\n"
    parser.print_help()
    exit(-1)
 
