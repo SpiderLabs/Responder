@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys,struct,SocketServer,re,optparse,socket,thread,Fingerprint,random,os,ConfigParser,BaseHTTPServer, select,urlparse,zlib, string
+import sys,struct,SocketServer,re,optparse,socket,thread,Fingerprint,random,os,ConfigParser,BaseHTTPServer, select,urlparse,zlib, string, time
 from SocketServer import TCPServer, UDPServer, ThreadingMixIn, StreamRequestHandler, BaseRequestHandler,BaseServer
 from Fingerprint import RunSmbFinger,OsNameClientVersion
 from odict import OrderedDict
@@ -2510,7 +2510,7 @@ def main():
       thread.start_new(serve_thread_udp,('', 137,NB))           #NBNS
       thread.start_new(serve_thread_udp_LLMNR,('', 5355, LLMNR)) #LLMNR
       while num_thrd > 0:
-         pass
+         time.sleep(1)
     except KeyboardInterrupt:
       exit()
 
@@ -2519,3 +2519,4 @@ if __name__ == '__main__':
         main()
     except:
         raise
+
