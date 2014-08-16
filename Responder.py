@@ -315,7 +315,7 @@ def Validate_NBT_NS(data,Wredirect):
             return True
 
     else:
-        return True
+        return False
 
 def Decode_Name(nbname):
     #From http://code.google.com/p/dpkt/ with author's permission.
