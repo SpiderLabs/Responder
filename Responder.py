@@ -315,7 +315,7 @@ def Validate_NBT_NS(data,Wredirect):
             return True
 
     else:
-        return False
+        return True
 
 def Decode_Name(nbname):
     #From http://code.google.com/p/dpkt/ with author's permission.
@@ -630,16 +630,17 @@ from SMBPackets import *
 #Detect if SMB auth was Anonymous
 def Is_Anonymous(data):
     SecBlobLen = struct.unpack('<H',data[51:53])[0]
-    if SecBlobLen < 220:
+    if SecBlobLen < 260:
         SSPIStart = data[75:]
         LMhashLen = struct.unpack('<H',data[89:91])[0]
         if LMhashLen == 0 or LMhashLen == 1:
             return True
         else:
             return False
-    if SecBlobLen > 220:
+    if SecBlobLen > 260:
         SSPIStart = data[79:]
         LMhashLen = struct.unpack('<H',data[93:95])[0]
+        print 'LMHASHLEN:',struct.unpack('<H',data[89:91])[0]
         if LMhashLen == 0 or LMhashLen == 1:
             return True
         else:
@@ -692,7 +693,7 @@ def ParseShare(data):
 def ParseSMBHash(data,client):
     SecBlobLen = struct.unpack('<H',data[51:53])[0]
     BccLen = struct.unpack('<H',data[61:63])[0]
-    if SecBlobLen < 220:
+    if SecBlobLen < 260:
         SSPIStart = data[75:]
         LMhashLen = struct.unpack('<H',data[89:91])[0]
         LMhashOffset = struct.unpack('<H',data[91:93])[0]
@@ -700,7 +701,7 @@ def ParseSMBHash(data,client):
         NthashLen = struct.unpack('<H',data[97:99])[0]
         NthashOffset = struct.unpack('<H',data[99:101])[0]
 
-    if SecBlobLen > 220:
+    if SecBlobLen > 260:
         SSPIStart = data[79:]
         LMhashLen = struct.unpack('<H',data[93:95])[0]
         LMhashOffset = struct.unpack('<H',data[95:97])[0]
@@ -2519,3 +2520,4 @@ if __name__ == '__main__':
         main()
     except:
         raise
+
