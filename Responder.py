@@ -130,9 +130,11 @@ def Analyze(AnalyzeMode):
         return False
 
 #Logger
+CommandLine = str(sys.argv)
 import logging
 logging.basicConfig(filename=str(os.path.join(ResponderPATH,SessionLog)),level=logging.INFO,format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-logging.warning('Responder Started')
+StartMessage = 'Responder Started\nCommand line args:%s' %(CommandLine)
+logging.warning(StartMessage)
 
 Log2Filename = str(os.path.join(ResponderPATH,"LLMNR-NBT-NS.log"))
 logger2 = logging.getLogger('LLMNR/NBT-NS')
@@ -2520,4 +2522,5 @@ if __name__ == '__main__':
         main()
     except:
         raise
+
 
