@@ -23,7 +23,8 @@ from odict import OrderedDict
 from socket import inet_aton
 from random import randrange
 
-parser = optparse.OptionParser(usage='python %prog -i 10.20.30.40 -w -r -f\nor:\npython %prog -i 10.20.30.40 -wrf',
+VERSION = 'Responder 2.1.2'
+parser = optparse.OptionParser(usage='python %prog -i 10.20.30.40 -w -r -f\nor:\npython %prog -i 10.20.30.40 -wrf', version = VERSION,
                                prog=sys.argv[0],
                                )
 parser.add_option('-A','--analyze', action="store_true", help="Analyze mode. This option allows you to see NBT-NS, BROWSER, LLMNR requests from which workstation to which workstation without poisoning anything.", dest="Analyse")
@@ -646,7 +647,6 @@ def Is_Anonymous(data):
     if SecBlobLen > 260:
         SSPIStart = data[79:]
         LMhashLen = struct.unpack('<H',data[93:95])[0]
-        print 'LMHASHLEN:',struct.unpack('<H',data[89:91])[0]
         if LMhashLen == 0 or LMhashLen == 1:
             return True
         else:
@@ -1238,6 +1238,8 @@ def IsICMPRedirectPlausible(IP):
     dnsip = []
     for line in file('/etc/resolv.conf', 'r'):
         ip = line.split()
+        if len(ip) < 2:
+           continue
         if ip[0] == 'nameserver':
             dnsip.extend(ip[1:])
     for x in dnsip:
