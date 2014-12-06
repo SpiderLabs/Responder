@@ -1,4 +1,10 @@
-ChangeLog Responder 2.0.8:
+ChangeLog Responder 2.1.4:
+- Added: FindSMB2UPTime.py
+- Added: FindSQLSrv.py
+- Added: DontRespondTo and DontRespondToName options in Responder.conf
+- Added: Lanman module
+- Added: Analyze mode
+- Added: SMBRelay
 - Removed: Old style options (On/Off). Just use -r instead of -r On. 
 - Added [DHCP.py]: in-scope target, windows >= Vista support (-R) and unicast answers only.
 - Added: In-scope llmnr/nbt-ns name option
