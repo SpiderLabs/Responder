@@ -92,7 +92,7 @@ class SMBNegoData(Packet):
 def run(host):
     s = socket(AF_INET, SOCK_STREAM)
     s.connect(host)  
-    s.settimeout(0.1) 
+    s.settimeout(5) 
     h = SMBHeader(Cmd="\x72",Flag1="\x18",Flag2="\x53\xc8")
     n = SMBNego(Data = SMBNegoData())
     n.calculate()
