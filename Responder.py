@@ -1827,7 +1827,7 @@ def InjectPage(data, client):
             buffer1.calculate()
             return str(buffer1)
     else:
-        return False
+        return data
 
 def InjectData(data):
     Payload = HTMLToServe
@@ -1957,12 +1957,12 @@ class ProxyHandler (BaseHTTPServer.BaseHTTPRequestHandler):
                     if i is soc:
                         out = self.connection
                         try:
+                            data = i.recv(8192)
                             if len(HTMLToServe)>5:
-                                data = InjectData(i.recv(8192))
-                            if InjectPage(i.recv(8192),self.client_address[0]):
-                                data = InjectPage(i.recv(8192),self.client_address[0])
+                                data = InjectData(data)
                             else:
-                                data = i.recv(8192)
+                                data = InjectPage(data,self.client_address[0])
+
                         except:
                             pass
                     else:
