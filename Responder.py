@@ -43,6 +43,8 @@ parser.add_option('-f','--fingerprint', action="store_true", dest="Finger", help
 
 parser.add_option('-w','--wpad', action="store_true", dest="WPAD_On_Off", help = "Set this to start the WPAD rogue proxy server. Default value is False", default=False)
 
+parser.add_option('-u','--upstream-proxy', action="store",      help="Upstream HTTP proxy used by the rogue WPAD Proxy for outgoing requests (format: host:port)", dest="Upstream_Proxy", default=None)
+
 parser.add_option('-F','--ForceWpadAuth', action="store_true", dest="Force_WPAD_Auth", help = "Set this if you want to force NTLM/Basic authentication on wpad.dat file retrieval. This might cause a login prompt in some specific cases. Therefore, default value is False",default=False)
 
 parser.add_option('--lm',action="store_true", help="Set this if you want to force LM hashing downgrade for Windows XP/2003 and earlier. Default value is False", dest="LM_On_Off", default=False)
@@ -100,6 +102,7 @@ Finger_On_Off = options.Finger
 INTERFACE = options.INTERFACE
 Verbose = options.Verbose
 Force_WPAD_Auth = options.Force_WPAD_Auth
+Upstream_Proxy = options.Upstream_Proxy
 AnalyzeMode = options.Analyse
 
 if HTMLToServe == None:
@@ -1863,6 +1866,127 @@ def InjectData(data):
 
     else:
         return data
+# Http-Proxy socket wrapper, inspired from:
+# https://code.activestate.com/recipes/577643-transparent-http-tunnel-for-python-sockets-to-be-u/
+class ProxySock:
+    def __init__(self, socket, proxy_host, proxy_port) : 
+
+        # First, use the socket, without any change
+        self.socket = socket
+
+        # Create socket (use real one)
+        self.proxy_host = proxy_host
+        self.proxy_port = proxy_port
+
+        # Copy attributes
+        self.family = socket.family
+        self.type = socket.type
+        self.proto = socket.proto
+
+    def connect(self, address) :
+
+        # Store the real remote adress
+        (self.host, self.port) = address
+       
+        # Try to connect to the proxy 
+        for (family, socktype, proto, canonname, sockaddr) in socket.getaddrinfo(
+            self.proxy_host, 
+            self.proxy_port,
+            0, 0, socket.SOL_TCP) :
+            try:
+                
+                # Replace the socket by a connection to the proxy
+                self.socket = socket.socket(family, socktype, proto)
+                self.socket.connect(sockaddr)
+                    
+            except socket.error, msg:
+                if self.socket:
+                    self.socket.close()
+                self.socket = None
+                continue
+            break
+        if not self.socket :
+            raise socket.error, ms 
+        
+        # Ask him to create a tunnel connection to the target host/port
+        self.socket.send(
+                ("CONNECT %s:%d HTTP/1.1\r\n" + 
+                "Host: %s:%d\r\n\r\n") % (self.host, self.port, self.host, self.port));
+
+        # Get the response
+        resp = self.socket.recv(4096)
+
+        # Parse the response
+        parts = resp.split()
+        
+        # Not 200 ?
+        if parts[1] != "200" :
+            raise Exception("Error response from Proxy server : %s" % resp)
+
+    # Wrap all methods of inner socket, without any change
+    def accept(self) :
+        return self.socket.accept()
+
+    def bind(self, *args) :
+        return self.socket.bind(*args)
+    
+    def close(self) :
+        return self.socket.close()
+    
+    def fileno(self) :
+        return self.socket.fileno()
+
+    def getsockname(self) :
+        return self.socket.getsockname()
+    
+    def getsockopt(self, *args) :
+        return self.socket.getsockopt(*args)
+    
+    def listen(self, *args) :
+        return self.socket.listen(*args)
+    
+    def makefile(self, *args) :
+        return self.socket.makefile(*args)
+    
+    def recv(self, *args) :
+        return self.socket.recv(*args)
+    
+    def recvfrom(self, *args) :
+        return self.socket.recvfrom(*args)
+
+    def recvfrom_into(self, *args) :
+        return self.socket.recvfrom_into(*args)
+    
+    def recv_into(self, *args) :
+        return self.socket.recv_into(buffer, *args)
+    
+    def send(self, *args) :
+        return self.socket.send(*args)
+    
+    def sendall(self, *args) :
+        return self.socket.sendall(*args)
+    
+    def sendto(self, *args) :
+        return self.socket.sendto(*args)
+    
+    def setblocking(self, *args) :
+        return self.socket.setblocking(*args)
+    
+    def settimeout(self, *args) :
+        return self.socket.settimeout(*args)
+    
+    def gettimeout(self) :
+        return self.socket.gettimeout()
+    
+    def setsockopt(self, *args):
+        return self.socket.setsockopt(*args)
+    
+    def shutdown(self, *args):
+        return self.socket.shutdown(*args)
+
+    # Return the (host, port) of the actual target, not the proxy gateway
+    def getpeername(self) :
+        return (self.host, self.port)
 
 #Inspired from Tiny HTTP proxy, original work: SUZUKI Hisao.
 class ProxyHandler (BaseHTTPServer.BaseHTTPRequestHandler):
@@ -1889,8 +2013,23 @@ class ProxyHandler (BaseHTTPServer.BaseHTTPRequestHandler):
             return 0
         return 1
 
-    def do_CONNECT(self):
+    def socket_proxy(self):
+        Proxy = Upstream_Proxy.rstrip('/').replace('http://', '').replace('https://', '')
+        Proxy = Proxy.split(':')
+
+        try:    Proxy = (Proxy[0], int(Proxy[1]))
+        except: Proxy = (Proxy[0], 8080)
+
         soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        return ProxySock(soc, Proxy[0], Proxy[1])
+
+    def do_CONNECT(self):
+        
+        if Upstream_Proxy:
+            soc = self.socket_proxy()
+        else:
+            soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
         try:
             if self._connect_to(self.path, soc):
                 self.wfile.write(self.protocol_version +
@@ -1911,7 +2050,12 @@ class ProxyHandler (BaseHTTPServer.BaseHTTPRequestHandler):
         if scm not in ('http') or fragment or not netloc:
             self.send_error(400, "bad url %s" % self.path)
             return
-        soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        if Upstream_Proxy:
+            soc = self.socket_proxy()
+        else:
+            soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
         try:
             if scm == 'http':
                 if self._connect_to(netloc, soc):
