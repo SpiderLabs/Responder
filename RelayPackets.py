@@ -30,27 +30,20 @@ class Packet():
                 self.fields[k] = v
     def __str__(self):
         return "".join(map(str, self.fields.values()))
-##################################################################################
-#SMB Client Stuff
-##################################################################################
-
-def longueur(payload):
-    length = struct.pack(">i", len(''.join(payload)))
-    return length
 
 class SMBHeader(Packet):
     fields = OrderedDict([
         ("proto", "\xff\x53\x4d\x42"),
         ("cmd", "\x72"),
-        ("error-code", "\x00\x00\x00\x00" ),
+        ("errorcode", "\x00\x00\x00\x00"),
         ("flag1", "\x00"),
         ("flag2", "\x00\x00"),
         ("pidhigh", "\x00\x00"),
         ("signature", "\x00\x00\x00\x00\x00\x00\x00\x00"),
         ("reserved", "\x00\x00"),
         ("tid", "\x00\x00"),
-        ("pid", "\x00\x4e"),
-        ("uid", "\x00\x08"),
+        ("pid", "\x00\x00"),
+        ("uid", "\x00\x00"),
         ("mid", "\x00\x00"),
     ])
 
@@ -285,7 +278,6 @@ class SMBDCESVCCTLOpenManagerW(Packet):
         ## Convert to UTF-16LE
         self.fields["MachineName"] = self.fields["MachineName"].encode('utf-16le')
 
-
 class SMBDCESVCCTLCreateService(Packet):
     fields = OrderedDict([
         ("ContextHandle",        ""),
@@ -332,8 +324,6 @@ class SMBDCESVCCTLCreateService(Packet):
         self.fields["BinCMD"] = self.fields["BinCMD"].encode('utf-16le')
         self.fields["BintoEnd"] = self.fields["BintoEnd"].encode('utf-16le')
 
-
-
 class SMBDCESVCCTLOpenService(Packet):
     fields = OrderedDict([
         ("ContextHandle",        ""),
@@ -362,119 +352,3 @@ def ParseAnswerKey(data,host):
     key = data[73:81]
     print "Key retrieved is:%s from host:%s"%(key.encode("hex"),host)
     return key
-
-##################################################################################
-#SMB Server Stuff
-##################################################################################
-
-#Calculate total SMB packet len.
-def longueur(payload):
-    length = struct.pack(">i", len(''.join(payload)))
-    return length
-
-#Set MID SMB Header field.
-def midcalc(data):
-    pack=data[34:36]
-    return pack
-
-#Set UID SMB Header field.
-def uidcalc(data):
-    pack=data[32:34]
-    return pack
-
-#Set PID SMB Header field.
-def pidcalc(data):
-    pack=data[30:32]
-    return pack
-
-#Set TID SMB Header field.
-def tidcalc(data):
-    pack=data[28:30]
-    return pack
-
-#SMB Header answer packet.
-class SMBHeader(Packet):
-    fields = OrderedDict([
-        ("proto", "\xff\x53\x4d\x42"),
-        ("cmd", "\x72"),
-        ("errorcode", "\x00\x00\x00\x00" ),
-        ("flag1", "\x80"),
-        ("flag2", "\x00\x00"),
-        ("pidhigh", "\x00\x00"),
-        ("signature", "\x00\x00\x00\x00\x00\x00\x00\x00"),
-        ("reserved", "\x00\x00"),
-        ("tid", "\x00\x00"),
-        ("pid", "\xff\xfe"),
-        ("uid", "\x00\x00"),
-        ("mid", "\x00\x00"),
-    ])
-
-#SMB Negotiate Answer packet.
-class SMBNegoAns(Packet):
-    fields = OrderedDict([
-        ("Wordcount",    "\x11"),
-        ("Dialect",      ""),
-        ("Securitymode", "\x03"),
-        ("MaxMpx",       "\x32\x00"),
-        ("MaxVc",        "\x01\x00"),
-        ("Maxbuffsize",  "\x04\x11\x00\x00"),
-        ("Maxrawbuff",   "\x00\x00\x01\x00"),
-        ("Sessionkey",   "\x00\x00\x00\x00"),
-        ("Capabilities", "\xfd\x43\x00\x00"),
-        ("Systemtime",   "\xc2\x74\xf2\x53\x70\x02\xcf\x01\x2c\x01"),
-        ("Keylength",    "\x08"),
-        ("Bcc",          "\x10\x00"),
-        ("Key",          "\x0d\x0d\x0d\x0d\x0d\x0d\x0d\x0d"),
-        ("Domain",       ""),
-
-    ])
-
-    def calculate(self):
-
-        ##Then calculate.
-        CompleteBCCLen =  str(self.fields["Key"])+str(self.fields["Domain"])
-        self.fields["Bcc"] = struct.pack("<h",len(CompleteBCCLen))
-        self.fields["Keylength"] = struct.pack("<h",len(self.fields["Key"]))[0]
-
-# SMB Session/Tree Answer.
-class SMBSessTreeAns(Packet):
-    fields = OrderedDict([
-        ("Wordcount",       "\x03"),
-        ("Command",         "\x75"), 
-        ("Reserved",        "\x00"),
-        ("AndXoffset",      "\x4e\x00"),
-        ("Action",          "\x01\x00"),
-        ("Bcc",             "\x25\x00"),
-        ("NativeOs",        "Windows 5.1"),
-        ("NativeOsNull",    "\x00"),
-        ("NativeLan",       "Windows 2000 LAN Manager"),
-        ("NativeLanNull",   "\x00"),
-        ("WordcountTree",   "\x03"),
-        ("AndXCommand",     "\xff"),
-        ("Reserved1",       "\x00"),
-        ("AndxOffset",      "\x00\x00"),
-        ("OptionalSupport", "\x01\x00"),
-        ("Bcc2",            "\x08\x00"),
-        ("Service",         "A:"),
-        ("ServiceNull",     "\x00"),
-        ("FileSystem",      "NTFS"),
-        ("FileSystemNull",  "\x00"),
-
-    ])
-
-    def calculate(self):
-        ##AndxOffset
-        CalculateCompletePacket = str(self.fields["Wordcount"])+str(self.fields["Command"])+str(self.fields["Reserved"])+str(self.fields["AndXoffset"])+str(self.fields["Action"])+str(self.fields["Bcc"])+str(self.fields["NativeOs"])+str(self.fields["NativeOsNull"])+str(self.fields["NativeLan"])+str(self.fields["NativeLanNull"])
-
-        self.fields["AndXoffset"] = struct.pack("<i", len(CalculateCompletePacket)+32)[:2]#SMB Header is *always* 32.
-        ##BCC 1 and 2
-        CompleteBCCLen =  str(self.fields["NativeOs"])+str(self.fields["NativeOsNull"])+str(self.fields["NativeLan"])+str(self.fields["NativeLanNull"])
-        self.fields["Bcc"] = struct.pack("<h",len(CompleteBCCLen))
-        CompleteBCC2Len = str(self.fields["Service"])+str(self.fields["ServiceNull"])+str(self.fields["FileSystem"])+str(self.fields["FileSystemNull"])
-        self.fields["Bcc2"] = struct.pack("<h",len(CompleteBCC2Len))
-
-class SMBSessEmpty(Packet):
-    fields = OrderedDict([
-        ("Empty",       "\x00\x00\x00"),
-    ])
-

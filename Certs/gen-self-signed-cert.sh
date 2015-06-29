@@ -1,2 +1,3 @@
 #!/bin/bash
-openssl genrsa -des3 -out responder.tmp.key 2048&&openssl rsa -in responder.tmp.key -out responder.key&&openssl req -new -key responder.key -out responder.csr&&openssl x509 -req -days 365 -in responder.csr -signkey responder.key -out responder.crt&&rm responder.tmp.key responder.csr
+openssl genrsa -out responder.key 2048
+openssl req -new -x509 -days 3650 -key responder.key -out responder.crt -subj "/"

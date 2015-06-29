@@ -20,36 +20,24 @@ from odict import OrderedDict
 from socket import inet_aton, inet_ntoa
 
 
-parser = optparse.OptionParser(usage='python %prog -I eth0 -i 10.20.30.40 -d pwned.com -p 10.20.30.40 -s 10.20.30.1 -r 10.20.40.1',
-                               prog=sys.argv[0],
-                               )
-parser.add_option('-i','--ip', action="store", help="The ip address to redirect the traffic to. (usually yours)", metavar="10.20.30.40",dest="OURIP")
-
+parser = optparse.OptionParser(usage='python %prog -I eth0 -i 10.20.30.40 -d pwned.com -p 10.20.30.40 -s 10.20.30.1 -r 10.20.40.1', prog=sys.argv[0],)
+parser.add_option('-i','--ip', action="store", help="The ip address to redirect the traffic to. (usually yours)", metavar="10.20.30.40",dest="Responder_IP")
 parser.add_option('-d', '--dnsname',action="store", help="DNS name to inject, if you don't want to inject a DNS server, provide the original one.", metavar="pwned.com", default="pwned.com",dest="DNSNAME")
-
 parser.add_option('-r', '--router',action="store", help="The ip address of the router or yours if you want to intercept traffic.", metavar="10.20.1.1",dest="RouterIP")
-
 parser.add_option('-p', '--primary',action="store", help="The ip address of the original primary DNS server or yours", metavar="10.20.1.10",dest="DNSIP")
-
 parser.add_option('-s', '--secondary',action="store", help="The ip address of the original secondary DNS server or yours", metavar="10.20.1.11",dest="DNSIP2")
-
 parser.add_option('-n', '--netmask',action="store", help="The netmask of this network", metavar="255.255.255.0", default="255.255.255.0", dest="Netmask")
-
 parser.add_option('-I', '--interface',action="store", help="Interface name to use, example: eth0", metavar="eth0",dest="Interface")
-
 parser.add_option('-w', '--wpadserver',action="store", help="Your WPAD server, finish the string with '\\n'", metavar="\"http://wpadsrv/wpad.dat\\n\"", default="\n", dest="WPAD")
-
 parser.add_option('-S',action="store_true", help="Spoof the router ip address",dest="Spoof")
-
 parser.add_option('-R',action="store_true", help="Respond to DHCP Requests, inject linux clients (very noisy, this is sent on 255.255.255.255)", dest="Request")
-
 options, args = parser.parse_args()
 
 def ShowWelcome():
     Message = 'DHCP INFORM Take Over 0.2\nAuthor: Laurent Gaffie\nPlease send bugs/comments/pcaps to: lgaffie@trustwave.com\nBy default, this script will only inject a new DNS/WPAD server to a Windows <= XP/2003 machine.\nTo inject a DNS server/domain/route on a Windows >= Vista and any linux box, use -R (can be noisy)\n\033[1m\033[31mUse Responder.conf\'s RespondTo setting for in-scope only targets\033[0m\n'
     print Message
 
-if options.OURIP is None:
+if options.Responder_IP is None:
     print "\n\033[1m\033[31m-i mandatory option is missing, please provide your IP address.\033[0m\n"
     parser.print_help()
     exit(-1)
@@ -84,10 +72,10 @@ RespondTo = config.get('Responder Core', 'RespondTo').strip()
 
 #Setting some vars
 Interface = options.Interface
-OURIP = options.OURIP
+Responder_IP = options.Responder_IP
 ROUTERIP = options.RouterIP
 NETMASK = options.Netmask
-DHCPSERVER = options.OURIP
+DHCPSERVER = options.Responder_IP
 DNSIP = options.DNSIP
 DNSIP2 = options.DNSIP2
 DNSNAME = options.DNSNAME
@@ -102,7 +90,7 @@ def SpoofIP(Spoof):
     if Spoof:
         return ROUTERIP
     else:
-        return OURIP
+        return Responder_IP
 
 def RespondToSpecificHost(RespondTo):
     if len(RespondTo)>=1 and RespondTo != ['']:

