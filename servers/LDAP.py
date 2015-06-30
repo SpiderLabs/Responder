@@ -1,3 +1,19 @@
+#!/usr/bin/env python
+# This file is part of Responder
+# Original work by Laurent Gaffie - Trustwave Holdings
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import os
 import struct
 import settings
@@ -37,14 +53,13 @@ def ParseLDAPHash(data, client):
 		UserLen      = struct.unpack('<H',data[80:82])[0]
 		UserOffset   = struct.unpack('<H',data[82:84])[0]
 		User         = SSPIStart[UserOffset:UserOffset+UserLen].replace('\x00','')
-		
-		WriteHash    = User+"::"+Domain+":"+LMHash+":"+NtHash+":"+settings.Config.NumChal
-		Outfile      = os.path.join(settings.Config.ResponderPATH, 'logs', "LDAP-NTLMv1-%s.txt" % client)
 
 		print text("[LDAP] NTLMv1 Address  : %s" % client)
 		print text("[LDAP] NTLMv1 Username : %s\\%s" % (Domain, User))
 		print text("[LDAP] NTLMv1 Hash     : %s" % NtHash)
-		WriteData(Outfile, WriteHash, User+"::"+Domain)
+
+		WriteHash = User+"::"+Domain+":"+LMHash+":"+NtHash+":"+settings.Config.NumChal
+		WriteData(settings.Config.LDAPNTLMv1Log % client, WriteHash, User+"::"+Domain)
 	
 	if LMhashLen < 2 :
 		print text("[LDAP] Ignoring anonymous NTLM authentication")
@@ -81,15 +96,11 @@ def ParseLDAPPacket(data, client):
 				PassLen  = struct.unpack('<b',data[20+UserDomainLen+1:20+UserDomainLen+2])[0]
 				Password = data[20+UserDomainLen+2:20+UserDomainLen+2+PassLen]
 
-				outfile = os.path.join(settings.Config.ResponderPATH, 'logs', "LDAP-Clear-Text-Password-%s.txt" % client)
-				WritePass = 'LDAP: %s: %s:%s' % (client, UserDomain, Password)
-
-				if PrintData(outfile, WritePass):
-					print text("[LDAP] Client   : %s" % color(client, 3, 0))
-					print text("[LDAP] Username : %s" % color(UserDomain, 3, 0))
-					print text("[LDAP] Password : %s" % color(Password, 3, 0))
-		
-					WriteData(outfile, WritePass, WritePass)
+				print text("[LDAP] Client   : %s" % color(client, 3, 0))
+				print text("[LDAP] Username : %s" % color(UserDomain, 3, 0))
+				print text("[LDAP] Password : %s" % color(Password, 3, 0))
+				WritePass = '%s: %s:%s' % (client, UserDomain, Password)
+				WriteData(settings.Config.LDAPClearLog % client, WritePass, WritePass)
 			
 			if sasl == "\xA3":
 				Buffer = ParseNTLM(data,client)
@@ -100,7 +111,7 @@ def ParseLDAPPacket(data, client):
 			return Buffer
 		
 		else:
-			print '[LDAP]Operation not supported'
+			print text('[LDAP] Operation not supported')
 
 # LDAP Server class
 class LDAP(BaseRequestHandler):

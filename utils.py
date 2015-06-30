@@ -1,13 +1,38 @@
-#! /usr/bin/env python
+#!/usr/bin/env python
+# This file is part of Responder by Jeremy S - jrm` @ irc.freenode.net
+# Original work by Laurent Gaffie - Trustwave Holdings
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import os
+import sys
 import re
+import logging
 import socket
 import settings
 
 def color(txt, code = 1, modifier = 0):
+
+	if txt.startswith('[*]'):
+		settings.Config.PoisonersLogger.warning(txt)
+	
+	elif 'Analyze' in txt:
+		settings.Config.AnalyzeLogger.warning(txt)
+
 	return "\033[%d;3%dm%s\033[0m" % (modifier, code, txt)
 
 def text(txt):
+	logging.info(txt)
 	return re.sub(r'\[([^]]*)\]', "\033[1;34m[\\1]\033[0m", txt)
 
 def RespondToThisIP(ClientIp):
@@ -48,22 +73,35 @@ def OsInterfaceIsSupported():
 		return False
 
 def FindLocalIP(Iface):
-	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	s.setsockopt(socket.SOL_SOCKET, 25, Iface+'\0')
-	s.connect(("127.0.0.1",9))#RFC 863
-	ret = s.getsockname()[0]
-	s.close()
-	return ret
+
+	if Iface == 'ALL':
+		return '0.0.0.0'
+
+	try:
+		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+		s.setsockopt(socket.SOL_SOCKET, 25, Iface+'\0')
+		s.connect(("127.0.0.1",9))#RFC 863
+		ret = s.getsockname()[0]
+		s.close()
+
+		return ret
+
+	except socket.error:
+		print color("[!] Error: %s: Interface not found" % Iface, 1)
+		sys.exit(-1)
 
 # Function used to write captured hashs to a file.
-def WriteData(outfile,data, user):
+def WriteData(outfile, data, user):
+
+	logging.info("[*] Captured Hash: %s" % data)
+
 	if os.path.isfile(outfile) == False:
 		with open(outfile,"w") as outf:
 			outf.write(data)
 			outf.write("\n")
 			outf.close()
 
-	if os.path.isfile(outfile) == True:
+	else:
 		with open(outfile,"r") as filestr:
 			if re.search(user.encode('hex'), filestr.read().encode('hex')):
 				filestr.close()
@@ -71,46 +109,11 @@ def WriteData(outfile,data, user):
 			if re.search(re.escape("$"), user):
 				filestr.close()
 				return False
-			else:
-				with open(outfile,"a") as outf2:
-					outf2.write(data)
-					outf2.write("\n")
-					outf2.close()
 
-def PrintData(outfile, user):
-
-	### TEMP
-	return True
-
-	if settings.Config.Verbose == True:
-		return True
-
-	if os.path.isfile(outfile) == True:
-		with open(outfile,"r") as filestr:
-			if re.search(user.encode('hex'), filestr.read().encode('hex')):
-				filestr.close()
-				return False
-			if re.search(re.escape("$"), user):
-				filestr.close()
-				return False
-			else:
-				return True
-	else:
-		return True
-
-def PrintLLMNRNBTNS(outfile, Message):
-	if settings.Config.Verbose == True:
-		return True
-
-	if os.path.isfile(outfile) == True:
-		with open(outfile,"r") as filestr:
-			if re.search(re.escape(Message), filestr.read()):
-				filestr.close()
-				return False
-			else:
-				return True
-	else:
-		return True
+		with open(outfile,"a") as outf2:
+			outf2.write(data)
+			outf2.write("\n")
+			outf2.close()
 
 def Parse_IPV6_Addr(data):
 
@@ -137,10 +140,75 @@ def banner():
 	])
 
 	print banner
-	print "\n  "+color("NBT-NS, LLMNR & MDNS %s" % settings.__version__, 3, 1)
+	print "\n           \033[1;33mNBT-NS, LLMNR & MDNS %s\033[0m" % settings.__version__
 	print ""
-	print color('[*]', 2, 1) +" Original work by Laurent Gaffie (lgaffie@trustwave.com)"
-	print color('[*]', 2, 1) +" To kill this script hit CRTL-C"
+	print "  Original work by Laurent Gaffie (lgaffie@trustwave.com)"
+	print "  To kill this script hit CRTL-C"
+	print ""
+
+def StartupMessage():
+	enabled  = color('[ON]', 2, 1) 
+	disabled = color('[OFF]', 1, 1)
+
+	print ""
+	print color("[+] ", 2, 1) + "Poisoners:"
+	print '    %-27s' % "LLMNR" + enabled
+	print '    %-27s' % "NBT-NS" + enabled
+	print '    %-27s' % "DNS/MDNS" + enabled
+	print ""
+
+	print color("[+] ", 2, 1) + "Servers:"
+	print '    %-27s' % "HTTP server" + (enabled if settings.Config.HTTP_On_Off else disabled)
+	print '    %-27s' % "HTTPS server" + (enabled if settings.Config.SSL_On_Off else disabled)
+	print '    %-27s' % "WPAD proxy" + (enabled if settings.Config.WPAD_On_Off else disabled)
+	print '    %-27s' % "SMB server" + (enabled if settings.Config.SMB_On_Off else disabled)
+	print '    %-27s' % "Kerberos server" + (enabled if settings.Config.Krb_On_Off else disabled)
+	print '    %-27s' % "SQL server" + (enabled if settings.Config.SQL_On_Off else disabled)
+	print '    %-27s' % "FTP server" + (enabled if settings.Config.FTP_On_Off else disabled)
+	print '    %-27s' % "IMAP server" + (enabled if settings.Config.IMAP_On_Off else disabled)
+	print '    %-27s' % "POP3 server" + (enabled if settings.Config.POP_On_Off else disabled)
+	print '    %-27s' % "SMTP server" + (enabled if settings.Config.SMTP_On_Off else disabled)
+	print '    %-27s' % "DNS server" + (enabled if settings.Config.DNS_On_Off else disabled)
+	print '    %-27s' % "LDAP server" + (enabled if settings.Config.LDAP_On_Off else disabled)
+	print ""
+
+	print color("[+] ", 2, 1) + "HTTP Options:"
+	print '    %-27s' % "Always serving EXE" + (enabled if settings.Config.Serve_Always else disabled)
+	print '    %-27s' % "Serving EXE for .exe URLs" + (enabled if settings.Config.Serve_Exe else disabled)
+	print '    %-27s' % "Serving HTML" + (enabled if settings.Config.Serve_Html else disabled)
+	print '    %-27s' % "Upstream Proxy" + (enabled if settings.Config.Upstream_Proxy else disabled)
+	#print '    %-27s' % "WPAD script" + settings.Config.WPAD_Script
+	print ""
+
+	print color("[+] ", 2, 1) + "Poisoning Options:"
+	print '    %-27s' % "Analyze Mode" + (enabled if settings.Config.AnalyzeMode else disabled)
+	print '    %-27s' % "Force WPAD auth" + (enabled if settings.Config.Force_WPAD_Auth else disabled)
+	print '    %-27s' % "Force Basic Auth" + (enabled if settings.Config.Basic else disabled)
+	print '    %-27s' % "Force LM downgrade" + (enabled if settings.Config.LM_On_Off == True else disabled)
+	print '    %-27s' % "Fingerprint hosts" + (enabled if settings.Config.Finger_On_Off == True else disabled)
+	print ""
+
+	print color("[+] ", 2, 1) + "Generic Options:"
+	print '    %-27s' % "Responder NIC" + color('[%s]' % settings.Config.Interface, 5, 1)
+	print '    %-27s' % "Responder IP" + color('[%s]' % settings.Config.Bind_To, 5, 1)
+	print '    %-27s' % "Challenge set" + color('[%s]' % settings.Config.NumChal, 5, 1)
+
+	if settings.Config.Upstream_Proxy:
+		print '    %-27s' % "Upstream Proxy" + color('[%s]' % settings.Config.Upstream_Proxy, 5, 1)
+
+	if len(settings.Config.RespondTo):
+		print '    %-27s' % "Respond To" + color(str(settings.Config.RespondTo), 5, 1)
+
+	if len(settings.Config.RespondToName):
+		print '    %-27s' % "Respond To Names" + color(str(settings.Config.RespondToName), 5, 1)
+
+	if len(settings.Config.DontRespondTo):
+		print '    %-27s' % "Don't Respond To" + color(str(settings.Config.DontRespondTo), 5, 1)
+
+	if len(settings.Config.DontRespondToName):
+		print '    %-27s' % "Don't Respond To Names" + color(str(settings.Config.DontRespondToName), 5, 1)
+
+	print ""
 	print ""
 
 def hexdump(src, l=0x16):

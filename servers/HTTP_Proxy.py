@@ -1,3 +1,19 @@
+#!/usr/bin/env python
+# This file is part of Responder
+# Original work by Laurent Gaffie - Trustwave Holdings
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import os
 import settings
 import urlparse
@@ -19,7 +35,7 @@ def HandleGzip(Headers, Content, Payload):
 		HasBody = re.findall('(?<=<body)[^<]*', unziped)
 
 		if HasBody:
-			print text("[PROXY] Injecting into HTTP Response : %s" % color(settings.Config.HTMLToServe, 3, 1))
+			print text("[PROXY] Injecting into HTTP Response: %s" % color(settings.Config.HTMLToServe, 3, 1))
 
 			Content = unziped.replace("<body", settings.Config.HTMLToServe +"\n<body")
 			ziped = zlib.compress(Content)
@@ -65,7 +81,7 @@ def InjectData(data):
 			HasBody = re.findall('(?<=<body)[^<]*', Content)
 			
 			if HasBody:
-				print text("[PROXY] Injecting into HTTP Response : %s" % color(settings.Config.HTMLToServe, 3, 1))
+				print text("[PROXY] Injecting into HTTP Response: %s" % color(settings.Config.HTMLToServe, 3, 1))
 
 				NewContent = Content.replace("<body", settings.Config.HTMLToServe +"\n<body")
 				Headers = Headers.replace("Content-Length: "+Len, "Content-Length: "+ str(len(NewContent)))
@@ -127,8 +143,9 @@ class ProxySock:
 		parts = resp.split()
 		
 		# Not 200 ?
-		if parts[1] != "200" :
-			raise Exception("Error response from Proxy server : %s" % resp)
+		if parts[1] != "200":
+			print color("[!] Error response from upstream proxy: %s" % resp, 1)
+			pass
 
 	# Wrap all methods of inner socket, without any change
 	def accept(self) :
@@ -168,7 +185,10 @@ class ProxySock:
 		return self.socket.recv_into(buffer, *args)
 	
 	def send(self, *args) :
-		return self.socket.send(*args)
+		try:
+			return self.socket.send(*args)
+		except:
+			pass
 	
 	def sendall(self, *args) :
 		return self.socket.sendall(*args)

@@ -1,7 +1,6 @@
-#! /usr/bin/env python
-# NBT-NS/LLMNR Responder
-# Created by Laurent Gaffie
-# Copyright (C) 2014 Trustwave Holdings, Inc.
+#!/usr/bin/env python
+# This file is part of Responder
+# Original work by Laurent Gaffie - Trustwave Holdings
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,13 +14,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
 import sys
 import optparse
 import socket
 import thread
 import time
-import logging
 import settings
 
 from SocketServer import TCPServer, UDPServer, ThreadingMixIn, StreamRequestHandler, BaseRequestHandler, BaseServer
@@ -29,10 +26,9 @@ from utils import *
 
 banner()
 
-parser = optparse.OptionParser(usage='python %prog -i 10.20.30.40 -w -r -f\nor:\npython %prog -i 10.20.30.40 -wrf', version=settings.__version__, prog=sys.argv[0])
+parser = optparse.OptionParser(usage='python %prog -I eth0 -w -r -f\nor:\npython %prog -I eth0 -wrf', version=settings.__version__, prog=sys.argv[0])
 parser.add_option('-A','--analyze',        action="store_true", help="Analyze mode. This option allows you to see NBT-NS, BROWSER, LLMNR requests without responding.", dest="Analyze", default=False)
-parser.add_option('-i','--ip',             action="store",      help="The ip address to redirect the traffic to. (usually yours)", dest="Responder_IP", metavar="10.20.30.40")
-parser.add_option('-I','--interface',      action="store",      help="Network interface to use", dest="Interface", metavar="eth0", default="Not set")
+parser.add_option('-I','--interface',      action="store",      help="Network interface to use", dest="Interface", metavar="eth0", default=None)
 parser.add_option('-b', '--basic',         action="store_true", help="Return a Basic HTTP authentication. Default: NTLM", dest="Basic", default=False)
 parser.add_option('-r', '--wredir',        action="store_true", help="Enable answers for netbios wredir suffix queries. Answering to wredir will likely break stuff on the network. Default: False", dest="Wredirect", default=False)
 parser.add_option('-d', '--NBTNSdomain',   action="store_true", help="Enable answers for netbios domain suffix queries. Answering to domain suffixes will likely break stuff on the network. Default: False", dest="NBTNSDomain", default=False)
@@ -41,79 +37,27 @@ parser.add_option('-w','--wpad',           action="store_true", help="Start the 
 parser.add_option('-u','--upstream-proxy', action="store",      help="Upstream HTTP proxy used by the rogue WPAD Proxy for outgoing requests (format: host:port)", dest="Upstream_Proxy", default=None)
 parser.add_option('-F','--ForceWpadAuth',  action="store_true", help="Force NTLM/Basic authentication on wpad.dat file retrieval. This may cause a login prompt. Default: False", dest="Force_WPAD_Auth", default=False)
 parser.add_option('--lm',                  action="store_true", help="Force LM hashing downgrade for Windows XP/2003 and earlier. Default: False", dest="LM_On_Off", default=False)
-parser.add_option('-v',                    action="store_true", help="More verbose", dest="Verbose")
 options, args = parser.parse_args()
+
+if not os.geteuid() == 0:
+    print color("[!] Responder must be run as root.")
+    sys.exit(-1)
 
 settings.init()
 settings.Config.populate(options)
 
-# Logger
-logging.basicConfig(filename=settings.Config.Log1Filename,level=logging.INFO, format='%(asctime)s %(message)s', datefmt='%m/%d/%Y %I:%M:%S %p')
-StartMessage = 'Responder Started\nCommand line args:%s' % (settings.Config.CommandLine)
-logging.warning(StartMessage)
+StartupMessage()
 
-logger2 = logging.getLogger('LLMNR/NBT-NS')
-logger2.addHandler(logging.FileHandler(settings.Config.Log2Filename,'w'))
-
-logger3 = logging.getLogger('Analyze LLMNR/NBT-NS')
-logger3.addHandler(logging.FileHandler(settings.Config.AnalyzeFilename,'a'))
-
-# Start up message
-enabled  = color('[ON]', 2, 1) + "\n"
-disabled = color('[OFF]', 1, 1) + "\n"
-
-Message = ""
-Message += color("[*] ", 2, 1) + "Poisoners:\n"
-Message += '    %-25s' % "LLMNR" + enabled
-Message += '    %-25s' % "NBT-NS" + enabled
-Message += '    %-25s' % "DNS/MDNS" + enabled + "\n"
-
-Message += color("[*] ", 2, 1) + "Servers:\n"
-Message += '    %-25s' % "HTTP server" + (enabled if settings.Config.HTTP_On_Off else disabled)
-Message += '    %-25s' % "HTTPS server" + (enabled if settings.Config.SSL_On_Off else disabled)
-Message += '    %-25s' % "WPAD proxy" + (enabled if settings.Config.WPAD_On_Off else disabled)
-Message += '    %-25s' % "SMB server" + (enabled if settings.Config.SMB_On_Off else disabled)
-Message += '    %-25s' % "Kerberos server" + (enabled if settings.Config.Krb_On_Off else disabled)
-Message += '    %-25s' % "SQL server" + (enabled if settings.Config.SQL_On_Off else disabled)
-Message += '    %-25s' % "FTP server" + (enabled if settings.Config.FTP_On_Off else disabled)
-Message += '    %-25s' % "IMAP server" + (enabled if settings.Config.IMAP_On_Off else disabled)
-Message += '    %-25s' % "POP3 server" + (enabled if settings.Config.POP_On_Off else disabled)
-Message += '    %-25s' % "SMTP server" + (enabled if settings.Config.SMTP_On_Off else disabled)
-Message += '    %-25s' % "DNS server" + (enabled if settings.Config.DNS_On_Off else disabled)
-Message += '    %-25s' % "LDAP server" + (enabled if settings.Config.LDAP_On_Off else disabled) + "\n"
-
-Message += color("[*] ", 2, 1) + "HTTP Options:\n"
-Message += '    %-25s' % "Serving executable" + (enabled if settings.Config.Exe_On_Off else disabled)
-Message += '    %-25s' % "Serving specific file" + (enabled if settings.Config.Exec_Mode_On_Off else disabled)
-Message += '    %-25s' % "Upstream Proxy" + (enabled if settings.Config.Upstream_Proxy else disabled) + "\n"
-#Message += '    %-25s' % "WPAD script" + settings.Config.WPAD_Script + "\n\n"
-
-Message += color("[*] ", 2, 1) + "Poisoning Options:\n"
-Message += '    %-25s' % "Force WPAD auth" + (enabled if settings.Config.Force_WPAD_Auth else disabled)
-Message += '    %-25s' % "Force Basic Auth" + (enabled if settings.Config.Basic else disabled)
-Message += '    %-25s' % "Fingerprint hosts" + (enabled if settings.Config.Finger_On_Off == True else disabled)
-Message += '    %-25s' % "Force LM downgrade" + (enabled if settings.Config.LM_On_Off == True else disabled) +"\n"
-
-Message += color("[*] ", 2, 1) + "Generic Options:\n"
-Message += '    %-25s' % "Responder NIC" + color('[%s]' % settings.Config.BIND_TO_Interface, 3, 1) + "\n"
-Message += '    %-25s' % "Challenge set" + color('[%s]' % settings.Config.NumChal, 3, 1) + "\n"
-if settings.Config.Upstream_Proxy:
-	Message += '    %-25s' % "Upstream Proxy" + color('[%s]' % settings.Config.Upstream_Proxy, 3, 1) + "\n"
-if len(settings.Config.DontRespondTo):
-	Message += '    %-25s' % "Don't Respond To" + color(settings.Config.DontRespondTo, 3, 1) + "\n"
-
-print Message
+settings.Config.ExpandIPRanges()
 
 if settings.Config.AnalyzeMode:
 	print color('[i] Responder is in analyze mode. No NBT-NS, LLMNR, MDNS requests will be poisoned.', 3, 1)
-
-print color('[*]', 2, 1) + " Listening for events..."
 
 class ThreadingUDPServer(ThreadingMixIn, UDPServer):
 	def server_bind(self):
 		if OsInterfaceIsSupported():
 			try:
-				self.socket.setsockopt(socket.SOL_SOCKET, 25, settings.Config.BIND_TO_Interface+'\0')
+				self.socket.setsockopt(socket.SOL_SOCKET, 25, settings.Config.Bind_To+'\0')
 			except:
 				pass
 		UDPServer.server_bind(self)
@@ -122,7 +66,7 @@ class ThreadingTCPServer(ThreadingMixIn, TCPServer):
 	def server_bind(self):
 		if OsInterfaceIsSupported():
 			try:
-				self.socket.setsockopt(socket.SOL_SOCKET, 25, settings.Config.BIND_TO_Interface+'\0')
+				self.socket.setsockopt(socket.SOL_SOCKET, 25, settings.Config.Bind_To+'\0')
 			except:
 				pass
 		TCPServer.server_bind(self)
@@ -138,7 +82,7 @@ class ThreadingUDPMDNSServer(ThreadingMixIn, UDPServer):
 
 		if OsInterfaceIsSupported():
 			try:
-				self.socket.setsockopt(socket.SOL_SOCKET, 25, settings.Config.BIND_TO_Interface+'\0')
+				self.socket.setsockopt(socket.SOL_SOCKET, 25, settings.Config.Bind_To+'\0')
 			except:
 				pass
 		UDPServer.server_bind(self)
@@ -154,7 +98,7 @@ class ThreadingUDPLLMNRServer(ThreadingMixIn, UDPServer):
 		
 		if OsInterfaceIsSupported():
 			try:
-				self.socket.setsockopt(socket.SOL_SOCKET, 25, settings.Config.BIND_TO_Interface+'\0')
+				self.socket.setsockopt(socket.SOL_SOCKET, 25, settings.Config.Bind_To+'\0')
 			except:
 				pass
 		UDPServer.server_bind(self)
@@ -164,13 +108,12 @@ ThreadingTCPServer.allow_reuse_address = 1
 ThreadingUDPMDNSServer.allow_reuse_address = 1
 ThreadingUDPLLMNRServer.allow_reuse_address = 1
 
-# Poisoners have to listen on 0.0.0.0 to receive broadcast traffic
 def serve_thread_udp_broadcast(host, port, handler):
 	try:
 		server = ThreadingUDPServer(('', port), handler)
 		server.serve_forever()
 	except:
-		print color("[*] ", 1, 1) + "Error starting UDP server on port " + str(port) + ", check permissions or other servers running."
+		print color("[!] ", 1, 1) + "Error starting UDP server on port " + str(port) + ", check permissions or other servers running."
 
 def serve_NBTNS_poisoner(host, port, handler):
 	serve_thread_udp_broadcast(host, port, handler)
@@ -180,52 +123,49 @@ def serve_MDNS_poisoner(host, port, handler):
 		server = ThreadingUDPMDNSServer((host, port), handler)
 		server.serve_forever()
 	except:
-		print color("[*] ", 1, 1) + "Error starting UDP server on port " + str(port) + ", check permissions or other servers running."
+		print color("[!] ", 1, 1) + "Error starting UDP server on port " + str(port) + ", check permissions or other servers running."
 
 def serve_LLMNR_poisoner(host, port, handler):
-	try:
+	#try:
 		server = ThreadingUDPLLMNRServer((host, port), handler)
 		server.serve_forever()
-	except:
-		print color("[*] ", 1, 1) + "Error starting UDP server on port " + str(port) + ", check permissions or other servers running."
+	#except:
+	#	print color("[!] ", 1, 1) + "Error starting UDP server on port " + str(port) + ", check permissions or other servers running."
 
 def serve_thread_udp(host, port, handler):
 	try:
 		if OsInterfaceIsSupported():
-			IP = FindLocalIP(settings.Config.BIND_TO_Interface)
-			server = ThreadingUDPServer((IP, port), handler)
+			server = ThreadingUDPServer((settings.Config.Bind_To, port), handler)
 			server.serve_forever()
 		else:
 			server = ThreadingUDPServer((host, port), handler)
 			server.serve_forever()
 	except:
-		print color("[*] ", 1, 1) + "Error starting UDP server on port " + str(port) + ", check permissions or other servers running."
+		print color("[!] ", 1, 1) + "Error starting UDP server on port " + str(port) + ", check permissions or other servers running."
 
 def serve_thread_tcp(host, port, handler):
 	try:
 		if OsInterfaceIsSupported():
-			IP = FindLocalIP(settings.Config.BIND_TO_Interface)
-			server = ThreadingTCPServer((IP, port), handler)
+			server = ThreadingTCPServer((settings.Config.Bind_To, port), handler)
 			server.serve_forever()
 		else:
 			server = ThreadingTCPServer((host, port), handler)
 			server.serve_forever()
 	except:
-		print color("[*] ", 1, 1) + "Error starting TCP server on port " + str(port) + ", check permissions or other servers running."
+		print color("[!] ", 1, 1) + "Error starting TCP server on port " + str(port) + ", check permissions or other servers running."
 
 def serve_thread_SSL(host, port, handler):
-	#try:
+	try:
 		from servers.HTTP import SSLSock
 
 		if OsInterfaceIsSupported():
-			IP = FindLocalIP(settings.Config.BIND_TO_Interface)
-			server = SSLSock((IP, port), handler)
+			server = SSLSock((settings.Config.Bind_To, port), handler)
 			server.serve_forever()
 		else:
 			server = SSLSock((host, port), handler)
 			server.serve_forever()
-	#except:
-		print color("[*] ", 1, 1) + "Error starting SSL server on port " + str(port) + ", check permissions or other servers running."
+	except:
+		print color("[!] ", 1, 1) + "Error starting SSL server on port " + str(port) + ", check permissions or other servers running."
 
 def main():
 	try:
@@ -286,7 +226,7 @@ def main():
 
 		if settings.Config.SMTP_On_Off:
 			from servers.SMTP import ESMTP
-			thread.start_new(serve_thread_tcp,('', 25, ESMTP))
+			thread.start_new(serve_thread_tcp,('', 25,  ESMTP))
 			thread.start_new(serve_thread_tcp,('', 587, ESMTP))
 
 		if settings.Config.IMAP_On_Off:
@@ -298,11 +238,14 @@ def main():
 			thread.start_new(serve_thread_udp,('', 53, DNS))
 			thread.start_new(serve_thread_tcp,('', 53, DNSTCP))
 
+
+		print color('[+]', 2, 1) + " Listening for events..."
+
 		while True:
 			time.sleep(1)
 
 	except KeyboardInterrupt:
-		sys.exit("\r%s Exiting..." % color('[*]', 2, 1))
+		sys.exit("\r%s Exiting..." % color('[+]', 2, 1))
 
 if __name__ == '__main__':
 	main()

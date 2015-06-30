@@ -65,5 +65,5 @@ def RunSmbFinger(host):
 		if data[8:10] == "\x73\x16":
 			return OsNameClientVersion(data)
 	except:
-		print color("[*] ", 1, 1) +" Fingerprint failed"
+		print color("[!] ", 1, 1) +" Fingerprint failed"
 		return None

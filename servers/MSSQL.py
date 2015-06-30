@@ -1,3 +1,19 @@
+#!/usr/bin/env python
+# This file is part of Responder
+# Original work by Laurent Gaffie - Trustwave Holdings
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import os
 import struct
 import settings
@@ -58,28 +74,20 @@ def ParseSQLHash(data, client):
 	User          = SSPIStart[UserOffset:UserOffset+UserLen].replace('\x00','')
 
 	if NthashLen == 24:
-		outfile = os.path.join(settings.Config.ResponderPATH, 'logs', "MSSQL-NTLMv1-Client-%s.txt" % client)
-		
-		if PrintData(outfile,User+"::"+Domain):
-			print text("[MSSQL] NTLMv1 Client   : %s" % color(client, 3, 0))
-			print text("[MSSQL] NTLMv1 Domain   : %s" % color(Domain, 3, 0))
-			print text("[MSSQL] NTLMv1 User     : %s" % color(User, 3, 0))
-			print text("[MSSQL] NTLMv1 Hash     : %s" % color(LMHash+":"+NTHash, 3, 0))
-
-			WriteHash = '%s::%s:%s:%s:%s' % (User, Domain, LMHash, NTHash, settings.Config.NumChal)
-			WriteData(outfile,User+"::"+Domain+":"+LMHash+":"+NtHash+":"+NumChal, User+"::"+Domain)
+		print text("[MSSQL] NTLMv1 Client   : %s" % color(client, 3, 0))
+		print text("[MSSQL] NTLMv1 Domain   : %s" % color(Domain, 3, 0))
+		print text("[MSSQL] NTLMv1 User     : %s" % color(User, 3, 0))
+		print text("[MSSQL] NTLMv1 Hash     : %s" % color(LMHash+":"+NTHash, 3, 0))
+		WriteHash = '%s::%s:%s:%s:%s' % (User, Domain, LMHash, NTHash, settings.Config.NumChal)
+		WriteData(settings.Config.MSSQLNTLMv1Log % client, User+"::"+Domain+":"+LMHash+":"+NtHash+":"+NumChal, User+"::"+Domain)
 
 	if NthashLen > 60:
-		outfile = os.path.join(settings.Config.ResponderPATH, 'logs', "MSSQL-NTLMv2-Client-%s.txt" % client)
-		
-		if PrintData(outfile,User+"::"+Domain):
-			print text("[MSSQL] NTLMv1 Client   : %s" % color(client, 3, 0))
-			print text("[MSSQL] NTLMv1 Domain   : %s" % color(Domain, 3, 0))
-			print text("[MSSQL] NTLMv1 User     : %s" % color(User, 3, 0))
-			print text("[MSSQL] NTLMv1 Hash     : %s" % color(NTHash[:32]+":"+NTHash[32:], 3, 0))
-
-			WriteHash = '%s::%s:%s:%s:%s' % (User, Domain, settings.Config.NumChal, NTHash[:32], NTHash[32:])
-			WriteData(outfile,WriteHash,User+"::"+Domain)
+		print text("[MSSQL] NTLMv2 Client   : %s" % color(client, 3, 0))
+		print text("[MSSQL] NTLMv2 Domain   : %s" % color(Domain, 3, 0))
+		print text("[MSSQL] NTLMv2 User     : %s" % color(User, 3, 0))
+		print text("[MSSQL] NTLMv2 Hash     : %s" % color(NTHash[:32]+":"+NTHash[32:], 3, 0))
+		WriteHash = '%s::%s:%s:%s:%s' % (User, Domain, settings.Config.NumChal, NTHash[:32], NTHash[32:])
+		WriteData(settings.Config.MSSQLNTLMv2Log % client, WriteHash,User+"::"+Domain)
 
 def ParseSqlClearTxtPwd(Pwd):
 	Pwd = map(ord,Pwd.replace('\xa5',''))
@@ -90,18 +98,15 @@ def ParseSqlClearTxtPwd(Pwd):
 
 def ParseClearTextSQLPass(data, client):
 
-	TDS       = TDS_Login_Packet(data)
-	outfile   = os.path.join(settings.Config.ResponderPATH, 'logs', "MSSQL-PlainText-Password-%s.txt" % client)
+	TDS = TDS_Login_Packet(data)
+
+	print text("[MSSQL] Client    : %s (%s)" % (color(client, 3, 0) , color(TDS.ClientName, 3, 0)))
+	print text("[MSSQL] Server    : %s" % color(TDS.ServerName, 3, 0))
+	print text("[MSSQL] Database  : %s" % color(TDS.DatabaseName, 3, 0))
+	print text("[MSSQL] Username  : %s" % color(TDS.UserName, 3, 0))
+	print text("[MSSQL] Password  : %s" % color(ParseSqlClearTxtPwd(TDS.Password), 3, 0))
 	WritePass = TDS.UserName +':'+ ParseSqlClearTxtPwd(TDS.Password)
-
-	if PrintData(outfile,WritePass):
-		print text("[MSSQL] Client    : %s (%s)" % (color(client, 3, 0) , color(TDS.ClientName, 3, 0)))
-		print text("[MSSQL] Server    : %s" % color(TDS.ServerName, 3, 0))
-		print text("[MSSQL] Database  : %s" % color(TDS.DatabaseName, 3, 0))
-		print text("[MSSQL] Username  : %s" % color(TDS.UserName, 3, 0))
-		print text("[MSSQL] Password  : %s" % color(ParseSqlClearTxtPwd(TDS.Password), 3, 0))
-
-		WriteData(outfile, WritePass, WritePass)
+	WriteData(settings.Config.MSSQLClearLog % client, WritePass, WritePass)
 
 # MSSQL Server class
 class MSSQL(BaseRequestHandler):

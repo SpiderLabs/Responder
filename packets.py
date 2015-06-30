@@ -1,3 +1,19 @@
+#!/usr/bin/env python
+# This file is part of Responder
+# Original work by Laurent Gaffie - Trustwave Holdings
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import struct
 import settings
 
@@ -258,7 +274,7 @@ class WPADScript(Packet):
 	def calculate(self):
 		self.fields["ActualLen"] = len(str(self.fields["Payload"]))
 
-class ServerExeFile(Packet):
+class ServeExeFile(Packet):
 	fields = OrderedDict([
 		("Code",          "HTTP/1.1 200 OK\r\n"),
 		("ContentType",   "Content-Type: application/octet-stream\r\n"),
@@ -278,30 +294,7 @@ class ServerExeFile(Packet):
 	def calculate(self):
 		self.fields["ActualLen"] = len(str(self.fields["Payload"]))
 
-class ServeAlwaysExeFile(Packet):
-	fields = OrderedDict([
-		("Code",          "HTTP/1.1 200 OK\r\n"),
-		("ContentType",   "Content-Type: application/octet-stream\r\n"),
-		("LastModified",  "Last-Modified: Wed, 24 Nov 2010 00:39:06 GMT\r\n"),
-		("AcceptRanges",  "Accept-Ranges: bytes\r\n"),
-		("Server",        "Server: Microsoft-IIS/7.5\r\n"),
-		("PoweredBy",     "X-Powered-By: ASP.NET\r\n"),
-		("ContentDisp",   "Content-Disposition: attachment; filename="),
-		("ContentDiFile", ""),
-		("FileCRLF",      ";\r\n"),
-		("ContentLen",    "Content-Length: "),
-		("ActualLen",     "76"), 
-		("Date",          "\r\nDate: Thu, 24 Oct 2013 22:35:46 GMT\r\n"),
-		("Connection",    "Connection: keep-alive\r\n"),
-		("X-CCC",         "US\r\n"),
-		("X-CID",         "2\r\n"),
-		("CRLF",          "\r\n"),
-		("Payload",       "jj"),
-	])
-	def calculate(self):
-		self.fields["ActualLen"] = len(str(self.fields["Payload"]))
-
-class ServeAlwaysNormalFile(Packet):
+class ServeHtmlFile(Packet):
 	fields = OrderedDict([
 		("Code",          "HTTP/1.1 200 OK\r\n"),
 		("ContentType",   "Content-Type: text/html\r\n"),
