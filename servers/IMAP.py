@@ -17,6 +17,7 @@
 import os
 import settings
 
+from utils import *
 from SocketServer import BaseRequestHandler
 from packets import IMAPGreeting, IMAPCapability, IMAPCapabilityEnd
 

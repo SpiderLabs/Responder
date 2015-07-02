@@ -171,7 +171,7 @@ def PacketSequence(data, client):
 				return WPAD_Custom
 
 			else:
-				Buffer = IIS_Auth_Granted(Payload=settings.Config.HTMLToInject)
+				Buffer = IIS_Auth_Granted(Payload=settings.Config.HtmlToInject)
 				Buffer.calculate()
 				return str(Buffer)
 
@@ -192,7 +192,7 @@ def PacketSequence(data, client):
 			return WPAD_Custom
 
 		else:
-			Buffer = IIS_Auth_Granted(Payload=settings.Config.HTMLToInject)
+			Buffer = IIS_Auth_Granted(Payload=settings.Config.HtmlToInject)
 			Buffer.calculate()
 			return str(Buffer)
 

@@ -17,6 +17,7 @@
 import os
 import settings
 
+from utils import *
 from SocketServer import BaseRequestHandler
 from packets import POPOKPacket
 
@@ -41,9 +42,9 @@ class POP3(BaseRequestHandler):
 			if data[0:4] == "PASS":
 				Pass = data[5:].replace("\r\n","")
 
-				print text("[POP3] Address  : %s" % self.client_address[0])
-				print text("[POP3] Username : %s" % User)
-				print text("[POP3] Password : %s" % Pass)
+				print text("[POP3] Address  : %s" % color(self.client_address[0], 3))
+				print text("[POP3] Username : %s" % color(User, 3))
+				print text("[POP3] Password : %s" % color(Pass, 3))
 				WriteData(settings.Config.POP3Log % self.client_address[0], User+":"+Pass, User+":"+Pass)
 
 				data = self.SendPacketAndRead()

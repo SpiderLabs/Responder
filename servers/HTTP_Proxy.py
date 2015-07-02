@@ -58,9 +58,9 @@ def InjectData(data, client, req_uri):
 			HasBody = re.findall('(<body[^>]*>)', Content)
 
 			if HasBody:
-				print text("[PROXY] Injecting into HTTP Response: %s" % color(settings.Config.HTMLToInject, 3, 1))
+				print text("[PROXY] Injecting into HTTP Response: %s" % color(settings.Config.HtmlToInject, 3, 1))
 
-				Content = Content.replace(HasBody[0], '%s\n%s' % (HasBody[0], settings.Config.HTMLToInject))
+				Content = Content.replace(HasBody[0], '%s\n%s' % (HasBody[0], settings.Config.HtmlToInject))
 				Headers = Headers.replace("Content-Length: "+Len, "Content-Length: "+ str(len(Content)))
 
 		if "content-encoding: gzip" in Headers.lower():
@@ -74,7 +74,6 @@ def InjectData(data, client, req_uri):
 	return data
 
 class ProxySock:
-	
 	def __init__(self, socket, proxy_host, proxy_port) : 
 
 		# First, use the socket, without any change
@@ -222,7 +221,7 @@ class HTTP_Proxy(BaseHTTPServer.BaseHTTPRequestHandler):
 			return 0
 		return 1
 
-	def socket_proxy(self):
+	def socket_proxy(self, af, fam):
 		Proxy = settings.Config.Upstream_Proxy
 		Proxy = Proxy.rstrip('/').replace('http://', '').replace('https://', '')
 		Proxy = Proxy.split(':')
@@ -230,13 +229,13 @@ class HTTP_Proxy(BaseHTTPServer.BaseHTTPRequestHandler):
 		try:    Proxy = (Proxy[0], int(Proxy[1]))
 		except: Proxy = (Proxy[0], 8080)
 
-		soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		soc = socket.socket(af, fam)
 		return ProxySock(soc, Proxy[0], Proxy[1])
 
 	def do_CONNECT(self):
 
 		if settings.Config.Upstream_Proxy:
-			soc = self.socket_proxy()
+			soc = self.socket_proxy(socket.AF_INET, socket.SOCK_STREAM)
 		else:
 			soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -261,7 +260,7 @@ class HTTP_Proxy(BaseHTTPServer.BaseHTTPRequestHandler):
 			return
 
 		if settings.Config.Upstream_Proxy:
-			soc = self.socket_proxy()
+			soc = self.socket_proxy(socket.AF_INET, socket.SOCK_STREAM)
 		else:
 			soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -306,12 +305,12 @@ class HTTP_Proxy(BaseHTTPServer.BaseHTTPRequestHandler):
 				for i in ins:
 					if i is soc:
 						out = self.connection
-						#try:
-						data = i.recv(4096)
-						if len(data) > 1:
-							data = InjectData(data, self.client_address[0], self.path)
-						#except:
-						#	pass
+						try:
+							data = i.recv(4096)
+							if len(data) > 1:
+								data = InjectData(data, self.client_address[0], self.path)
+						except:
+							pass
 					else:
 						out = soc
 						data = i.recv(4096)

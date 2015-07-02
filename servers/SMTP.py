@@ -17,6 +17,8 @@
 import os
 import settings
 
+from utils import *
+from base64 import b64decode, b64encode
 from SocketServer import BaseRequestHandler
 from packets import SMTPGreeting, SMTPAUTH, SMTPAUTH1, SMTPAUTH2
 
@@ -35,21 +37,28 @@ class ESMTP(BaseRequestHandler):
 			if data[0:4] == "AUTH":
 				self.request.send(str(SMTPAUTH1()))
 				data = self.request.recv(1024)
-
+				
 				if data:
-					Username = b64decode(data[:len(data)-2])
-					self.request.send(str(SMTPAUTH2()))
-					data = self.request.recv(1024)
+					try:
+						User = filter(None, b64decode(data).split('\x00'))
+						Username = User[0]
+						Password = User[1]
+					except:
+						Username = b64decode(data)
 
-					if data:
-						Password = b64decode(data[:len(data)-2])
+						self.request.send(str(SMTPAUTH2()))
+						data = self.request.recv(1024)
 
-						print text("[SMTP] Address  : %s" % color(self.client_address[0], 3, 0))
-						print text("[SMTP] Username : %s" % color(Username, 3, 0))
-						print text("[SMTP] Password : %s" % color(Password, 3, 0))
-						WriteData(settings.Config.SMTPClearLog % self.client_address[0], Username+":"+Password, Username+":"+Password)
+						if data:
+							try: Password = b64decode(data)
+							except: Password = data
 
-						## FIXME: Close connection properly
+					print text("[SMTP] Address  : %s" % color(self.client_address[0], 3))
+					print text("[SMTP] Username : %s" % color(Username, 3))
+					print text("[SMTP] Password : %s" % color(Password, 3))
+					WriteData(settings.Config.SMTPClearLog % self.client_address[0], Username+":"+Password, Username+":"+Password)
+
+					## FIXME: Close connection properly
 
 		except Exception:
 			pass

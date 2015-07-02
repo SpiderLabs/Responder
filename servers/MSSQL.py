@@ -112,17 +112,18 @@ def ParseClearTextSQLPass(data, client):
 class MSSQL(BaseRequestHandler):
 
 	def handle(self):
+		print text("[MSSQL] Received connection from %s" % self.client_address[0])
 		try:
 			while True:
 				data = self.request.recv(1024)
 				self.request.settimeout(0.1)
-				
+
 				# Pre-Login Message
 				if data[0] == "\x12":
 					Buffer = str(MSSQLPreLoginAnswer())
 					self.request.send(Buffer)
 					data = self.request.recv(1024)
-				
+
 				# NegoSSP
 				if data[0] == "\x10":
 					if re.search("NTLMSSP",data):

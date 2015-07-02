@@ -211,6 +211,7 @@ def StartupMessage():
 	print ""
 	print ""
 
+# Useful for debugging
 def hexdump(src, l=0x16):
 	res = []
 	sep = '.'
