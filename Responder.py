@@ -126,11 +126,11 @@ def serve_MDNS_poisoner(host, port, handler):
 		print color("[!] ", 1, 1) + "Error starting UDP server on port " + str(port) + ", check permissions or other servers running."
 
 def serve_LLMNR_poisoner(host, port, handler):
-	#try:
+	try:
 		server = ThreadingUDPLLMNRServer((host, port), handler)
 		server.serve_forever()
-	#except:
-	#	print color("[!] ", 1, 1) + "Error starting UDP server on port " + str(port) + ", check permissions or other servers running."
+	except:
+		print color("[!] ", 1, 1) + "Error starting UDP server on port " + str(port) + ", check permissions or other servers running."
 
 def serve_thread_udp(host, port, handler):
 	try:
@@ -237,7 +237,6 @@ def main():
 			from servers.DNS import DNS, DNSTCP
 			thread.start_new(serve_thread_udp,('', 53, DNS))
 			thread.start_new(serve_thread_tcp,('', 53, DNSTCP))
-
 
 		print color('[+]', 2, 1) + " Listening for events..."
 

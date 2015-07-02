@@ -50,7 +50,7 @@ class MDNS(BaseRequestHandler):
 			return None
 
 		try:
-			# Analyze
+			# Analyze Mode
 			if settings.Config.AnalyzeMode:
 				if Parse_IPV6_Addr(data):
 					print text('[Analyze mode: MDNS] Request by %-15s for %s, ignoring' % (color(self.client_address[0], 3), color(Request_Name, 3)))

@@ -282,6 +282,9 @@ class ServeExeFile(Packet):
 		("AcceptRanges",  "Accept-Ranges: bytes\r\n"),
 		("Server",        "Server: Microsoft-IIS/7.5\r\n"),
 		("PoweredBy",     "X-Powered-By: ASP.NET\r\n"),
+		("ContentDisp",   "Content-Disposition: attachment; filename="),
+		("ContentDiFile", ""),
+		("FileCRLF",      ";\r\n"),
 		("ContentLen",    "Content-Length: "),
 		("ActualLen",     "76"), 
 		("Date",          "\r\nDate: Thu, 24 Oct 2013 22:35:46 GMT\r\n"),
@@ -306,8 +309,6 @@ class ServeHtmlFile(Packet):
 		("ActualLen",     "76"), 
 		("Date",          "\r\nDate: Thu, 24 Oct 2013 22:35:46 GMT\r\n"),
 		("Connection",    "Connection: keep-alive\r\n"),
-		("X-CCC",         "US\r\n"),
-		("X-CID",         "2\r\n"),
 		("CRLF",          "\r\n"),
 		("Payload",       "jj"),
 	])

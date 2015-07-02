@@ -104,6 +104,7 @@ class Settings:
 		self.HTTPBasicLog    = os.path.join(self.ResponderPATH, 'logs', 'HTTP-Clear-Text-Password-%s.txt')
 		self.LDAPClearLog    = os.path.join(self.ResponderPATH, 'logs', 'LDAP-Clear-Text-Password-%s.txt')
 		self.SMBClearLog     = os.path.join(self.ResponderPATH, 'logs', 'SMB-Clear-Text-Password-%s.txt')
+		self.SMTPClearLog    = os.path.join(self.ResponderPATH, 'logs', 'SMTP-Clear-Text-Password-%s.txt')
 		self.MSSQLClearLog   = os.path.join(self.ResponderPATH, 'logs', 'MSSQL-Clear-Text-Password-%s.txt')
 
 		self.LDAPNTLMv1Log   = os.path.join(self.ResponderPATH, 'logs', 'LDAP-NTLMv1-Client-%s.txt')
@@ -123,8 +124,9 @@ class Settings:
 		self.Serve_Html       = self.toBool(config.get('HTTP Server', 'Serve-Html'))
 		self.Html_Filename    = config.get('HTTP Server', 'HtmlFilename')
 		self.Exe_Filename     = config.get('HTTP Server', 'ExeFilename')
+		self.Exe_DlName       = config.get('HTTP Server', 'ExeDownloadName')
 		self.WPAD_Script      = config.get('HTTP Server', 'WPADScript')
-		self.HTMLToServe      = config.get('HTTP Server', 'HTMLToServe')
+		self.HtmlToInject     = config.get('HTTP Server', 'HtmlToInject')
 
 		if not os.path.exists(self.Html_Filename):
 			print utils.color("/!\ Warning: %s: file not found" % self.Html_Filename, 3, 1)
@@ -155,8 +157,8 @@ class Settings:
 		self.AnalyzeMode     = options.Analyze
 		self.CommandLine     = str(sys.argv)
 
-		if self.HTMLToServe == None:
-			self.HTMLToServe = ''
+		if self.HtmlToInject == None:
+			self.HtmlToInject = ''
 
 		self.Bind_To = utils.FindLocalIP(self.Interface)
 
@@ -194,5 +196,5 @@ class Settings:
 		self.AnalyzeLogger.addHandler(ALog_Handler)
 
 def init():
-	global Config
+	global Config, Threads
 	Config = Settings()

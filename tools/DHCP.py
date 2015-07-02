@@ -1,7 +1,6 @@
-#! /usr/bin/env python
-# This utility is part of NBT-NS/LLMNR Responder
-# Created by Laurent Gaffie
-# Copyright (C) 2014 Trustwave Holdings, Inc.
+#!/usr/bin/env python
+# This file is part of Responder
+# Original work by Laurent Gaffie - Trustwave Holdings
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -10,12 +9,18 @@
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program. If not, see <http://www.gnu.org/licenses/>.
-import sys,struct,socket,re,optparse,ConfigParser,os
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import sys
+import struct
+import socket
+import re
+import optparse
+import ConfigParser
+import os
 from odict import OrderedDict
 from socket import inet_aton, inet_ntoa
 

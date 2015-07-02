@@ -1,7 +1,6 @@
-#! /usr/bin/env python
-# NBT-NS/LLMNR Responder
-# Created by Laurent Gaffie
-# Copyright (C) 2014 Trustwave Holdings, Inc.
+#!/usr/bin/env python
+# This file is part of Responder
+# Original work by Laurent Gaffie - Trustwave Holdings
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -12,33 +11,23 @@
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
-# 
+#
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import datetime, struct
-import sys,socket,struct
-from socket import *
-from odict import OrderedDict
+import sys
+import os
+import datetime
+import struct
+import socket
 
-class Packet():
-    fields = OrderedDict([
-        ("", ""),
-    ])
-    def __init__(self, **kw):
-        self.fields = OrderedDict(self.__class__.fields)
-        for k,v in kw.items():
-            if callable(v):
-                self.fields[k] = v(self.fields[k])
-            else:
-                self.fields[k] = v
-    def __str__(self):
-        return "".join(map(str, self.fields.values()))
+sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..')))
+from packets import SMBHeader, SMBNego, SMBNegoData
 
 def GetBootTime(data):
     Filetime = int(struct.unpack('<q',data)[0])
     t = divmod(Filetime - 116444736000000000, 10000000)
     time = datetime.datetime.fromtimestamp(t[0])
-    return time, time.strftime('%Y-%m-%d %H:%M:%S')
+    return time, time.strftime('%Y-%m-%d %Header:%M:%S')
 
 
 def IsDCVuln(t):
@@ -53,55 +42,19 @@ def NbtLen(data):
     Len = struct.pack(">i", len(data))
     return Len
 
-from packets import SMBHeader
-"""
-class SMBHeader(Packet):
-    fields = OrderedDict([
-        ("Proto", "\xff\x53\x4d\x42"),
-        ("Cmd", "\x72"),
-        ("Error-Code", "\x00\x00\x00\x00" ),
-        ("Flag1", "\x10"),
-        ("Flag2", "\x00\x00"),
-        ("Pidhigh", "\x00\x00"),
-        ("Signature", "\x00\x00\x00\x00\x00\x00\x00\x00"),
-        ("Reserved", "\x00\x00"),
-        ("TID", "\x00\x00"),
-        ("PID", "\xff\xfe"),
-        ("UID", "\x00\x00"),
-        ("MID", "\x00\x00"),
-    ])
-"""
-
-class SMBNego(Packet):
-    fields = OrderedDict([
-        ("Wordcount", "\x00"),
-        ("Bcc", "\x62\x00"),
-        ("Data", "")
-    ])
-    
-    def calculate(self):
-        self.fields["Bcc"] = struct.pack("<H",len(str(self.fields["Data"])))
-
-class SMBNegoData(Packet):
-    fields = OrderedDict([
-        ("StrType","\x02" ),
-        ("dialect", "NT LM 0.12\x00"),
-        ("StrType1","\x02"),
-        ("dialect1", "SMB 2.002\x00"),
-        ("StrType2","\x02"),
-        ("dialect2", "SMB 2.???\x00"),
-    ])
-
 def run(host):
-    s = socket(AF_INET, SOCK_STREAM)
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.connect(host)  
     s.settimeout(5) 
-    h = SMBHeader(Cmd="\x72",Flag1="\x18",Flag2="\x53\xc8")
-    n = SMBNego(Data = SMBNegoData())
-    n.calculate()
-    packet0 = str(h)+str(n)
-    buffer0 = NbtLen(packet0)+packet0
-    s.send(buffer0)
+
+    Header = SMBHeader(Cmd="\x72",Flag1="\x18",Flag2="\x53\xc8")
+    Nego = SMBNego(Data = SMBNegoData())
+    Nego.calculate()
+
+    Packet = str(Header)+str(Nego)
+    Buffer = NbtLen(Packet)+Packet
+    s.send(Buffer)
+
     try:
         data = s.recv(1024)
         if data[4:5] == "\xff":

@@ -25,13 +25,13 @@ from utils import *
 
 def NBT_NS_Role(data):
 	Role = {
-		"\x41\x41\x00":"Workstation/Redirector Service.",
-		"\x42\x4c\x00":"Domain Master Browser. This name is likely a domain controller or a homegroup.)",
-		"\x42\x4d\x00":"Domain controller service. This name is a domain controller.",
-		"\x42\x4e\x00":"Local Master Browser.",
-		"\x42\x4f\x00":"Browser Election Service.",
-		"\x43\x41\x00":"File Server Service.",
-		"\x41\x42\x00":"Browser Service.",
+		"\x41\x41\x00":"Workstation/Redirector",
+		"\x42\x4c\x00":"Domain Master Browser",
+		"\x42\x4d\x00":"Domain Controller",
+		"\x42\x4e\x00":"Local Master Browser",
+		"\x42\x4f\x00":"Browser Election",
+		"\x43\x41\x00":"File Server",
+		"\x41\x42\x00":"Browser",
 	}
 
 	if data in Role:
@@ -44,15 +44,15 @@ def Validate_NBT_NS(data):
 	if settings.Config.AnalyzeMode:
 		return False
 
-	if NBT_NS_Role(data[43:46]) == "File Server Service.":
+	if NBT_NS_Role(data[43:46]) == "File Server":
 		return True
 
 	if settings.Config.NBTNSDomain == True:
-		if NBT_NS_Role(data[43:46]) == "Domain controller service. This name is a domain controller.":
+		if NBT_NS_Role(data[43:46]) == "Domain Controller":
 			return True
 
 	if settings.Config.Wredirect == True:
-		if NBT_NS_Role(data[43:46]) == "Workstation/Redirector Service.":
+		if NBT_NS_Role(data[43:46]) == "Workstation/Redirector":
 			return True
 
 	else:

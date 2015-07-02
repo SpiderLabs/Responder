@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# This file is part of Responder by Jeremy S - jrm` @ irc.freenode.net
+# This file is part of Responder
 # Original work by Laurent Gaffie - Trustwave Holdings
 #
 # This program is free software: you can redistribute it and/or modify
@@ -33,7 +33,7 @@ def color(txt, code = 1, modifier = 0):
 
 def text(txt):
 	logging.info(txt)
-	return re.sub(r'\[([^]]*)\]', "\033[1;34m[\\1]\033[0m", txt)
+	return '\r'+re.sub(r'\[([^]]*)\]', "\033[1;34m[\\1]\033[0m", txt)
 
 def RespondToThisIP(ClientIp):
 
@@ -174,7 +174,7 @@ def StartupMessage():
 
 	print color("[+] ", 2, 1) + "HTTP Options:"
 	print '    %-27s' % "Always serving EXE" + (enabled if settings.Config.Serve_Always else disabled)
-	print '    %-27s' % "Serving EXE for .exe URLs" + (enabled if settings.Config.Serve_Exe else disabled)
+	print '    %-27s' % "Serving EXE" + (enabled if settings.Config.Serve_Exe else disabled)
 	print '    %-27s' % "Serving HTML" + (enabled if settings.Config.Serve_Html else disabled)
 	print '    %-27s' % "Upstream Proxy" + (enabled if settings.Config.Upstream_Proxy else disabled)
 	#print '    %-27s' % "WPAD script" + settings.Config.WPAD_Script
