@@ -17,29 +17,28 @@
 import os
 import settings
 
+from utils import *
 from SocketServer import BaseRequestHandler
 from packets import FTPPacket
-from utils import *
 
 class FTP(BaseRequestHandler):
-
 	def handle(self):
 		try:
 			self.request.send(str(FTPPacket()))
 			data = self.request.recv(1024)
 
 			if data[0:4] == "USER":
-				User = data[5:].replace("\r\n","")
-				print text("[FTP] Username : ", color(User, 3, 0))
+				User = data[5:].strip()
+				print text("[FTP] Client   : %s" % color(self.client_address[0], 3))
+				print text("[FTP] Username : %s" % color(User, 3))
 
 				Packet = FTPPacket(Code="331",Message="User name okay, need password.")
 				self.request.send(str(Packet))
 				data = self.request.recv(1024)
 
 			if data[0:4] == "PASS":
-				Pass = data[5:].replace("\r\n","")
-
-				print text("[FTP] Password : ", color(Pass, 3, 0))
+				Pass = data[5:].strip()
+				print text("[FTP] Password : %s" % color(Pass, 3))
 
 				Packet = FTPPacket(Code="530",Message="User not logged in.")
 				self.request.send(str(Packet))
