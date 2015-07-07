@@ -93,6 +93,9 @@ class Settings:
 		self.DNS_On_Off      = self.toBool(config.get('Responder Core', 'DNS'))
 		self.Krb_On_Off      = self.toBool(config.get('Responder Core', 'Kerberos'))
 
+		# Db File
+		self.DatabaseFile    = os.path.join(self.ResponderPATH, config.get('Responder Core', 'Database'))
+
 		# Log Files
 		self.SessionLogFile      = os.path.join(self.ResponderPATH, config.get('Responder Core', 'SessionLog'))
 		self.PoisonersLogFile    = os.path.join(self.ResponderPATH, config.get('Responder Core', 'PoisonersLog'))
@@ -155,6 +158,7 @@ class Settings:
 		self.Force_WPAD_Auth = options.Force_WPAD_Auth
 		self.Upstream_Proxy  = options.Upstream_Proxy
 		self.AnalyzeMode     = options.Analyze
+		self.Verbose         = options.Verbose
 		self.CommandLine     = str(sys.argv)
 
 		if self.HtmlToInject == None:
@@ -196,5 +200,5 @@ class Settings:
 		self.AnalyzeLogger.addHandler(ALog_Handler)
 
 def init():
-	global Config, Threads
+	global Config
 	Config = Settings()

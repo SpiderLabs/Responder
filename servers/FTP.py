@@ -29,8 +29,6 @@ class FTP(BaseRequestHandler):
 
 			if data[0:4] == "USER":
 				User = data[5:].strip()
-				print text("[FTP] Client   : %s" % color(self.client_address[0], 3))
-				print text("[FTP] Username : %s" % color(User, 3))
 
 				Packet = FTPPacket(Code="331",Message="User name okay, need password.")
 				self.request.send(str(Packet))
@@ -38,13 +36,24 @@ class FTP(BaseRequestHandler):
 
 			if data[0:4] == "PASS":
 				Pass = data[5:].strip()
-				print text("[FTP] Password : %s" % color(Pass, 3))
 
 				Packet = FTPPacket(Code="530",Message="User not logged in.")
 				self.request.send(str(Packet))
 				data = self.request.recv(1024)
 
-				WriteData(settings.Config.FTPLog % self.client_address[0], User+":"+Pass, User+":"+Pass)
+				SaveToDb({
+					'module': 'FTP', 
+					'type': 'Cleartext', 
+					'client': self.client_address[0], 
+					'user': User, 
+					'cleartext': Pass, 
+					'fullhash': User+':'+Pass
+				})
+
+				#print text("[FTP] Client   : %s" % color(self.client_address[0], 3))
+				#print text("[FTP] Username : %s" % color(User, 3))
+				#print text("[FTP] Password : %s" % color(Pass, 3))
+				#WriteData(settings.Config.FTPLog % self.client_address[0], User+":"+Pass, User+":"+Pass)
 
 			else :
 				Packet = FTPPacket(Code="502",Message="Command not implemented.")

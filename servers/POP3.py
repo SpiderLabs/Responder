@@ -42,10 +42,19 @@ class POP3(BaseRequestHandler):
 			if data[0:4] == "PASS":
 				Pass = data[5:].replace("\r\n","")
 
-				print text("[POP3] Address  : %s" % color(self.client_address[0], 3))
-				print text("[POP3] Username : %s" % color(User, 3))
-				print text("[POP3] Password : %s" % color(Pass, 3))
-				WriteData(settings.Config.POP3Log % self.client_address[0], User+":"+Pass, User+":"+Pass)
+				SaveToDb({
+					'module': 'POP3', 
+					'type': 'Cleartext', 
+					'client': self.client_address[0], 
+					'user': User, 
+					'cleartext': Pass, 
+					'fullhash': User+":"+Pass,
+				})
+
+				#print text("[POP3] Address  : %s" % color(self.client_address[0], 3))
+				#print text("[POP3] Username : %s" % color(User, 3))
+				#print text("[POP3] Password : %s" % color(Pass, 3))
+				#WriteData(settings.Config.POP3Log % self.client_address[0], User+":"+Pass, User+":"+Pass)
 
 				data = self.SendPacketAndRead()
 

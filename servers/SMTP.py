@@ -53,10 +53,19 @@ class ESMTP(BaseRequestHandler):
 							try: Password = b64decode(data)
 							except: Password = data
 
-					print text("[SMTP] Address  : %s" % color(self.client_address[0], 3))
-					print text("[SMTP] Username : %s" % color(Username, 3))
-					print text("[SMTP] Password : %s" % color(Password, 3))
-					WriteData(settings.Config.SMTPClearLog % self.client_address[0], Username+":"+Password, Username+":"+Password)
+					SaveToDb({
+						'module': 'SMTP', 
+						'type': 'Cleartext', 
+						'client': self.client_address[0], 
+						'user': Username, 
+						'cleartext': Password, 
+						'fullhash': Username+":"+Password,
+					})
+
+					#print text("[SMTP] Address  : %s" % color(self.client_address[0], 3))
+					#print text("[SMTP] Username : %s" % color(Username, 3))
+					#print text("[SMTP] Password : %s" % color(Password, 3))
+					#WriteData(settings.Config.SMTPClearLog % self.client_address[0], Username+":"+Password, Username+":"+Password)
 
 					## FIXME: Close connection properly
 

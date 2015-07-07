@@ -122,9 +122,20 @@ class KerbTCP(BaseRequestHandler):
 			KerbHash = ParseMSKerbv5TCP(data)
 
 			if KerbHash:
-				print text("[KERBEROS] Address       :" % self.client_address[0])
-				print text("[KERBEROS] MSKerbv5 Hash :" % KerbHash)
-				WriteData(settings.Config.KerberosLog % self.client_address[0], KerbHash, KerbHash)
+				(n, krb, v, name, domain, d, h) = KerbHash.split('$')
+
+				SaveToDb({
+					'module': 'KERB',
+					'type': 'MSKerbv5',
+					'client': self.client_address[0],
+					'user': domain+'\\'+name,
+					'hash': h,
+					'fullhash': KerbHash,
+				})
+
+				#print text("[KERBEROS] Address       :" % self.client_address[0])
+				#print text("[KERBEROS] MSKerbv5 Hash :" % KerbHash)
+				#WriteData(settings.Config.KerberosLog % self.client_address[0], KerbHash, KerbHash)
 
 		except Exception:
 			raise
@@ -137,9 +148,20 @@ class KerbUDP(BaseRequestHandler):
 			KerbHash = ParseMSKerbv5UDP(data)
 			
 			if KerbHash:
-				print text("[KERBEROS] Address       :" % self.client_address[0])
-				print text("[KERBEROS] MSKerbv5 Hash :" % KerbHash)
-				WriteData(settings.Config.KerberosLog % self.client_address[0], KerbHash, KerbHash)
+				(n, krb, v, name, domain, d, h) = KerbHash.split('$')
+
+				SaveToDb({
+					'module': 'KERB',
+					'type': 'MSKerbv5',
+					'client': self.client_address[0],
+					'user': domain+'\\'+name,
+					'hash': h,
+					'fullhash': KerbHash,
+				})
+
+				#print text("[KERBEROS] Address       :" % self.client_address[0])
+				#print text("[KERBEROS] MSKerbv5 Hash :" % KerbHash)
+				#WriteData(settings.Config.KerberosLog % self.client_address[0], KerbHash, KerbHash)
 
 		except Exception:
 			raise

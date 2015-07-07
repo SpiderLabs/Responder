@@ -19,7 +19,14 @@ import sys
 import re
 import logging
 import socket
+import time
 import settings
+
+try:
+	import sqlite3
+except:
+	print "[!] Please install python-sqlite3 extension."
+	sys.exit(0)
 
 def color(txt, code = 1, modifier = 0):
 
@@ -114,6 +121,66 @@ def WriteData(outfile, data, user):
 			outf2.write(data)
 			outf2.write("\n")
 			outf2.close()
+
+# Return true if the data is to be printed, else false
+def SaveToDb(result):
+
+	# Creating the DB if it doesn't exist
+	if not os.path.exists(settings.Config.DatabaseFile):
+		cursor = sqlite3.connect(settings.Config.DatabaseFile)
+		cursor.execute('CREATE TABLE responder (timestamp varchar(32), module varchar(16), type varchar(16), client varchar(32), hostname varchar(32), user varchar(32), cleartext varchar(128), hash varchar(512), fullhash varchar(512))')
+		cursor.commit()
+		cursor.close()
+
+	for k in [ 'module', 'type', 'client', 'hostname', 'user', 'cleartext', 'hash', 'fullhash' ]:
+		if not k in result:
+			result[k] = ''
+
+	if len(result['user']) < 2:
+		return
+
+	if len(result['cleartext']):
+		fname = '%s-%s-ClearText-%s.txt' % (result['module'], result['type'], result['client'])
+	else:
+		fname = '%s-%s-%s.txt' % (result['module'], result['type'], result['client'])
+	
+	timestamp = time.strftime("%d-%m-%Y %H:%M:%S")
+	logfile = os.path.join(settings.Config.ResponderPATH, 'logs', fname)
+
+	cursor = sqlite3.connect(settings.Config.DatabaseFile)
+	res = cursor.execute("SELECT COUNT(*) AS count FROM responder WHERE module=? AND type=? AND LOWER(user)=LOWER(?)", (result['module'], result['type'], result['user']))
+	(count,) = res.fetchone()
+
+	if count == 0:
+		
+		# Write JtR-style hash string to file
+		with open(logfile,"a") as outf:
+			outf.write(result['fullhash'])
+			outf.write("\n")
+			outf.close()
+
+		# Update database
+		cursor.execute("INSERT INTO responder VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", (timestamp, result['module'], result['type'], result['client'], result['hostname'], result['user'], result['cleartext'], result['hash'], result['fullhash']))
+		cursor.commit()
+
+	cursor.close()
+
+	# Print output
+	if count == 0 or settings.Config.Verbose:
+
+		if len(result['client']):
+			print text("[%s] %s Client   : %s" % (result['module'], result['type'], color(result['client'], 3)))
+		if len(result['hostname']):
+			print text("[%s] %s Hostname : %s" % (result['module'], result['type'], color(result['hostname'], 3)))
+		if len(result['user']):
+			print text("[%s] %s Username : %s" % (result['module'], result['type'], color(result['user'], 3)))
+		if len(result['cleartext']):
+			print text("[%s] %s Password : %s" % (result['module'], result['type'], color(result['cleartext'], 3)))
+		if len(result['hash']):
+			print text("[%s] %s Hash     : %s" % (result['module'], result['type'], color(result['hash'], 3)))
+	else:
+		print color('[*]', 2, 1), 'Skipping previously captured hash for %s' % result['user']
+
 
 def Parse_IPV6_Addr(data):
 

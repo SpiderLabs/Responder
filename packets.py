@@ -252,8 +252,10 @@ class IIS_Basic_401_Ans(Packet):
 		("ServerType",    "Server: Microsoft-IIS/6.0\r\n"),
 		("Date",          "Date: Wed, 12 Sep 2012 13:06:55 GMT\r\n"),
 		("Type",          "Content-Type: text/html\r\n"),
-		("WWW-Auth",      "WWW-Authenticate: Basic realm=''\r\n"),
+		("WWW-Auth",      "WWW-Authenticate: Basic realm=\"Authentication Required\"\r\n"),
 		("PoweredBy",     "X-Powered-By: ASP.NET\r\n"),
+		("AllowOrigin",   "Access-Control-Allow-Origin: *\r\n"),
+		("AllowCreds",    "Access-Control-Allow-Credentials: true\r\n"),
 		("Len",           "Content-Length: 0\r\n"), 
 		("CRLF",          "\r\n"),                               
 	])
@@ -262,7 +264,7 @@ class IIS_Basic_401_Ans(Packet):
 class WPADScript(Packet):
 	fields = OrderedDict([
 		("Code",          "HTTP/1.1 200 OK\r\n"),
-		("ServerType",    "Server: Microsoft-IIS/6.0\r\n"),
+		("ServerTlype",    "Server: Microsoft-IIS/6.0\r\n"),
 		("Date",          "Date: Wed, 12 Sep 2012 13:06:55 GMT\r\n"),
 		("Type",          "Content-Type: application/x-ns-proxy-autoconfig\r\n"),
 		("PoweredBy",     "X-Powered-By: ASP.NET\r\n"),

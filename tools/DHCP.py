@@ -333,7 +333,9 @@ if __name__ == "__main__":
 				SrcIP, SrcPort, DstIP, DstPort = ParseSrcDSTAddr(data)
 
 				if SrcPort == 67 or DstPort == 67:
-					print text("[DHCP] %s" % ParseDHCPCode(data[0][42:]))
+					ret = ParseDHCPCode(data[0][42:])
+					if ret:
+						print text("[DHCP] %s" % ret)
 
 		except KeyboardInterrupt:
 			sys.exit("\r%s Exiting..." % color('[*]', 2, 1))

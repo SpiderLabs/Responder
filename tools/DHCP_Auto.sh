@@ -57,4 +57,6 @@ echo "DNS2 IP: $DNS2"
 echo "WPAD: $WPADSTR"
 echo ""
 
+
+echo python DHCP.py -I $INTF -r $ROUTER -p $DNS1 -s $DNS2 -n $NETMASK -d \"$DOMAIN\" -w \"$WPADSTR\"
 python DHCP.py -I $INTF -r $ROUTER -p $DNS1 -s $DNS2 -n $NETMASK -d \"$DOMAIN\" -w \"$WPADSTR\"

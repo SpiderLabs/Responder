@@ -54,14 +54,24 @@ def ParseLDAPHash(data, client):
 		UserOffset   = struct.unpack('<H',data[82:84])[0]
 		User         = SSPIStart[UserOffset:UserOffset+UserLen].replace('\x00','')
 
-		print text("[LDAP] NTLMv1 Address  : %s" % client)
-		print text("[LDAP] NTLMv1 Username : %s\\%s" % (Domain, User))
-		print text("[LDAP] NTLMv1 Hash     : %s" % NtHash)
+		WriteHash    = User+"::"+Domain+":"+LMHash+":"+NtHash+":"+settings.Config.NumChal
 
-		WriteHash = User+"::"+Domain+":"+LMHash+":"+NtHash+":"+settings.Config.NumChal
-		WriteData(settings.Config.LDAPNTLMv1Log % client, WriteHash, User+"::"+Domain)
+		SaveToDb({
+			'module': 'LDAP',
+			'type': 'NTLMv1',
+			'client': client,
+			'user': Domain+'\\'+User,
+			'hash': NtHash,
+			'fullhash': WriteHash,
+		})
+
+		#print text("[LDAP] NTLMv1 Address  : %s" % client)
+		#print text("[LDAP] NTLMv1 Username : %s\\%s" % (Domain, User))
+		#print text("[LDAP] NTLMv1 Hash     : %s" % NtHash)
+		#WriteHash = User+"::"+Domain+":"+LMHash+":"+NtHash+":"+settings.Config.NumChal
+		#WriteData(settings.Config.LDAPNTLMv1Log % client, WriteHash, User+"::"+Domain)
 	
-	if LMhashLen < 2 :
+	if LMhashLen < 2 and settings.Config.Verbose:
 		print text("[LDAP] Ignoring anonymous NTLM authentication")
 
 def ParseNTLM(data,client):
@@ -93,14 +103,23 @@ def ParseLDAPPacket(data, client):
 			AuthHeaderType = data[20+UserDomainLen:20+UserDomainLen+1]
 
 			if AuthHeaderType == "\x80":
-				PassLen  = struct.unpack('<b',data[20+UserDomainLen+1:20+UserDomainLen+2])[0]
-				Password = data[20+UserDomainLen+2:20+UserDomainLen+2+PassLen]
+				PassLen   = struct.unpack('<b',data[20+UserDomainLen+1:20+UserDomainLen+2])[0]
+				Password  = data[20+UserDomainLen+2:20+UserDomainLen+2+PassLen]
 
-				print text("[LDAP] Client   : %s" % color(client, 3, 0))
-				print text("[LDAP] Username : %s" % color(UserDomain, 3, 0))
-				print text("[LDAP] Password : %s" % color(Password, 3, 0))
-				WritePass = '%s: %s:%s' % (client, UserDomain, Password)
-				WriteData(settings.Config.LDAPClearLog % client, WritePass, WritePass)
+				SaveToDb({
+					'module': 'LDAP',
+					'type': 'Cleartext',
+					'client': client,
+					'user': UserDomain,
+					'cleartext': Password,
+					'fullhash': UserDomain+':'+Password,
+				})
+
+				#print text("[LDAP] Client   : %s" % color(client, 3, 0))
+				#print text("[LDAP] Username : %s" % color(UserDomain, 3, 0))
+				#print text("[LDAP] Password : %s" % color(Password, 3, 0))
+				#WritePass = '%s: %s:%s' % (client, UserDomain, Password)
+				#WriteData(settings.Config.LDAPClearLog % client, WritePass, WritePass)
 			
 			if sasl == "\xA3":
 				Buffer = ParseNTLM(data,client)
@@ -111,7 +130,8 @@ def ParseLDAPPacket(data, client):
 			return Buffer
 		
 		else:
-			print text('[LDAP] Operation not supported')
+			if settings.Config.Verbose:
+				print text('[LDAP] Operation not supported')
 
 # LDAP Server class
 class LDAP(BaseRequestHandler):

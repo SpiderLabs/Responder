@@ -59,6 +59,7 @@ docs/_build/
 target/
 
 # Responder logs
+*.db
 *.txt
 *.log
 logs/*

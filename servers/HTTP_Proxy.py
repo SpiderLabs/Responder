@@ -24,6 +24,8 @@ import BaseHTTPServer
 from servers.HTTP import RespondWithFile
 from utils import *
 
+IgnoredDomains = [ 'crl.comodoca.com', 'crl.usertrust.com', 'ocsp.comodoca.com', 'ocsp.usertrust.com', 'www.download.windowsupdate.com', 'crl.microsoft.com' ]
+
 def InjectData(data, client, req_uri):
 
 	# Serve the .exe if needed
@@ -57,8 +59,10 @@ def InjectData(data, client, req_uri):
 			Len = ''.join(re.findall('(?<=Content-Length: )[^\r\n]*', Headers))
 			HasBody = re.findall('(<body[^>]*>)', Content)
 
-			if HasBody:
-				print text("[PROXY] Injecting into HTTP Response: %s" % color(settings.Config.HtmlToInject, 3, 1))
+			if HasBody and len(settings.Config.HtmlToInject) > 2:
+
+				if settings.Config.Verbose:
+					print text("[PROXY] Injecting into HTTP Response: %s" % color(settings.Config.HtmlToInject, 3, 1))
 
 				Content = Content.replace(HasBody[0], '%s\n%s' % (HasBody[0], settings.Config.HtmlToInject))
 				Headers = Headers.replace("Content-Length: "+Len, "Content-Length: "+ str(len(Content)))
@@ -68,8 +72,9 @@ def InjectData(data, client, req_uri):
 
 		data = Headers +'\r\n'+ Content
 
-	#else:
-	#	print text("[PROXY] Returning unmodified HTTP response")
+	else:
+		if settings.Config.Verbose:
+			print text("[PROXY] Returning unmodified HTTP response")
 
 	return data
 
@@ -204,7 +209,8 @@ class HTTP_Proxy(BaseHTTPServer.BaseHTTPRequestHandler):
 
 	def handle(self):
 		(ip, port) =  self.client_address
-		print text("[PROXY] Received connection from %s" % self.client_address[0])
+		if settings.Config.Verbose:
+			print text("[PROXY] Received connection from %s" % self.client_address[0])
 		self.__base_handle()
 
 	def _connect_to(self, netloc, soc):
@@ -255,6 +261,10 @@ class HTTP_Proxy(BaseHTTPServer.BaseHTTPRequestHandler):
 	def do_GET(self):
 		(scm, netloc, path, params, query, fragment) = urlparse.urlparse(self.path, 'http')
 
+		if netloc in IgnoredDomains:
+			#self.send_error(200, "OK")
+			return
+
 		if scm not in ('http') or fragment or not netloc:
 			self.send_error(400, "bad url %s" % self.path)
 			return
@@ -272,15 +282,18 @@ class HTTP_Proxy(BaseHTTPServer.BaseHTTPRequestHandler):
 
 				Cookie = self.headers['Cookie'] if "Cookie" in self.headers else ''
 
-				print text("[PROXY] Client        : %s" % color(self.client_address[0], 3))
-				print text("[PROXY] Requested URL : %s" % color(self.path, 3))
-				print text("[PROXY] Cookie        : %s" % Cookie)
+				if settings.Config.Verbose:
+					print text("[PROXY] Client        : %s" % color(self.client_address[0], 3))
+					print text("[PROXY] Requested URL : %s" % color(self.path, 3))
+					print text("[PROXY] Cookie        : %s" % Cookie)
 
 				self.headers['Connection'] = 'close'
 				del self.headers['Proxy-Connection']
+				del self.headers['If-Range']
+				del self.headers['Range']
 				
-				for key_val in self.headers.items():
-					soc.send("%s: %s\r\n" % key_val)
+				for k, v in self.headers.items():
+					soc.send("%s: %s\r\n" % (k.title(), v))
 				soc.send("\r\n")
 
 				try:
@@ -315,7 +328,7 @@ class HTTP_Proxy(BaseHTTPServer.BaseHTTPRequestHandler):
 						out = soc
 						data = i.recv(4096)
 
-						if self.command == "POST":
+						if self.command == "POST" and settings.Config.Verbose:
 							print text("[PROXY] POST Data     : %s" % data)
 					if data:
 						try:

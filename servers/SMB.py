@@ -89,58 +89,78 @@ def ParseShare(data):
 	packet = data[:]
 	a = re.search('(\\x5c\\x00\\x5c.*.\\x00\\x00\\x00)', packet)
 	if a:
-		print text("[SMB] Requested Share       : %s" % a.group(0).replace('\x00', ''))
+		print text("[SMB] Requested Share     : %s" % a.group(0).replace('\x00', ''))
 
 #Parse SMB NTLMSSP v1/v2
 def ParseSMBHash(data,client):
 	SecBlobLen = struct.unpack('<H',data[51:53])[0]
-	BccLen = struct.unpack('<H',data[61:63])[0]
+	BccLen     = struct.unpack('<H',data[61:63])[0]
 
 	if SecBlobLen < 260:
-		SSPIStart = data[75:]
-		LMhashLen = struct.unpack('<H',data[89:91])[0]
+		SSPIStart    = data[75:]
+		LMhashLen    = struct.unpack('<H',data[89:91])[0]
 		LMhashOffset = struct.unpack('<H',data[91:93])[0]
-		LMHash = SSPIStart[LMhashOffset:LMhashOffset+LMhashLen].encode("hex").upper()
-		NthashLen = struct.unpack('<H',data[97:99])[0]
+		LMHash       = SSPIStart[LMhashOffset:LMhashOffset+LMhashLen].encode("hex").upper()
+		NthashLen    = struct.unpack('<H',data[97:99])[0]
 		NthashOffset = struct.unpack('<H',data[99:101])[0]
 
 	else:
-		SSPIStart = data[79:]
-		LMhashLen = struct.unpack('<H',data[93:95])[0]
+		SSPIStart    = data[79:]
+		LMhashLen    = struct.unpack('<H',data[93:95])[0]
 		LMhashOffset = struct.unpack('<H',data[95:97])[0]
-		LMHash = SSPIStart[LMhashOffset:LMhashOffset+LMhashLen].encode("hex").upper()
-		NthashLen = struct.unpack('<H',data[101:103])[0]
+		LMHash       = SSPIStart[LMhashOffset:LMhashOffset+LMhashLen].encode("hex").upper()
+		NthashLen    = struct.unpack('<H',data[101:103])[0]
 		NthashOffset = struct.unpack('<H',data[103:105])[0]
 
 	if NthashLen == 24:
-		SMBHash = SSPIStart[NthashOffset:NthashOffset+NthashLen].encode("hex").upper()
-		DomainLen = struct.unpack('<H',data[105:107])[0]
+		SMBHash      = SSPIStart[NthashOffset:NthashOffset+NthashLen].encode("hex").upper()
+		DomainLen    = struct.unpack('<H',data[105:107])[0]
 		DomainOffset = struct.unpack('<H',data[107:109])[0]
-		Domain = SSPIStart[DomainOffset:DomainOffset+DomainLen].replace('\x00','')
-		UserLen = struct.unpack('<H',data[113:115])[0]
-		UserOffset = struct.unpack('<H',data[115:117])[0]
-		Username = SSPIStart[UserOffset:UserOffset+UserLen].replace('\x00','')
+		Domain       = SSPIStart[DomainOffset:DomainOffset+DomainLen].replace('\x00','')
+		UserLen      = struct.unpack('<H',data[113:115])[0]
+		UserOffset   = struct.unpack('<H',data[115:117])[0]
+		Username     = SSPIStart[UserOffset:UserOffset+UserLen].replace('\x00','')
+		WriteHash    = '%s::%s:%s:%s:%s' % (Username, Domain, LMHash, SMBHash, settings.Config.NumChal)
 
-		print text("[SMB] NTLMv1 (SSP) Address  : %s" % client)
-		print text("[SMB] NTLMv1 (SSP) Username : %s\\%s" % (Domain, Username))
-		print text("[SMB] NTLMv1 (SSP) Hash     : %s" % SMBHash)
-		WriteHash = '%s::%s:%s:%s:%s' % (Username, Domain, LMHash, SMBHash, settings.Config.NumChal)
-		WriteData(settings.Config.SMBNTLMSSPv1Log % client, WriteHash, Username+"::"+Domain)
+		SaveToDb({
+			'module': 'SMB', 
+			'type': 'NTLMv1-SSP', 
+			'client': client, 
+			'user': Domain+'\\'+Username, 
+			'hash': SMBHash, 
+			'fullhash': WriteHash,
+		})
+
+		#print text("[SMB] NTLMv1 (SSP) Address  : %s" % client)
+		#print text("[SMB] NTLMv1 (SSP) Username : %s\\%s" % (Domain, Username))
+		#print text("[SMB] NTLMv1 (SSP) Hash     : %s" % SMBHash)
+		#WriteHash = '%s::%s:%s:%s:%s' % (Username, Domain, LMHash, SMBHash, settings.Config.NumChal)
+		#WriteData(settings.Config.SMBNTLMSSPv1Log % client, WriteHash, Username+"::"+Domain)
 
 	if NthashLen > 60:
-		SMBHash = SSPIStart[NthashOffset:NthashOffset+NthashLen].encode("hex").upper()
-		DomainLen = struct.unpack('<H',data[109:111])[0]
+		SMBHash      = SSPIStart[NthashOffset:NthashOffset+NthashLen].encode("hex").upper()
+		DomainLen    = struct.unpack('<H',data[109:111])[0]
 		DomainOffset = struct.unpack('<H',data[111:113])[0]
-		Domain = SSPIStart[DomainOffset:DomainOffset+DomainLen].replace('\x00','')
-		UserLen = struct.unpack('<H',data[117:119])[0]
-		UserOffset = struct.unpack('<H',data[119:121])[0]
-		Username = SSPIStart[UserOffset:UserOffset+UserLen].replace('\x00','')
+		Domain       = SSPIStart[DomainOffset:DomainOffset+DomainLen].replace('\x00','')
+		UserLen      = struct.unpack('<H',data[117:119])[0]
+		UserOffset   = struct.unpack('<H',data[119:121])[0]
+		Username     = SSPIStart[UserOffset:UserOffset+UserLen].replace('\x00','')
+		WriteHash    = '%s::%s:%s:%s:%s' % (Username, Domain, settings.Config.NumChal, SMBHash[:32], SMBHash[32:])
 
-		print text("[SMB] NTLMv2 (SSP) Address  : %s" % client)
-		print text("[SMB] NTLMv2 (SSP) Username : %s\\%s" % (Domain, Username))
-		print text("[SMB] NTLMv2 (SSP) Hash     : %s" % SMBHash)
-		WriteHash = '%s::%s:%s:%s:%s' % (Username, Domain, settings.Config.NumChal, SMBHash[:32], SMBHash[32:])
-		WriteData(settings.Config.SMBNTLMSSPv2Log % client, WriteHash, Username+"::"+Domain)
+		SaveToDb({
+			'module': 'SMB', 
+			'type': 'NTLMv2-SSP', 
+			'client': client, 
+			'user': Domain+'\\'+Username, 
+			'hash': SMBHash, 
+			'fullhash': WriteHash,
+		})
+
+		#print text("[SMB] NTLMv2 (SSP) Address  : %s" % client)
+		#print text("[SMB] NTLMv2 (SSP) Username : %s\\%s" % (Domain, Username))
+		#print text("[SMB] NTLMv2 (SSP) Hash     : %s" % SMBHash)
+		#WriteHash = '%s::%s:%s:%s:%s' % (Username, Domain, settings.Config.NumChal, SMBHash[:32], SMBHash[32:])
+		#WriteData(settings.Config.SMBNTLMSSPv2Log % client, WriteHash, Username+"::"+Domain)
 
 # Parse SMB NTLMv1/v2
 def ParseLMNTHash(data, client):
@@ -205,11 +225,14 @@ class SMB1(BaseRequestHandler):
 				if data[0] == "\x81":
 					Buffer = "\x82\x00\x00\x00"
 					self.request.send(Buffer)
-					data = self.request.recv(1024)
+					try:
+						data = self.request.recv(1024)
+					except:
+						pass
 
-				##Negotiate proto answer.
+				# Negociate Protocol Response
 				if data[8:10] == "\x72\x00":
-					#Customize SMB answer.
+					# \x72 == Negociate Protocol Response
 					Header = SMBHeader(cmd="\x72",flag1="\x88", flag2="\x01\xc8", pid=pidcalc(data),mid=midcalc(data))
 					Body = SMBNegoKerbAns(Dialect=Parse_Nego_Dialect(data))
 					Body.calculate()
@@ -220,10 +243,11 @@ class SMB1(BaseRequestHandler):
 					self.request.send(Buffer)
 					data = self.request.recv(1024)
 
-				##Session Setup AndX Request
+				# Session Setup AndX Request
 				if data[8:10] == "\x73\x00":
 					IsNT4ClearTxt(data, self.client_address[0])
 					
+					# STATUS_MORE_PROCESSING_REQUIRED
 					Header = SMBHeader(cmd="\x73",flag1="\x88", flag2="\x01\xc8", errorcode="\x16\x00\x00\xc0", uid=chr(randrange(256))+chr(randrange(256)),pid=pidcalc(data),tid="\x00\x00",mid=midcalc(data))
 					Body = SMBSession1Data(NTLMSSPNtServerChallenge=settings.Config.Challenge)
 					Body.calculate()
@@ -234,6 +258,7 @@ class SMB1(BaseRequestHandler):
 					self.request.send(Buffer)
 					data = self.request.recv(4096)
 
+					# STATUS_SUCCESS
 					if data[8:10] == "\x73\x00":
 						if Is_Anonymous(data):
 							Header = SMBHeader(cmd="\x73",flag1="\x98", flag2="\x01\xc8",errorcode="\x72\x00\x00\xc0",pid=pidcalc(data),tid="\x00\x00",uid=uidcalc(data),mid=midcalc(data))###should always send errorcode="\x72\x00\x00\xc0" account disabled for anonymous logins.
@@ -245,7 +270,10 @@ class SMB1(BaseRequestHandler):
 							self.request.send(Buffer)
 
 						else:
+							# Parse NTLMSSP_AUTH packet
 							ParseSMBHash(data,self.client_address[0])
+
+							# Send STATUS_SUCCESS
 							Header = SMBHeader(cmd="\x73",flag1="\x98", flag2="\x01\xc8", errorcode="\x00\x00\x00\x00",pid=pidcalc(data),tid=tidcalc(data),uid=uidcalc(data),mid=midcalc(data))
 							Body = SMBSession2Accept()
 							Body.calculate()
@@ -256,9 +284,10 @@ class SMB1(BaseRequestHandler):
 							self.request.send(Buffer)
 							data = self.request.recv(1024)
 				
-				##Tree Connect IPC Answer
+				# Tree Connect AndX Request
 				if data[8:10] == "\x75\x00":
 					ParseShare(data)
+					# Tree Connect AndX Response
 					Header = SMBHeader(cmd="\x75",flag1="\x88", flag2="\x01\xc8", errorcode="\x00\x00\x00\x00", pid=pidcalc(data), tid=chr(randrange(256))+chr(randrange(256)), uid=uidcalc(data), mid=midcalc(data))
 					Body = SMBTreeData()
 					Body.calculate()
@@ -268,7 +297,7 @@ class SMB1(BaseRequestHandler):
 
 					self.request.send(Buffer)
 					data = self.request.recv(1024)
-				
+
 				##Tree Disconnect.
 				if data[8:10] == "\x71\x00":
 					Header = SMBHeader(cmd="\x71",flag1="\x98", flag2="\x07\xc8", errorcode="\x00\x00\x00\x00",pid=pidcalc(data),tid=tidcalc(data),uid=uidcalc(data),mid=midcalc(data))

