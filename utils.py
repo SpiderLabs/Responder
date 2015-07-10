@@ -122,7 +122,6 @@ def WriteData(outfile, data, user):
 			outf2.write("\n")
 			outf2.close()
 
-# Return true if the data is to be printed, else false
 def SaveToDb(result):
 
 	# Creating the DB if it doesn't exist
