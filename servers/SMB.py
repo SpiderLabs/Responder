@@ -174,22 +174,42 @@ def ParseLMNTHash(data, client):
 		FullHash = data[65+LMhashLen:65+LMhashLen+NthashLen].encode('hex')
 		LmHash = FullHash[:32].upper()
 		NtHash = FullHash[32:].upper()
-	
-		print text("[SMB] NTLMv2 Address  : %s" % client)
-		print text("[SMB] NTLMv2 Username : %s\\%s" % (Domain, Username))
-		print text("[SMB] NTLMv2 Hash     : %s" % NtHash)
 		WriteHash = '%s::%s:%s:%s:%s' % (Username, Domain, settings.Config.NumChal, LmHash, NtHash)
-		WriteData(settings.Config.SMBNTLMv2Log % client, WriteHash, Username+"::"+Domain)
+	
+		SaveToDb({
+			'module': 'SMB', 
+			'type': 'NTLMv2', 
+			'client': client, 
+			'user': Domain+'\\'+Username, 
+			'hash': NtHash, 
+			'fullhash': WriteHash,
+		})
+
+		#print text("[SMB] NTLMv2 Address  : %s" % client)
+		#print text("[SMB] NTLMv2 Username : %s\\%s" % (Domain, Username))
+		#print text("[SMB] NTLMv2 Hash     : %s" % NtHash)
+		#WriteHash = '%s::%s:%s:%s:%s' % (Username, Domain, settings.Config.NumChal, LmHash, NtHash)
+		#WriteData(settings.Config.SMBNTLMv2Log % client, WriteHash, Username+"::"+Domain)
 
 	if NthashLen == 24:
 		NtHash = data[65+LMhashLen:65+LMhashLen+NthashLen].encode('hex').upper()
 		LmHash = data[65:65+LMhashLen].encode('hex').upper()
-
-		print text("[SMB] NTLMv1 Address  : %s" % client)
-		print text("[SMB] NTLMv1 Username : %s\\%s" % (Domain, Username))
-		print text("[SMB] NTLMv1 Hash     : %s" % NtHash)
 		WriteHash = '%s::%s:%s:%s:%s' % (Username, Domain, LmHash, NtHash, settings.Config.NumChal)
-		WriteData(settings.Config.SMBNTLMv1Log % client, WriteHash, Username+"::"+Domain)
+
+		SaveToDb({
+			'module': 'SMB', 
+			'type': 'NTLMv1', 
+			'client': client, 
+			'user': Domain+'\\'+Username, 
+			'hash': NtHash, 
+			'fullhash': WriteHash,
+		})
+
+		#print text("[SMB] NTLMv1 Address  : %s" % client)
+		#print text("[SMB] NTLMv1 Username : %s\\%s" % (Domain, Username))
+		#print text("[SMB] NTLMv1 Hash     : %s" % NtHash)
+		#WriteHash = '%s::%s:%s:%s:%s' % (Username, Domain, LmHash, NtHash, settings.Config.NumChal)
+		#WriteData(settings.Config.SMBNTLMv1Log % client, WriteHash, Username+"::"+Domain)
 
 def IsNT4ClearTxt(data, client):
 	HeadLen = 36

@@ -68,7 +68,7 @@ def InjectData(data, client, req_uri):
 				Headers = Headers.replace("Content-Length: "+Len, "Content-Length: "+ str(len(Content)))
 
 		if "content-encoding: gzip" in Headers.lower():
-			Content = zlib.compress(lContent)
+			Content = zlib.compress(Content)
 
 		data = Headers +'\r\n'+ Content
 
