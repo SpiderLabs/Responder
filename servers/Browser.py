@@ -34,7 +34,7 @@ def WorkstationFingerPrint(data):
 		"\x06\x01"    :"Windows 7/Server 2008R2",
 	}
 
-	return Role[data] if data in Role else False
+	return Role[data] if data in Role else "Unknown"
 
 def RequestType(data):
 	Type = {
@@ -50,24 +50,28 @@ def RequestType(data):
 		"\x0f": 'Local Master Announcement',
 	}
 
-	return Type[data] if data in Type else False
+	return Type[data] if data in Type else "Unknown"
 
 def PrintServerName(data, entries):
-	if entries == 0:
-		pass
+	if entries > 0:
 
-	else:
 		entrieslen = 26*entries
 		chunks, chunk_size = len(data[:entrieslen]), entrieslen/entries
-		ServerName = [data[i:i+chunk_size] for i in range(0, chunks, chunk_size) ]
+		ServerName = [data[i:i+chunk_size] for i in range(0, chunks, chunk_size)]
+
 		l = []
 		for x in ServerName:
-			if WorkstationFingerPrint(x[16:18]):
-				l.append(x[:16].replace('\x00', '') + '\n       [-] Os version is: %s'%(WorkstationFingerPrint(x[16:18])))
+			FP   = WorkstationFingerPrint(x[16:18])
+			Name = x[:16].replace('\x00', '')
+
+			if FP:
+				l.append(Name + ' (%s)' % FP)
 			else:
-				l.append(x[:16].replace('\x00', ''))
+				l.append(Name)
 
 		return l
+
+	return None
 
 def ParsePacket(Payload):
 	PayloadOffset = struct.unpack('<H',Payload[51:53])[0]
@@ -75,38 +79,23 @@ def ParsePacket(Payload):
 
 	if StatusCode == "\x00\x00":
 		EntriesNum = struct.unpack('<H',Payload[PayloadOffset:PayloadOffset+2])[0]
-		ParsedNames = PrintServerName(Payload[PayloadOffset+4:], EntriesNum)
-		return ParsedNames
+		return PrintServerName(Payload[PayloadOffset+4:], EntriesNum)
 
 	else:
 		return None
 
-def RAPThisDomain(Client,Domain):
-	try:
-		l = []
-		for x in range(1):
-			PDC = RapFinger(Client,Domain,"\x00\x00\x00\x80")
-			if PDC is not None:
-				l.append('[Analyze mode LANMAN] ')
-				l.append('[*] Domain detected on this network:')
-				for x in PDC:
-					l.append('   - '+x)
-			SQL = RapFinger(Client,Domain,"\x04\x00\x00\x00")
-			if SQL is not None:
-				l.append('[*] SQL Server detected on Domain %s:'%(Domain))
-				for x in SQL:
-					l.append('   - '+x)
-			WKST = RapFinger(Client,Domain,"\xff\xff\xff\xff")
+def RAPThisDomain(Client,Domain):		
+	PDC = RapFinger(Client,Domain,"\x00\x00\x00\x80")
+	if PDC is not None:
+		print text("[LANMAN] Detected Domains: %s" % ', '.join(PDC))
+	
+	SQL = RapFinger(Client,Domain,"\x04\x00\x00\x00")
+	if SQL is not None:
+		print text("[LANMAN] Detected SQL Servers on domain %s: %s" % (Domain, ', '.join(SQL)))
 
-			if WKST is not None:
-				l.append('[*] Workstations/Servers detected on Domain %s:'%(Domain))
-				for x in WKST:
-					l.append('   - '+x)
-			else:
-				pass
-			return text('\n'.join(l))
-	except:
-		pass
+	WKST = RapFinger(Client,Domain,"\xff\xff\xff\xff")
+	if WKST is not None:
+		print text("[LANMAN] Detected Workstations/Servers on domain %s: %s" % (Domain, ', '.join(WKST)))
 
 def RapFinger(Host, Domain, Type):
 	try:
@@ -165,7 +154,7 @@ def RapFinger(Host, Domain, Type):
 						s.close()
 						return ParsePacket(data)
 	except:
-		return None
+		pass
 
 def BecomeBackup(data,Client):
 	try:
@@ -194,10 +183,9 @@ def ParseDatagramNBTNames(data,Client):
 		Role2  = NBT_NS_Role(data[79:82])
 
 	
-		if Role2 == "Domain controller service. This name is a domain controller." or Role2 == "Browser Election Service." or Role2 == "Local Master Browser.":
-			if settings.Config.AnalyzeMode:
-				print text('[Analyze mode: Browser] Datagram Request from IP: %s hostname: %s via the: %s to: %s. Service: %s'%(Client, Name, Role1, Domain, Role2))
-				print RAPThisDomain(Client, Domain)
+		if Role2 == "Domain Controller" or Role2 == "Browser Election" or Role2 == "Local Master Browser" and settings.Config.AnalyzeMode:
+			print text('[Analyze mode: Browser] Datagram Request from IP: %s hostname: %s via the: %s to: %s. Service: %s' % (Client, Name, Role1, Domain, Role2))
+			print RAPThisDomain(Client, Domain)
 	except:
 		pass
 

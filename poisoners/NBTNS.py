@@ -16,28 +16,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import socket
 import settings
-import string
 import fingerprint
 
 from packets import NBT_Ans
 from SocketServer import BaseRequestHandler
 from utils import *
-
-def NBT_NS_Role(data):
-	Role = {
-		"\x41\x41\x00":"Workstation/Redirector",
-		"\x42\x4c\x00":"Domain Master Browser",
-		"\x42\x4d\x00":"Domain Controller",
-		"\x42\x4e\x00":"Local Master Browser",
-		"\x42\x4f\x00":"Browser Election",
-		"\x43\x41\x00":"File Server",
-		"\x41\x42\x00":"Browser",
-	}
-
-	if data in Role:
-		return Role[data]
-	else:
-		return "Service not known."
 
 # Define what are we answering to.
 def Validate_NBT_NS(data):
@@ -57,19 +40,6 @@ def Validate_NBT_NS(data):
 
 	else:
 		return False
-
-def Decode_Name(nbname):
-	#From http://code.google.com/p/dpkt/ with author's permission.
-	try:
-		if len(nbname) != 32:
-			return nbname
-		l = []
-		for i in range(0, 32, 2):
-			l.append(chr(((ord(nbname[i]) - 0x41) << 4) |
-					   ((ord(nbname[i+1]) - 0x41) & 0xf)))
-		return filter(lambda x: x in string.printable, ''.join(l).split('\x00', 1)[0].replace(' ', ''))
-	except:
-		return "Illegal NetBIOS name"
 
 # NBT_NS Server class.
 class NBTNS(BaseRequestHandler):

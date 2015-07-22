@@ -36,10 +36,18 @@ def color(txt, code = 1, modifier = 0):
 	elif 'Analyze' in txt:
 		settings.Config.AnalyzeLogger.warning(txt)
 
+	# No colors for windows...
+	if os.name == 'nt':
+		return txt
+
 	return "\033[%d;3%dm%s\033[0m" % (modifier, code, txt)
 
 def text(txt):
 	logging.info(txt)
+
+	if os.name == 'nt':
+		return txt
+
 	return '\r'+re.sub(r'\[([^]]*)\]', "\033[1;34m[\\1]\033[0m", txt)
 
 def RespondToThisIP(ClientIp):
@@ -194,6 +202,36 @@ def Parse_IPV6_Addr(data):
 
 	else:
 		return False
+
+def Decode_Name(nbname):
+	#From http://code.google.com/p/dpkt/ with author's permission.
+	try:
+		from string import printable
+
+		if len(nbname) != 32:
+			return nbname
+		
+		l = []
+		for i in range(0, 32, 2):
+			l.append(chr(((ord(nbname[i]) - 0x41) << 4) | ((ord(nbname[i+1]) - 0x41) & 0xf)))
+		
+		return filter(lambda x: x in printable, ''.join(l).split('\x00', 1)[0].replace(' ', ''))
+	
+	except:
+		return "Illegal NetBIOS name"
+
+def NBT_NS_Role(data):
+	Role = {
+		"\x41\x41\x00":"Workstation/Redirector",
+		"\x42\x4c\x00":"Domain Master Browser",
+		"\x42\x4d\x00":"Domain Controller",
+		"\x42\x4e\x00":"Local Master Browser",
+		"\x42\x4f\x00":"Browser Election",
+		"\x43\x41\x00":"File Server",
+		"\x41\x42\x00":"Browser",
+	}
+
+	return Role[data] if data in Role else "Service not known"
 
 def banner():
 
