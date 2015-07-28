@@ -47,11 +47,6 @@ class IMAP(BaseRequestHandler):
 					'fullhash': Credentials[0]+":"+Credentials[1],
 				})
 
-				#print text("[IMAP] Address  : %s" % color(self.client_address[0], 3, 0))
-				#print text("[IMAP] Username : %s" % color(Credentials[0], 3, 0))
-				#print text("[IMAP] Password : %s" % color(Credentials[1], 3, 0))
-				#WriteData(settings.Config.IMAPLog % self.client_address[0], Credentials, Credentials)
-
 				## FIXME: Close connection properly
 				## self.request.send(str(ditchthisconnection()))
 				## data = self.request.recv(1024)

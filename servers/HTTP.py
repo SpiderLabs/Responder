@@ -57,14 +57,6 @@ def ParseHTTPHash(data, client):
 			'fullhash': WriteHash,
 		})
 
-		#print text("[HTTP] NTLMv1 Client   : %s" % client)
-		#print text("[HTTP] NTLMv1 Hostname : %s" % HostName)
-		#print text("[HTTP] NTLMv1 User     : %s" % User)
-		#print text("[HTTP] NTLMv1 Hash     : %s" % LMHash+":"+NTHash)
-		#
-		#WriteHash = '%s::%s:%s:%s:%s' % (User, HostName, LMHash, NTHash, settings.Config.NumChal)
-		#WriteData(settings.Config.HTTPNTLMv1Log % client, WriteHash, User+"::"+HostName)
-
 	if NthashLen > 24:
 		NthashLen      = 64
 		DomainLen      = struct.unpack('<H',data[28:30])[0]
@@ -84,14 +76,6 @@ def ParseHTTPHash(data, client):
 			'hash': NTHash[:32]+":"+NTHash[32:], 
 			'fullhash': WriteHash,
 		})
-
-		#print text("[HTTP] NTLMv2 Client   : %s" % client)
-		#print text("[HTTP] NTLMv2 Hostname : %s" % HostName)
-		#print text("[HTTP] NTLMv2 User     : %s" % Domain+"\\"+User)
-		#print text("[HTTP] NTLMv2 Hash     : %s" % NTHash[:32]+":"+NTHash[32:])
-		#
-		#WriteHash = '%s::%s:%s:%s:%s' % (User, Domain, settings.Config.NumChal, NTHash[:32], NTHash[32:])
-		#WriteData(settings.Config.HTTPNTLMv2Log % client, WriteHash, User+"::"+HostName)
 
 def GrabCookie(data, host):
 	Cookie = re.search('(Cookie:*.\=*)[^\r\n]*', data)
@@ -213,11 +197,6 @@ def PacketSequence(data, client):
 			'user': ClearText_Auth.split(':')[0], 
 			'cleartext': ClearText_Auth.split(':')[1], 
 		})
-
-		#print text("[HTTP] (Basic) Client       : %s" % color(client, 3))
-		#print text("[HTTP] (Basic) Username     : %s" % color(ClearText_Auth.split(':')[0], 3))
-		#print text("[HTTP] (Basic) Password     : %s" % color(ClearText_Auth.split(':')[1], 3))
-		#WriteData(settings.Config.HTTPBasicLog % client, ClearText_Auth, ClearText_Auth)
 
 		if settings.Config.Force_WPAD_Auth and WPAD_Custom:
 			if settings.Config.Verbose:

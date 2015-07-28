@@ -133,10 +133,6 @@ class KerbTCP(BaseRequestHandler):
 					'fullhash': KerbHash,
 				})
 
-				#print text("[KERBEROS] Address       :" % self.client_address[0])
-				#print text("[KERBEROS] MSKerbv5 Hash :" % KerbHash)
-				#WriteData(settings.Config.KerberosLog % self.client_address[0], KerbHash, KerbHash)
-
 		except Exception:
 			raise
 
@@ -158,10 +154,6 @@ class KerbUDP(BaseRequestHandler):
 					'hash': h,
 					'fullhash': KerbHash,
 				})
-
-				#print text("[KERBEROS] Address       :" % self.client_address[0])
-				#print text("[KERBEROS] MSKerbv5 Hash :" % KerbHash)
-				#WriteData(settings.Config.KerberosLog % self.client_address[0], KerbHash, KerbHash)
 
 		except Exception:
 			raise

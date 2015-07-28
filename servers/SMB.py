@@ -131,12 +131,6 @@ def ParseSMBHash(data,client):
 			'fullhash': WriteHash,
 		})
 
-		#print text("[SMB] NTLMv1 (SSP) Address  : %s" % client)
-		#print text("[SMB] NTLMv1 (SSP) Username : %s\\%s" % (Domain, Username))
-		#print text("[SMB] NTLMv1 (SSP) Hash     : %s" % SMBHash)
-		#WriteHash = '%s::%s:%s:%s:%s' % (Username, Domain, LMHash, SMBHash, settings.Config.NumChal)
-		#WriteData(settings.Config.SMBNTLMSSPv1Log % client, WriteHash, Username+"::"+Domain)
-
 	if NthashLen > 60:
 		SMBHash      = SSPIStart[NthashOffset:NthashOffset+NthashLen].encode("hex").upper()
 		DomainLen    = struct.unpack('<H',data[109:111])[0]
@@ -155,12 +149,6 @@ def ParseSMBHash(data,client):
 			'hash': SMBHash, 
 			'fullhash': WriteHash,
 		})
-
-		#print text("[SMB] NTLMv2 (SSP) Address  : %s" % client)
-		#print text("[SMB] NTLMv2 (SSP) Username : %s\\%s" % (Domain, Username))
-		#print text("[SMB] NTLMv2 (SSP) Hash     : %s" % SMBHash)
-		#WriteHash = '%s::%s:%s:%s:%s' % (Username, Domain, settings.Config.NumChal, SMBHash[:32], SMBHash[32:])
-		#WriteData(settings.Config.SMBNTLMSSPv2Log % client, WriteHash, Username+"::"+Domain)
 
 # Parse SMB NTLMv1/v2
 def ParseLMNTHash(data, client):
@@ -185,12 +173,6 @@ def ParseLMNTHash(data, client):
 			'fullhash': WriteHash,
 		})
 
-		#print text("[SMB] NTLMv2 Address  : %s" % client)
-		#print text("[SMB] NTLMv2 Username : %s\\%s" % (Domain, Username))
-		#print text("[SMB] NTLMv2 Hash     : %s" % NtHash)
-		#WriteHash = '%s::%s:%s:%s:%s' % (Username, Domain, settings.Config.NumChal, LmHash, NtHash)
-		#WriteData(settings.Config.SMBNTLMv2Log % client, WriteHash, Username+"::"+Domain)
-
 	if NthashLen == 24:
 		NtHash = data[65+LMhashLen:65+LMhashLen+NthashLen].encode('hex').upper()
 		LmHash = data[65:65+LMhashLen].encode('hex').upper()
@@ -204,12 +186,6 @@ def ParseLMNTHash(data, client):
 			'hash': NtHash, 
 			'fullhash': WriteHash,
 		})
-
-		#print text("[SMB] NTLMv1 Address  : %s" % client)
-		#print text("[SMB] NTLMv1 Username : %s\\%s" % (Domain, Username))
-		#print text("[SMB] NTLMv1 Hash     : %s" % NtHash)
-		#WriteHash = '%s::%s:%s:%s:%s' % (Username, Domain, LmHash, NtHash, settings.Config.NumChal)
-		#WriteData(settings.Config.SMBNTLMv1Log % client, WriteHash, Username+"::"+Domain)
 
 def IsNT4ClearTxt(data, client):
 	HeadLen = 36

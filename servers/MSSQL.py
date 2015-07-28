@@ -85,13 +85,6 @@ def ParseSQLHash(data, client):
 			'fullhash': WriteHash,
 		})
 
-		#print text("[MSSQL] NTLMv1 Client   : %s" % color(client, 3, 0))
-		#print text("[MSSQL] NTLMv1 Domain   : %s" % color(Domain, 3, 0))
-		#print text("[MSSQL] NTLMv1 User     : %s" % color(User, 3, 0))
-		#print text("[MSSQL] NTLMv1 Hash     : %s" % color(LMHash+":"+NTHash, 3, 0))
-		#WriteHash = '%s::%s:%s:%s:%s' % (User, Domain, LMHash, NTHash, settings.Config.NumChal)
-		#WriteData(settings.Config.MSSQLNTLMv1Log % client, User+"::"+Domain+":"+LMHash+":"+NtHash+":"+NumChal, User+"::"+Domain)
-
 	if NthashLen > 60:
 		WriteHash = '%s::%s:%s:%s:%s' % (User, Domain, settings.Config.NumChal, NTHash[:32], NTHash[32:])
 		
@@ -103,13 +96,6 @@ def ParseSQLHash(data, client):
 			'hash': NTHash[:32]+":"+NTHash[32:], 
 			'fullhash': WriteHash,
 		})
-
-		#print text("[MSSQL] NTLMv2 Client   : %s" % color(client, 3, 0))
-		#print text("[MSSQL] NTLMv2 Domain   : %s" % color(Domain, 3, 0))
-		#print text("[MSSQL] NTLMv2 User     : %s" % color(User, 3, 0))
-		#print text("[MSSQL] NTLMv2 Hash     : %s" % color(NTHash[:32]+":"+NTHash[32:], 3, 0))
-		#WriteHash = '%s::%s:%s:%s:%s' % (User, Domain, settings.Config.NumChal, NTHash[:32], NTHash[32:])
-		#WriteData(settings.Config.MSSQLNTLMv2Log % client, WriteHash,User+"::"+Domain)
 
 def ParseSqlClearTxtPwd(Pwd):
 	Pwd = map(ord,Pwd.replace('\xa5',''))
@@ -131,14 +117,6 @@ def ParseClearTextSQLPass(data, client):
 		'cleartext': ParseSqlClearTxtPwd(TDS.Password), 
 		'fullhash': TDS.UserName +':'+ ParseSqlClearTxtPwd(TDS.Password),
 	})
-
-	#print text("[MSSQL] Client    : %s (%s)" % (color(client, 3, 0) , color(TDS.ClientName, 3, 0)))
-	#print text("[MSSQL] Server    : %s" % color(TDS.ServerName, 3, 0))
-	#print text("[MSSQL] Database  : %s" % color(TDS.DatabaseName, 3, 0))
-	#print text("[MSSQL] Username  : %s" % color(TDS.UserName, 3, 0))
-	#print text("[MSSQL] Password  : %s" % color(ParseSqlClearTxtPwd(TDS.Password), 3, 0))
-	#WritePass = TDS.UserName +':'+ ParseSqlClearTxtPwd(TDS.Password)
-	#WriteData(settings.Config.MSSQLClearLog % client, WritePass, WritePass)
 
 # MSSQL Server class
 class MSSQL(BaseRequestHandler):

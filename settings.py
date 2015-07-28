@@ -62,13 +62,7 @@ class Settings:
 			return ret
 
 		self.RespondTo = expand_ranges(self.RespondTo)
-		self.RespondToName = expand_ranges(self.RespondToName)
 		self.DontRespondTo = expand_ranges(self.DontRespondTo)
-		self.DontRespondToName = expand_ranges(self.DontRespondToName)
-		self.RespondTo = expand_ranges(self.RespondTo)
-		self.RespondToName = expand_ranges(self.RespondToName)
-		self.DontRespondTo = expand_ranges(self.DontRespondTo)
-		self.DontRespondToName = expand_ranges(self.DontRespondToName)
 
 	def populate(self, options):
 

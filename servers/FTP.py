@@ -50,12 +50,7 @@ class FTP(BaseRequestHandler):
 					'fullhash': User+':'+Pass
 				})
 
-				#print text("[FTP] Client   : %s" % color(self.client_address[0], 3))
-				#print text("[FTP] Username : %s" % color(User, 3))
-				#print text("[FTP] Password : %s" % color(Pass, 3))
-				#WriteData(settings.Config.FTPLog % self.client_address[0], User+":"+Pass, User+":"+Pass)
-
-			else :
+			else:
 				Packet = FTPPacket(Code="502",Message="Command not implemented.")
 				self.request.send(str(Packet))
 				data = self.request.recv(1024)

@@ -254,6 +254,9 @@ class HTTP_Proxy(BaseHTTPServer.BaseHTTPRequestHandler):
 					self._read_write(soc, 300)
 				except:
 					pass
+		except:
+			pass
+
 		finally:
 			soc.close()
 			self.connection.close()
@@ -301,6 +304,9 @@ class HTTP_Proxy(BaseHTTPServer.BaseHTTPRequestHandler):
 				except:
 					pass
 
+		except:
+			pass
+
 		finally:
 			soc.close()
 			self.connection.close()
@@ -326,10 +332,13 @@ class HTTP_Proxy(BaseHTTPServer.BaseHTTPRequestHandler):
 							pass
 					else:
 						out = soc
-						data = i.recv(4096)
+						try:
+							data = i.recv(4096)
 
-						if self.command == "POST" and settings.Config.Verbose:
-							print text("[PROXY] POST Data     : %s" % data)
+							if self.command == "POST" and settings.Config.Verbose:
+								print text("[PROXY] POST Data     : %s" % data)
+						except:
+							pass
 					if data:
 						try:
 							out.send(data)

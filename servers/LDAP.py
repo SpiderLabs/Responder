@@ -64,12 +64,6 @@ def ParseLDAPHash(data, client):
 			'hash': NtHash,
 			'fullhash': WriteHash,
 		})
-
-		#print text("[LDAP] NTLMv1 Address  : %s" % client)
-		#print text("[LDAP] NTLMv1 Username : %s\\%s" % (Domain, User))
-		#print text("[LDAP] NTLMv1 Hash     : %s" % NtHash)
-		#WriteHash = User+"::"+Domain+":"+LMHash+":"+NtHash+":"+settings.Config.NumChal
-		#WriteData(settings.Config.LDAPNTLMv1Log % client, WriteHash, User+"::"+Domain)
 	
 	if LMhashLen < 2 and settings.Config.Verbose:
 		print text("[LDAP] Ignoring anonymous NTLM authentication")
@@ -114,12 +108,6 @@ def ParseLDAPPacket(data, client):
 					'cleartext': Password,
 					'fullhash': UserDomain+':'+Password,
 				})
-
-				#print text("[LDAP] Client   : %s" % color(client, 3, 0))
-				#print text("[LDAP] Username : %s" % color(UserDomain, 3, 0))
-				#print text("[LDAP] Password : %s" % color(Password, 3, 0))
-				#WritePass = '%s: %s:%s' % (client, UserDomain, Password)
-				#WriteData(settings.Config.LDAPClearLog % client, WritePass, WritePass)
 			
 			if sasl == "\xA3":
 				Buffer = ParseNTLM(data,client)

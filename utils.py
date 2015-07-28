@@ -181,10 +181,15 @@ def SaveToDb(result):
 			print text("[%s] %s Hostname : %s" % (result['module'], result['type'], color(result['hostname'], 3)))
 		if len(result['user']):
 			print text("[%s] %s Username : %s" % (result['module'], result['type'], color(result['user'], 3)))
+		
+		# Bu order of priority, print cleartext, fullhash, or hash
 		if len(result['cleartext']):
 			print text("[%s] %s Password : %s" % (result['module'], result['type'], color(result['cleartext'], 3)))
-		if len(result['hash']):
+		elif len(result['fullhash']):
+			print text("[%s] %s Hash     : %s" % (result['module'], result['type'], color(result['fullhash'], 3)))
+		elif len(result['hash']):
 			print text("[%s] %s Hash     : %s" % (result['module'], result['type'], color(result['hash'], 3)))
+			
 	else:
 		print color('[*]', 2, 1), 'Skipping previously captured hash for %s' % result['user']
 

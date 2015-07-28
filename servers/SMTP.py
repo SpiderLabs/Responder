@@ -62,12 +62,5 @@ class ESMTP(BaseRequestHandler):
 						'fullhash': Username+":"+Password,
 					})
 
-					#print text("[SMTP] Address  : %s" % color(self.client_address[0], 3))
-					#print text("[SMTP] Username : %s" % color(Username, 3))
-					#print text("[SMTP] Password : %s" % color(Password, 3))
-					#WriteData(settings.Config.SMTPClearLog % self.client_address[0], Username+":"+Password, Username+":"+Password)
-
-					## FIXME: Close connection properly
-
 		except Exception:
 			pass
