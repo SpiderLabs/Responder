@@ -23,12 +23,15 @@ from packets import MDNS_Ans
 from utils import *
 
 def Parse_MDNS_Name(data):
-	data = data[12:]
-	NameLen = struct.unpack('>B',data[0])[0]
-	Name = data[1:1+NameLen]
-	NameLen_ = struct.unpack('>B',data[1+NameLen])[0]
-	Name_ = data[1+NameLen:1+NameLen+NameLen_+1]
-	return Name+'.'+Name_
+	try:
+		data = data[12:]
+		NameLen = struct.unpack('>B',data[0])[0]
+		Name = data[1:1+NameLen]
+		NameLen_ = struct.unpack('>B',data[1+NameLen])[0]
+		Name_ = data[1+NameLen:1+NameLen+NameLen_+1]
+		return Name+'.'+Name_
+	except IndexError:
+		return None
 
 def Poisoned_MDNS_Name(data):
 	data = data[12:]
@@ -46,7 +49,7 @@ class MDNS(BaseRequestHandler):
 		Request_Name = Parse_MDNS_Name(data)
 
 		# Break out if we don't want to respond to this host
-		if RespondToThisHost(self.client_address[0], Request_Name) is not True:
+		if (not Request_Name) or (RespondToThisHost(self.client_address[0], Request_Name) is not True):
 			return None
 
 		try:
