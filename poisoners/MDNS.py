@@ -49,7 +49,7 @@ class MDNS(BaseRequestHandler):
 		Request_Name = Parse_MDNS_Name(data)
 
 		# Break out if we don't want to respond to this host
-		if (not Request_name) or (RespondToThisHost(self.client_address[0], Request_Name) is not True):
+		if (not Request_Name) or (RespondToThisHost(self.client_address[0], Request_Name) is not True):
 			return None
 
 		try:
