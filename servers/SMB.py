@@ -64,6 +64,16 @@ def Parse_Nego_Dialect(data):
 		return "\x09\x00"
 	if Dialect[10] == "NT LM 0.12":
 		return "\x0a\x00"
+	if Dialect[11] == "NT LM 0.12":
+		return "\x0b\x00"
+	if Dialect[12] == "NT LM 0.12":
+		return "\x0c\x00"
+	if Dialect[13] == "NT LM 0.12":
+		return "\x0d\x00"
+	if Dialect[14] == "NT LM 0.12":
+		return "\x0e\x00"
+	if Dialect[15] == "NT LM 0.12":
+		return "\x0f\x00"
 
 #Set MID SMB Header field.
 def midcalc(data):
