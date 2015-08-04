@@ -21,13 +21,13 @@ import struct
 import socket
 
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..')))
-from packets import SMBHeader, SMBNego, SMBNegoData
+from packets import SMBHeader,SMB2Header, SMB2Nego, SMB2NegoData
 
 def GetBootTime(data):
     Filetime = int(struct.unpack('<q',data)[0])
     t = divmod(Filetime - 116444736000000000, 10000000)
     time = datetime.datetime.fromtimestamp(t[0])
-    return time, time.strftime('%Y-%m-%d %Header:%M:%S')
+    return time, time.strftime('%Y-%m-%d %H:%M:%S')
 
 
 def IsDCVuln(t):
@@ -47,8 +47,8 @@ def run(host):
     s.connect(host)  
     s.settimeout(5) 
 
-    Header = SMBHeader(Cmd="\x72",Flag1="\x18",Flag2="\x53\xc8")
-    Nego = SMBNego(Data = SMBNegoData())
+    Header = SMB2Header(Cmd="\x72",Flag1="\x18",Flag2="\x53\xc8")
+    Nego = SMB2Nego(Data = SMB2NegoData())
     Nego.calculate()
 
     Packet = str(Header)+str(Nego)

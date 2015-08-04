@@ -1275,3 +1275,41 @@ class SMBSessTreeAns(Packet):
 		self.fields["Bcc"] = struct.pack("<h",len(CompleteBCCLen))
 		CompleteBCC2Len = str(self.fields["Service"])+str(self.fields["ServiceNull"])+str(self.fields["FileSystem"])+str(self.fields["FileSystemNull"])
 		self.fields["Bcc2"] = struct.pack("<h",len(CompleteBCC2Len))
+
+### SMB2 Packets
+
+class SMB2Header(Packet):
+    fields = OrderedDict([
+        ("Proto", "\xff\x53\x4d\x42"),
+        ("Cmd", "\x72"),
+        ("Error-Code", "\x00\x00\x00\x00" ),
+        ("Flag1", "\x10"),
+        ("Flag2", "\x00\x00"),
+        ("Pidhigh", "\x00\x00"),
+        ("Signature", "\x00\x00\x00\x00\x00\x00\x00\x00"),
+        ("Reserved", "\x00\x00"),
+        ("TID", "\x00\x00"),
+        ("PID", "\xff\xfe"),
+        ("UID", "\x00\x00"),
+        ("MID", "\x00\x00"),
+    ])
+
+class SMB2Nego(Packet):
+    fields = OrderedDict([
+        ("Wordcount", "\x00"),
+        ("Bcc", "\x62\x00"),
+        ("Data", "")
+    ])
+    
+    def calculate(self):
+        self.fields["Bcc"] = struct.pack("<H",len(str(self.fields["Data"])))
+
+class SMB2NegoData(Packet):
+    fields = OrderedDict([
+        ("StrType","\x02" ),
+        ("dialect", "NT LM 0.12\x00"),
+        ("StrType1","\x02"),
+        ("dialect1", "SMB 2.002\x00"),
+        ("StrType2","\x02"),
+        ("dialect2", "SMB 2.???\x00"),
+    ])
