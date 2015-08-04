@@ -220,8 +220,8 @@ class SMB1(BaseRequestHandler):
 				##session request 139
 				if data[0] == "\x81":
 					Buffer = "\x82\x00\x00\x00"
-					self.request.send(Buffer)
 					try:
+					        self.request.send(Buffer)
 						data = self.request.recv(1024)
 					except:
 						pass
