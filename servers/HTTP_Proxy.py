@@ -65,12 +65,12 @@ def InjectData(data, client, req_uri):
 					print text("[PROXY] Injecting into HTTP Response: %s" % color(settings.Config.HtmlToInject, 3, 1))
 
 				Content = Content.replace(HasBody[0], '%s\n%s' % (HasBody[0], settings.Config.HtmlToInject))
-				Headers = Headers.replace("Content-Length: "+Len, "Content-Length: "+ str(len(Content)))
 
 		if "content-encoding: gzip" in Headers.lower():
 			Content = zlib.compress(Content)
 
-		data = Headers +'\r\n'+ Content
+		Headers = Headers.replace("Content-Length: "+Len, "Content-Length: "+ str(len(Content)))
+		data = Headers +'\r\n\r\n'+ Content
 
 	else:
 		if settings.Config.Verbose:
