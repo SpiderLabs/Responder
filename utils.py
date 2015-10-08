@@ -262,7 +262,7 @@ def banner():
 	print banner
 	print "\n           \033[1;33mNBT-NS, LLMNR & MDNS %s\033[0m" % settings.__version__
 	print ""
-	print "  Original work by Laurent Gaffie (lgaffie@trustwave.com) and supported by Laurent Gaffie"
+	print "  Original work by Laurent Gaffie (lgaffie@trustwave.com)"
 	print "  To kill this script hit CRTL-C"
 	print ""
 
