@@ -21,7 +21,9 @@ import utils
 import logging
 import ConfigParser
 
-__version__ = 'Responder 2.2'
+from utils import IsOsX
+
+__version__ = 'Responder 2.3'
 
 class Settings:
 	
@@ -66,7 +68,7 @@ class Settings:
 
 	def populate(self, options):
 
-		if options.Interface is None:
+		if options.Interface is None and IsOsX() is False:
 			print utils.color("Error: -I <if> mandatory option is missing", 1)
 			sys.exit(-1)
 
@@ -154,6 +156,7 @@ class Settings:
 		self.Basic           = options.Basic
 		self.Finger_On_Off   = options.Finger
 		self.Interface       = options.Interface
+                self.OURIP           = options.OURIP
 		self.Force_WPAD_Auth = options.Force_WPAD_Auth
 		self.Upstream_Proxy  = options.Upstream_Proxy
 		self.AnalyzeMode     = options.Analyze
@@ -163,7 +166,7 @@ class Settings:
 		if self.HtmlToInject == None:
 			self.HtmlToInject = ''
 
-		self.Bind_To = utils.FindLocalIP(self.Interface)
+		self.Bind_To = utils.FindLocalIP(self.Interface, self.OURIP)
 
 		self.IP_aton         = socket.inet_aton(self.Bind_To)
 		self.Os_version      = sys.platform

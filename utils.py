@@ -87,20 +87,31 @@ def OsInterfaceIsSupported():
 	else:
 		return False
 
-def FindLocalIP(Iface):
+def IsOsX():
+    Os_version = sys.platform
+    if Os_version == "darwin":
+        return True
+    else:
+        return False
+
+
+def FindLocalIP(Iface, OURIP):
 
 	if Iface == 'ALL':
 		return '0.0.0.0'
 
 	try:
-		s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-		s.setsockopt(socket.SOL_SOCKET, 25, Iface+'\0')
-		s.connect(("127.0.0.1",9))#RFC 863
-		ret = s.getsockname()[0]
-		s.close()
-
-		return ret
-
+            
+               if IsOsX():
+	           return OURIP
+               else:
+	           s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+	           s.setsockopt(socket.SOL_SOCKET, 25, Iface+'\0')
+	           s.connect(("127.0.0.1",9))#RFC 863
+	           ret = s.getsockname()[0]
+	           s.close()
+	           return ret
+                    
 	except socket.error:
 		print color("[!] Error: %s: Interface not found" % Iface, 1)
 		sys.exit(-1)
@@ -251,7 +262,7 @@ def banner():
 	print banner
 	print "\n           \033[1;33mNBT-NS, LLMNR & MDNS %s\033[0m" % settings.__version__
 	print ""
-	print "  Original work by Laurent Gaffie (lgaffie@trustwave.com)"
+	print "  Original work by Laurent Gaffie (lgaffie@trustwave.com) and supported by Laurent Gaffie"
 	print "  To kill this script hit CRTL-C"
 	print ""
 
