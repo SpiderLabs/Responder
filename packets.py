@@ -74,7 +74,7 @@ class DNS_Ans(Packet):
 		("AnswerPointer",    "\xc0\x0c"),
 		("Type1",            "\x00\x01"),
 		("Class1",           "\x00\x01"),
-		("TTL",              "\x00\x00\x00\x1e"), #30 secs, dont mess with their cache for too long..
+		("TTL",              "\x00\x00\x00\x1e"), #30 secs, don't mess with their cache for too long..
 		("IPLen",            "\x00\x04"),
 		("IP",               "\x00\x00\x00\x00"),
 	])
@@ -169,7 +169,7 @@ class NTLM_Challenge(Packet):
 		("Av5Len",           "\x12\x00"),
 		("Av5Str",           "smb.local"),
 		("Av6",              "\x00\x00"),#AvPairs Terminator
-		("Av6Len",           "\x00\x00"),             
+		("Av6Len",           "\x00\x00"),
 	])
 
 	def calculate(self):
@@ -180,7 +180,7 @@ class NTLM_Challenge(Packet):
 		self.fields["Av3Str"] = self.fields["Av3Str"].encode('utf-16le')
 		self.fields["Av4Str"] = self.fields["Av4Str"].encode('utf-16le')
 		self.fields["Av5Str"] = self.fields["Av5Str"].encode('utf-16le')
-	  
+
 		# Then calculate
 		CalculateNameOffset = str(self.fields["Signature"])+str(self.fields["SignatureNull"])+str(self.fields["MessageType"])+str(self.fields["TargetNameLen"])+str(self.fields["TargetNameMaxLen"])+str(self.fields["TargetNameOffset"])+str(self.fields["NegoFlags"])+str(self.fields["ServerChallenge"])+str(self.fields["Reserved"])+str(self.fields["TargetInfoLen"])+str(self.fields["TargetInfoMaxLen"])+str(self.fields["TargetInfoOffset"])+str(self.fields["NTLMOsVersion"])
 		CalculateAvPairsOffset = CalculateNameOffset+str(self.fields["TargetNameStr"])
@@ -209,8 +209,8 @@ class IIS_Auth_401_Ans(Packet):
 		("Type",          "Content-Type: text/html\r\n"),
 		("WWW-Auth",      "WWW-Authenticate: NTLM\r\n"),
 		("PoweredBy",     "X-Powered-By: ASP.NET\r\n"),
-		("Len",           "Content-Length: 0\r\n"), 
-		("CRLF",          "\r\n"),                               
+		("Len",           "Content-Length: 0\r\n"),
+		("CRLF",          "\r\n"),
 	])
 
 class IIS_Auth_Granted(Packet):
@@ -222,7 +222,7 @@ class IIS_Auth_Granted(Packet):
 		("WWW-Auth",      "WWW-Authenticate: NTLM\r\n"),
 		("PoweredBy",     "X-Powered-By: ASP.NET\r\n"),
 		("ContentLen",    "Content-Length: "),
-		("ActualLen",     "76"), 
+		("ActualLen",     "76"),
 		("CRLF",          "\r\n\r\n"),
 		("Payload",       "<html>\n<head>\n</head>\n<body>\n<img src='file:\\\\\\\\\\\\shar\\smileyd.ico' alt='Loading' height='1' width='2'>\n</body>\n</html>\n"),
 	])
@@ -240,7 +240,7 @@ class IIS_NTLM_Challenge_Ans(Packet):
 		("Payload-CRLF",  "\r\n"),
 		("PoweredBy",     "X-Powered-By: ASP.NC0CD7B7802C76736E9B26FB19BEB2D36290B9FF9A46EDDA5ET\r\n"),
 		("Len",           "Content-Length: 0\r\n"),
-		("CRLF",          "\r\n"),                                            
+		("CRLF",          "\r\n"),
 	])
 
 	def calculate(self,payload):
@@ -256,8 +256,8 @@ class IIS_Basic_401_Ans(Packet):
 		("PoweredBy",     "X-Powered-By: ASP.NET\r\n"),
 		("AllowOrigin",   "Access-Control-Allow-Origin: *\r\n"),
 		("AllowCreds",    "Access-Control-Allow-Credentials: true\r\n"),
-		("Len",           "Content-Length: 0\r\n"), 
-		("CRLF",          "\r\n"),                               
+		("Len",           "Content-Length: 0\r\n"),
+		("CRLF",          "\r\n"),
 	])
 
 ##### Proxy mode Packets #####
@@ -269,7 +269,7 @@ class WPADScript(Packet):
 		("Type",          "Content-Type: application/x-ns-proxy-autoconfig\r\n"),
 		("PoweredBy",     "X-Powered-By: ASP.NET\r\n"),
 		("ContentLen",    "Content-Length: "),
-		("ActualLen",     "76"), 
+		("ActualLen",     "76"),
 		("CRLF",          "\r\n\r\n"),
 		("Payload",       "function FindProxyForURL(url, host){return 'PROXY wpadwpadwpad:3141; DIRECT';}"),
 	])
@@ -288,7 +288,7 @@ class ServeExeFile(Packet):
 		("ContentDiFile", ""),
 		("FileCRLF",      ";\r\n"),
 		("ContentLen",    "Content-Length: "),
-		("ActualLen",     "76"), 
+		("ActualLen",     "76"),
 		("Date",          "\r\nDate: Thu, 24 Oct 2013 22:35:46 GMT\r\n"),
 		("Connection",    "Connection: keep-alive\r\n"),
 		("X-CCC",         "US\r\n"),
@@ -308,7 +308,7 @@ class ServeHtmlFile(Packet):
 		("Server",        "Server: Microsoft-IIS/7.5\r\n"),
 		("PoweredBy",     "X-Powered-By: ASP.NET\r\n"),
 		("ContentLen",    "Content-Length: "),
-		("ActualLen",     "76"), 
+		("ActualLen",     "76"),
 		("Date",          "\r\nDate: Thu, 24 Oct 2013 22:35:46 GMT\r\n"),
 		("Connection",    "Connection: keep-alive\r\n"),
 		("CRLF",          "\r\n"),
@@ -330,7 +330,7 @@ class FTPPacket(Packet):
 class MSSQLPreLoginAnswer(Packet):
 	fields = OrderedDict([
 		("PacketType",       "\x04"),
-		("Status",           "\x01"), 
+		("Status",           "\x01"),
 		("Len",              "\x00\x25"),
 		("SPID",             "\x00\x00"),
 		("PacketID",         "\x01"),
@@ -352,7 +352,7 @@ class MSSQLPreLoginAnswer(Packet):
 		("SubBuild",         "\x00\x00"),
 		("EncryptionStr",    "\x02"),
 		("InstOptStr",       "\x00"),
-	]) 
+	])
 
 	def calculate(self):
 		CalculateCompletePacket = str(self.fields["PacketType"])+str(self.fields["Status"])+str(self.fields["Len"])+str(self.fields["SPID"])+str(self.fields["PacketID"])+str(self.fields["Window"])+str(self.fields["TokenType"])+str(self.fields["VersionOffset"])+str(self.fields["VersionLen"])+str(self.fields["TokenType1"])+str(self.fields["EncryptionOffset"])+str(self.fields["EncryptionLen"])+str(self.fields["TokenType2"])+str(self.fields["InstOptOffset"])+str(self.fields["InstOptLen"])+str(self.fields["TokenTypeThrdID"])+str(self.fields["ThrdIDOffset"])+str(self.fields["ThrdIDLen"])+str(self.fields["ThrdIDTerminator"])+str(self.fields["VersionStr"])+str(self.fields["SubBuild"])+str(self.fields["EncryptionStr"])+str(self.fields["InstOptStr"])
@@ -376,7 +376,7 @@ class MSSQLPreLoginAnswer(Packet):
 
 class MSSQLNTLMChallengeAnswer(Packet):
 	fields = OrderedDict([
-		("PacketType",       "\x04"), 
+		("PacketType",       "\x04"),
 		("Status",           "\x01"),
 		("Len",              "\x00\xc7"),
 		("SPID",             "\x00\x00"),
@@ -415,7 +415,7 @@ class MSSQLNTLMChallengeAnswer(Packet):
 		("Av5Str",           "smb.local"),
 		("Av6",              "\x00\x00"),#AvPairs Terminator
 		("Av6Len",           "\x00\x00"),
-	]) 
+	])
 
 	def calculate(self):
 		# First convert to unicode
@@ -425,7 +425,7 @@ class MSSQLNTLMChallengeAnswer(Packet):
 		self.fields["Av3Str"] = self.fields["Av3Str"].encode('utf-16le')
 		self.fields["Av4Str"] = self.fields["Av4Str"].encode('utf-16le')
 		self.fields["Av5Str"] = self.fields["Av5Str"].encode('utf-16le')
-		
+
 		# Then calculate
 		CalculateCompletePacket = str(self.fields["PacketType"])+str(self.fields["Status"])+str(self.fields["Len"])+str(self.fields["SPID"])+str(self.fields["PacketID"])+str(self.fields["Window"])+str(self.fields["TokenType"])+str(self.fields["SSPIBuffLen"])+str(self.fields["Signature"])+str(self.fields["SignatureNull"])+str(self.fields["MessageType"])+str(self.fields["TargetNameLen"])+str(self.fields["TargetNameMaxLen"])+str(self.fields["TargetNameOffset"])+str(self.fields["NegoFlags"])+str(self.fields["ServerChallenge"])+str(self.fields["Reserved"])+str(self.fields["TargetInfoLen"])+str(self.fields["TargetInfoMaxLen"])+str(self.fields["TargetInfoOffset"])+str(self.fields["NTLMOsVersion"])+str(self.fields["TargetNameStr"])+str(self.fields["Av1"])+str(self.fields["Av1Len"])+str(self.fields["Av1Str"])+str(self.fields["Av2"])+str(self.fields["Av2Len"])+str(self.fields["Av2Str"])+str(self.fields["Av3"])+str(self.fields["Av3Len"])+str(self.fields["Av3Str"])+str(self.fields["Av4"])+str(self.fields["Av4Len"])+str(self.fields["Av4Str"])+str(self.fields["Av5"])+str(self.fields["Av5Len"])+str(self.fields["Av5Str"])+str(self.fields["Av6"])+str(self.fields["Av6Len"])
 		CalculateSSPI = str(self.fields["Signature"])+str(self.fields["SignatureNull"])+str(self.fields["MessageType"])+str(self.fields["TargetNameLen"])+str(self.fields["TargetNameMaxLen"])+str(self.fields["TargetNameOffset"])+str(self.fields["NegoFlags"])+str(self.fields["ServerChallenge"])+str(self.fields["Reserved"])+str(self.fields["TargetInfoLen"])+str(self.fields["TargetInfoMaxLen"])+str(self.fields["TargetInfoOffset"])+str(self.fields["NTLMOsVersion"])+str(self.fields["TargetNameStr"])+str(self.fields["Av1"])+str(self.fields["Av1Len"])+str(self.fields["Av1Str"])+str(self.fields["Av2"])+str(self.fields["Av2Len"])+str(self.fields["Av2Str"])+str(self.fields["Av3"])+str(self.fields["Av3Len"])+str(self.fields["Av3Str"])+str(self.fields["Av4"])+str(self.fields["Av4Len"])+str(self.fields["Av4Str"])+str(self.fields["Av5"])+str(self.fields["Av5Len"])+str(self.fields["Av5Str"])+str(self.fields["Av6"])+str(self.fields["Av6Len"])
@@ -454,59 +454,59 @@ class MSSQLNTLMChallengeAnswer(Packet):
 class SMTPGreeting(Packet):
 	fields = OrderedDict([
 		("Code",       "220"),
-		("Separator",  "\x20"), 
+		("Separator",  "\x20"),
 		("Message",    "smtp01.local ESMTP"),
 		("CRLF",       "\x0d\x0a"),
-	]) 
+	])
 
 class SMTPAUTH(Packet):
 	fields = OrderedDict([
 		("Code0",      "250"),
-		("Separator0", "\x2d"), 
+		("Separator0", "\x2d"),
 		("Message0",   "smtp01.local"),
 		("CRLF0",      "\x0d\x0a"),
 		("Code",       "250"),
-		("Separator",  "\x20"), 
+		("Separator",  "\x20"),
 		("Message",    "AUTH LOGIN PLAIN XYMCOOKIE"),
 		("CRLF",       "\x0d\x0a"),
-	]) 
+	])
 
 class SMTPAUTH1(Packet):
 	fields = OrderedDict([
 		("Code",       "334"),
-		("Separator",  "\x20"), 
+		("Separator",  "\x20"),
 		("Message",    "VXNlcm5hbWU6"),#Username
 		("CRLF",       "\x0d\x0a"),
 
-	]) 
+	])
 
 class SMTPAUTH2(Packet):
 	fields = OrderedDict([
 		("Code",       "334"),
-		("Separator",  "\x20"), 
+		("Separator",  "\x20"),
 		("Message",    "UGFzc3dvcmQ6"),#Password
 		("CRLF",       "\x0d\x0a"),
-	]) 
+	])
 
 ##### IMAP Packets #####
 class IMAPGreeting(Packet):
 	fields = OrderedDict([
 		("Code",     "* OK IMAP4 service is ready."),
-		("CRLF",     "\r\n"), 
-	]) 
+		("CRLF",     "\r\n"),
+	])
 
 class IMAPCapability(Packet):
 	fields = OrderedDict([
 		("Code",     "* CAPABILITY IMAP4 IMAP4rev1 AUTH=PLAIN"),
-		("CRLF",     "\r\n"), 
-	]) 
+		("CRLF",     "\r\n"),
+	])
 
 class IMAPCapabilityEnd(Packet):
 	fields = OrderedDict([
 		("Tag",     ""),
 		("Message", " OK CAPABILITY completed."),
-		("CRLF",    "\r\n"), 
-	]) 
+		("CRLF",    "\r\n"),
+	])
 
 ##### POP3 Packets #####
 class POPOKPacket(Packet):
@@ -659,10 +659,10 @@ class LDAPNTLMChallenge(Packet):
 		("NTLMSSPNTLMChallengeAVPairsUnicodeStr",     "smb12"),
 		("NTLMSSPNTLMChallengeAVPairs1Id",            "\x01\x00"),
 		("NTLMSSPNTLMChallengeAVPairs1Len",           "\x1e\x00"),
-		("NTLMSSPNTLMChallengeAVPairs1UnicodeStr",    "SERVER2008"), 
+		("NTLMSSPNTLMChallengeAVPairs1UnicodeStr",    "SERVER2008"),
 		("NTLMSSPNTLMChallengeAVPairs2Id",            "\x04\x00"),
 		("NTLMSSPNTLMChallengeAVPairs2Len",           "\x1e\x00"),
-		("NTLMSSPNTLMChallengeAVPairs2UnicodeStr",    "smb12.local"), 
+		("NTLMSSPNTLMChallengeAVPairs2UnicodeStr",    "smb12.local"),
 		("NTLMSSPNTLMChallengeAVPairs3Id",            "\x03\x00"),
 		("NTLMSSPNTLMChallengeAVPairs3Len",           "\x1e\x00"),
 		("NTLMSSPNTLMChallengeAVPairs3UnicodeStr",    "SERVER2008.smb12.local"),
@@ -734,7 +734,7 @@ class SMBNego(Packet):
 		("bcc", "\x62\x00"),
 		("data", "")
 	])
-	
+
 	def calculate(self):
 		self.fields["bcc"] = struct.pack("<h",len(str(self.fields["data"])))
 
@@ -777,7 +777,7 @@ class SMBSessionData(Packet):
 		("NativeLanmanTerminator","\x00"),
 
 	])
-	def calculate(self): 
+	def calculate(self):
 		CompleteBCC = str(self.fields["AccountPassword"])+str(self.fields["AccountName"])+str(self.fields["AccountNameTerminator"])+str(self.fields["PrimaryDomain"])+str(self.fields["PrimaryDomainTerminator"])+str(self.fields["NativeOs"])+str(self.fields["NativeOsTerminator"])+str(self.fields["NativeLanman"])+str(self.fields["NativeLanmanTerminator"])
 		self.fields["bcc"] = struct.pack("<h", len(CompleteBCC))
 		self.fields["PasswordLen"] = struct.pack("<h", len(str(self.fields["AccountPassword"])))
@@ -815,8 +815,8 @@ class SMBSessionFingerData(Packet):
 		("Data","\x60\x48\x06\x06\x2b\x06\x01\x05\x05\x02\xa0\x3e\x30\x3c\xa0\x0e\x30\x0c\x06\x0a\x2b\x06\x01\x04\x01\x82\x37\x02\x02\x0a\xa2\x2a\x04\x28\x4e\x54\x4c\x4d\x53\x53\x50\x00\x01\x00\x00\x00\x07\x82\x08\xa2\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x05\x01\x28\x0a\x00\x00\x00\x0f\x00\x57\x00\x69\x00\x6e\x00\x64\x00\x6f\x00\x77\x00\x73\x00\x20\x00\x32\x00\x30\x00\x30\x00\x32\x00\x20\x00\x53\x00\x65\x00\x72\x00\x76\x00\x69\x00\x63\x00\x65\x00\x20\x00\x50\x00\x61\x00\x63\x00\x6b\x00\x20\x00\x33\x00\x20\x00\x32\x00\x36\x00\x30\x00\x30\x00\x00\x00\x57\x00\x69\x00\x6e\x00\x64\x00\x6f\x00\x77\x00\x73\x00\x20\x00\x32\x00\x30\x00\x30\x00\x32\x00\x20\x00\x35\x00\x2e\x00\x31\x00\x00\x00\x00\x00"),
 
 	])
-	def calculate(self): 
-		self.fields["bcc1"] = struct.pack("<i", len(str(self.fields["Data"])))[:2]   
+	def calculate(self):
+		self.fields["bcc1"] = struct.pack("<i", len(str(self.fields["Data"])))[:2]
 
 class SMBTreeConnectData(Packet):
 	fields = OrderedDict([
@@ -834,7 +834,7 @@ class SMBTreeConnectData(Packet):
 		("Terminator", "\x00"),
 
 	])
-	def calculate(self): 
+	def calculate(self):
 		self.fields["PasswdLen"] = struct.pack("<h", len(str(self.fields["Passwd"])))[:2]
 		BccComplete = str(self.fields["Passwd"])+str(self.fields["Path"])+str(self.fields["PathTerminator"])+str(self.fields["Service"])+str(self.fields["Terminator"])
 		self.fields["Bcc"] = struct.pack("<h", len(BccComplete))
@@ -965,7 +965,7 @@ class SMBNegoAns(Packet):
 		("NegHintASNLen",             "\x19"),
 		("NegHintTag0ASNId",          "\xa0"),
 		("NegHintTag0ASNLen",         "\x17"),
-		("NegHintFinalASNId",         "\x1b"), 
+		("NegHintFinalASNId",         "\x1b"),
 		("NegHintFinalASNLen",        "\x15"),
 		("NegHintFinalASNStr",        "server2008$@SMB.LOCAL"),
 	])
@@ -1037,7 +1037,7 @@ class SMBNegoKerbAns(Packet):
 		("NegHintASNLen",             "\x19"),
 		("NegHintTag0ASNId",          "\xa0"),
 		("NegHintTag0ASNLen",         "\x17"),
-		("NegHintFinalASNId",         "\x1b"), 
+		("NegHintFinalASNId",         "\x1b"),
 		("NegHintFinalASNLen",        "\x15"),
 		("NegHintFinalASNStr",        "server2008$@SMB.LOCAL"),
 	])
@@ -1073,8 +1073,8 @@ class SMBSession1Data(Packet):
 		("Action",                "\x00\x00"),
 		("SecBlobLen",            "\xea\x00"),
 		("Bcc",                   "\x34\x01"),
-		("ChoiceTagASNId",        "\xa1"), 
-		("ChoiceTagASNLenOfLen",  "\x81"), 
+		("ChoiceTagASNId",        "\xa1"),
+		("ChoiceTagASNLenOfLen",  "\x81"),
 		("ChoiceTagASNIdLen",     "\x00"),
 		("NegTokenTagASNId",      "\x30"),
 		("NegTokenTagASNLenOfLen","\x81"),
@@ -1118,10 +1118,10 @@ class SMBSession1Data(Packet):
 		("NTLMSSPNTLMChallengeAVPairsUnicodeStr","smb12"),
 		("NTLMSSPNTLMChallengeAVPairs1Id","\x01\x00"),
 		("NTLMSSPNTLMChallengeAVPairs1Len","\x1e\x00"),
-		("NTLMSSPNTLMChallengeAVPairs1UnicodeStr","SERVER2008"), 
+		("NTLMSSPNTLMChallengeAVPairs1UnicodeStr","SERVER2008"),
 		("NTLMSSPNTLMChallengeAVPairs2Id","\x04\x00"),
 		("NTLMSSPNTLMChallengeAVPairs2Len","\x1e\x00"),
-		("NTLMSSPNTLMChallengeAVPairs2UnicodeStr","smb12.local"), 
+		("NTLMSSPNTLMChallengeAVPairs2UnicodeStr","smb12.local"),
 		("NTLMSSPNTLMChallengeAVPairs3Id","\x03\x00"),
 		("NTLMSSPNTLMChallengeAVPairs3Len","\x1e\x00"),
 		("NTLMSSPNTLMChallengeAVPairs3UnicodeStr","SERVER2008.smb12.local"),
@@ -1131,7 +1131,7 @@ class SMBSession1Data(Packet):
 		("NTLMSSPNTLMChallengeAVPairs6Id","\x00\x00"),
 		("NTLMSSPNTLMChallengeAVPairs6Len","\x00\x00"),
 		("NTLMSSPNTLMPadding",             ""),
-		("NativeOs","Windows Server 2003 3790 Service Pack 2"),                           
+		("NativeOs","Windows Server 2003 3790 Service Pack 2"),
 		("NativeOsTerminator","\x00\x00"),
 		("NativeLAN", "Windows Server 2003 5.2"),
 		("NativeLANTerminator","\x00\x00"),
@@ -1155,7 +1155,7 @@ class SMBSession1Data(Packet):
 
 		###### Bcc len
 		BccLen = AsnLen+CalculateSecBlob+str(self.fields["NTLMSSPNTLMPadding"])+str(self.fields["NativeOs"])+str(self.fields["NativeOsTerminator"])+str(self.fields["NativeLAN"])+str(self.fields["NativeLANTerminator"])
-		
+
 		###### SecBlobLen
 		self.fields["SecBlobLen"] = struct.pack("<h", len(AsnLen+CalculateSecBlob))
 		self.fields["Bcc"] = struct.pack("<h", len(BccLen))
@@ -1185,7 +1185,7 @@ class SMBSession1Data(Packet):
 		self.fields["NTLMSSPNtTargetInfoBuffOffset"] = struct.pack("<i", len(CalculateOffsetWorkstation+str(self.fields["NTLMSSPNtWorkstationName"])))
 		self.fields["NTLMSSPNtTargetInfoLen"] = struct.pack("<h", len(CalculateLenAvpairs))
 		self.fields["NTLMSSPNtTargetInfoMaxLen"] = struct.pack("<h", len(CalculateLenAvpairs))
-		
+
 		##### IvPair Calculation:
 		self.fields["NTLMSSPNTLMChallengeAVPairs5Len"] = struct.pack("<h", len(str(self.fields["NTLMSSPNTLMChallengeAVPairs5UnicodeStr"])))
 		self.fields["NTLMSSPNTLMChallengeAVPairs3Len"] = struct.pack("<h", len(str(self.fields["NTLMSSPNTLMChallengeAVPairs3UnicodeStr"])))
@@ -1203,7 +1203,7 @@ class SMBSession2Accept(Packet):
 		("SecBlobLen",            "\x09\x00"),
 		("Bcc",                   "\x89\x01"),
 		("SSPIAccept","\xa1\x07\x30\x05\xa0\x03\x0a\x01\x00"),
-		("NativeOs","Windows Server 2003 3790 Service Pack 2"),                           
+		("NativeOs","Windows Server 2003 3790 Service Pack 2"),
 		("NativeOsTerminator","\x00\x00"),
 		("NativeLAN", "Windows Server 2003 5.2"),
 		("NativeLANTerminator","\x00\x00"),
@@ -1230,7 +1230,7 @@ class SMBTreeData(Packet):
 		("GuestShareAccessRight","\x00\x00\x00\x00"),
 		("Bcc", "\x94\x00"),
 		("Service", "IPC"),
-		("ServiceTerminator","\x00\x00\x00\x00"),                           
+		("ServiceTerminator","\x00\x00\x00\x00"),
 	])
 
 	def calculate(self):
@@ -1245,7 +1245,7 @@ class SMBTreeData(Packet):
 class SMBSessTreeAns(Packet):
 	fields = OrderedDict([
 		("Wordcount",       "\x03"),
-		("Command",         "\x75"), 
+		("Command",         "\x75"),
 		("Reserved",        "\x00"),
 		("AndXoffset",      "\x4e\x00"),
 		("Action",          "\x01\x00"),
@@ -1300,7 +1300,7 @@ class SMB2Nego(Packet):
         ("Bcc", "\x62\x00"),
         ("Data", "")
     ])
-    
+
     def calculate(self):
         self.fields["Bcc"] = struct.pack("<H",len(str(self.fields["Data"])))
 

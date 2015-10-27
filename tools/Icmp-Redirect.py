@@ -204,7 +204,7 @@ def ReceiveArpFrame(DstAddr):
 		PrintMac = ":".join([DestMac[x:x+2] for x in xrange(0, len(DestMac), 2)])
 		return PrintMac,DstMac
 	except:
-		print "[ARP]%s took too long to Respond. Please provide a valid host.\n"%(DstAddr)
+		print "[ARP]%s took too long to Respond. Please provide a valid host.\n"% DstAddr
 		exit(1)
 
 def IcmpRedirectSock(DestinationIP):
@@ -252,10 +252,10 @@ def RunThisInLoop(host, host2, ip):
 			sys.exit("\r%s Exiting..." % color('[*]', 2, 1))
 
 if __name__ == "__main__":
-	if ToThisHost2 != None:
+	if ToThisHost2 is not None:
 		RunThisInLoop(ToThisHost, ToThisHost2,Responder_IP)
 
-	if ToThisHost2 == None:
+	if ToThisHost2 is None:
 		print text("[ICMP-Redir] Poisoning target...")
 		IcmpRedirectSock(DestinationIP=ToThisHost)
 		print text("[ICMP-Redir] Done.")

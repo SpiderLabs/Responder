@@ -149,7 +149,7 @@ def PacketSequence(data, client):
 		return RespondWithFile(client, settings.Config.Exe_Filename, settings.Config.Exe_DlName)
 
 	# Serve the custom HTML if needed
-	if settings.Config.Serve_Html == True:
+	if settings.Config.Serve_Html:
 		return RespondWithFile(client, settings.Config.Html_Filename)
 
 	WPAD_Custom = WpadCustom(data, client)
@@ -209,7 +209,7 @@ def PacketSequence(data, client):
 			return str(Buffer)
 
 	else:
-		if settings.Config.Basic == True:
+		if settings.Config.Basic:
 			Response = IIS_Basic_401_Ans()
 			if settings.Config.Verbose:
 				print text("[HTTP] Sending BASIC authentication request to %s" % client)
