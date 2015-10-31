@@ -201,7 +201,7 @@ def main():
 			thread.start_new(serve_thread_tcp,('', 3141, HTTP_Proxy))
 
 		if settings.Config.SMB_On_Off:
-			if settings.Config.LM_On_Off == True:
+			if settings.Config.LM_On_Off:
 				from servers.SMB import SMB1LM
 				thread.start_new(serve_thread_tcp,('', 445, SMB1LM))
 				thread.start_new(serve_thread_tcp,('', 139, SMB1LM))

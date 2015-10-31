@@ -30,7 +30,7 @@ def Parse_LLMNR_Name(data):
 	return Name
 
 def IsOnTheSameSubnet(ip, net):
-	net = net+'/24'
+	net += '/24'
 	ipaddr = int(''.join([ '%02x' % int(x) for x in ip.split('.') ]), 16)
 	netstr, bits = net.split('/')
 	netaddr = int(''.join([ '%02x' % int(x) for x in netstr.split('.') ]), 16)

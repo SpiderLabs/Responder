@@ -281,7 +281,7 @@ def ParseDHCPCode(data):
 		Buffer.calculate()
 		SendDHCP(str(IP_Header)+str(Buffer), (CurrentIP, 68))
 
-		return 'Acknowleged DHCP Inform for IP: %s, Req IP: %s, MAC: %s Tid: %s' % (CurrentIP, RequestedIP, MacAddrStr, '0x'+PTid.encode('hex'))
+		return 'Acknowledged DHCP Inform for IP: %s, Req IP: %s, MAC: %s Tid: %s' % (CurrentIP, RequestedIP, MacAddrStr, '0x'+PTid.encode('hex'))
 
 	# DHCP Request
 	if OpCode == "\x03" and Respond_To_Requests:
@@ -298,7 +298,7 @@ def ParseDHCPCode(data):
 
 				SendDHCP(str(IP_Header)+str(Buffer), (IPConv, 68))
 
-				return 'Acknowleged DHCP Request for IP: %s, Req IP: %s, MAC: %s Tid: %s' % (CurrentIP, RequestedIP, MacAddrStr, '0x'+PTid.encode('hex'))
+				return 'Acknowledged DHCP Request for IP: %s, Req IP: %s, MAC: %s Tid: %s' % (CurrentIP, RequestedIP, MacAddrStr, '0x'+PTid.encode('hex'))
 
 	# DHCP Discover
 	if OpCode == "\x01" and Respond_To_Requests:
@@ -315,7 +315,7 @@ def ParseDHCPCode(data):
 
 				SendDHCP(str(IP_Header)+str(Buffer), (IPConv, 0))
 
-				return 'Acknowleged DHCP Discover for IP: %s, Req IP: %s, MAC: %s Tid: %s' % (CurrentIP, RequestedIP, MacAddrStr, '0x'+PTid.encode('hex'))
+				return 'Acknowledged DHCP Discover for IP: %s, Req IP: %s, MAC: %s Tid: %s' % (CurrentIP, RequestedIP, MacAddrStr, '0x'+PTid.encode('hex'))
 
 def SendDHCP(packet,Host):
 	s = socket.socket(socket.AF_INET, socket.SOCK_RAW, socket.IPPROTO_RAW)

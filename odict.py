@@ -77,7 +77,7 @@ class OrderedDict(dict, DictMixin):
         inst_dict = vars(self).copy()
         self.__map, self.__end = tmp
         if inst_dict:
-            return (self.__class__, (items,), inst_dict)
+            return self.__class__, (items,), inst_dict
         return self.__class__, (items,)
 
     def keys(self):

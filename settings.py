@@ -163,7 +163,7 @@ class Settings:
 		self.Verbose         = options.Verbose
 		self.CommandLine     = str(sys.argv)
 
-		if self.HtmlToInject == None:
+		if self.HtmlToInject is None:
 			self.HtmlToInject = ''
 
 		self.Bind_To = utils.FindLocalIP(self.Interface, self.OURIP)

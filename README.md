@@ -30,7 +30,7 @@ Note: This module also works for WebDav NTLM authentication issued from Windows 
 
 - Built-in HTTPS Auth server.
 
-Same as above. The folder certs/ containa 2 default keys, including a dummy private key. This is *intentional*, the purpose is to have Responder working out of the box. A script was added in case you need to generate your own self signed key pair.
+Same as above. The folder certs/ contains 2 default keys, including a dummy private key. This is *intentional*, the purpose is to have Responder working out of the box. A script was added in case you need to generate your own self signed key pair.
 
 - Built-in LDAP Auth server.
 
@@ -46,7 +46,7 @@ This server will answer type A queries. This is really handy when it's combined 
 
 - Built-in WPAD Proxy Server.
 
-This module will capture all HTTP requests from anyone launching Internet Explorer on the network if they have "Auto-detect settings" enabled. This module is higly effective. You can configure your custom PAC script in Responder.conf and inject HTML into the server's responses. See Responder.conf.
+This module will capture all HTTP requests from anyone launching Internet Explorer on the network if they have "Auto-detect settings" enabled. This module is highly effective. You can configure your custom PAC script in Responder.conf and inject HTML into the server's responses. See Responder.conf.
 
 - Browser Listener
 

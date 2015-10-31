@@ -76,7 +76,7 @@ def RespondToThisName(Name):
 	return False
 
 def RespondToThisHost(ClientIp, Name):
-	return (RespondToThisIP(ClientIp) and RespondToThisName(Name))
+	return RespondToThisIP(ClientIp) and RespondToThisName(Name)
 
 def IsOsX():
 	return True if settings.Config.Os_version == "darwin" else False
@@ -121,7 +121,7 @@ def WriteData(outfile, data, user):
 
 	logging.info("[*] Captured Hash: %s" % data)
 
-	if os.path.isfile(outfile) == False:
+	if not os.path.isfile(outfile):
 		with open(outfile,"w") as outf:
 			outf.write(data)
 			outf.write("\n")

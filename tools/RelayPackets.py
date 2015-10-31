@@ -17,7 +17,7 @@
 import struct
 from odict import OrderedDict
 
-class Packet():
+class Packet:
     fields = OrderedDict([
         ("data", ""),
     ])

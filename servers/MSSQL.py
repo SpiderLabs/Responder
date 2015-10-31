@@ -22,7 +22,7 @@ from SocketServer import BaseRequestHandler
 from packets import MSSQLPreLoginAnswer, MSSQLNTLMChallengeAnswer
 from utils import *
 
-class TDS_Login_Packet():
+class TDS_Login_Packet:
 	def __init__(self, data):
 		
 		ClientNameOff     = struct.unpack('<h', data[44:46])[0]

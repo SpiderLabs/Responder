@@ -30,11 +30,11 @@ def Validate_NBT_NS(data):
 	if NBT_NS_Role(data[43:46]) == "File Server":
 		return True
 
-	if settings.Config.NBTNSDomain == True:
+	if settings.Config.NBTNSDomain:
 		if NBT_NS_Role(data[43:46]) == "Domain Controller":
 			return True
 
-	if settings.Config.Wredirect == True:
+	if settings.Config.Wredirect:
 		if NBT_NS_Role(data[43:46]) == "Workstation/Redirector":
 			return True
 
