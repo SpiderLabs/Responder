@@ -28,10 +28,13 @@ def WorkstationFingerPrint(data):
 		"\x04\x10"    :"Windows 98",
 		"\x04\x90"    :"Windows ME",
 		"\x05\x00"    :"Windows 2000",
-		"\x05\x00"    :"Windows XP",
-		"\x05\x02"    :"Windows 2003",
+		"\x05\x01"    :"Windows XP",
+		"\x05\x02"    :"Windows XP(64-Bit)/Windows 2003",
 		"\x06\x00"    :"Windows Vista/Server 2008",
 		"\x06\x01"    :"Windows 7/Server 2008R2",
+		"\x06\x02"    :"Windows 8/Server 2012",
+		"\x06\x03"    :"Windows 8.1/Server 2012R2",
+		"\x10\x00"    :"Windows 10/Server 2016",
 	}
 
 	return Role[data] if data in Role else "Unknown"
