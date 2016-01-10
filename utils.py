@@ -166,6 +166,7 @@ def SaveToDb(result):
 	logfile = os.path.join(settings.Config.ResponderPATH, 'logs', fname)
 
 	cursor = sqlite3.connect(settings.Config.DatabaseFile)
+	cursor.text_factory = sqlite3.Binary
 	res = cursor.execute("SELECT COUNT(*) AS count FROM responder WHERE module=? AND type=? AND LOWER(user)=LOWER(?)", (result['module'], result['type'], result['user']))
 	(count,) = res.fetchone()
 
