@@ -286,7 +286,7 @@ class SSLSock(ThreadingMixIn, TCPServer):
 		from OpenSSL import SSL
 
 		BaseServer.__init__(self, server_address, RequestHandlerClass)
-		ctx = SSL.Context(SSL.SSLv3_METHOD)
+		ctx = SSL.Context(SSL.TLSv1_METHOD)
 
 		cert = os.path.join(settings.Config.ResponderPATH, settings.Config.SSLCert)
 		key =  os.path.join(settings.Config.ResponderPATH, settings.Config.SSLKey)
