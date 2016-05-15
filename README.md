@@ -105,11 +105,11 @@ Edit this file /etc/NetworkManager/NetworkManager.conf and comment the line: `dn
 
     launchcl unload /System/Library/LaunchDaemons/com.apple.Kerberos.kdc.plist
 
-    launchcl unload /System/Library/LaunchDaemons/com.apple.mDNSResponder.plist
+    launchctl unload /System/Library/LaunchDaemons/com.apple.mDNSResponder.plist
 
-    launchcl unload /System/Library/LaunchDaemons/com.apple.smbd.plist
+    launchctl unload /System/Library/LaunchDaemons/com.apple.smbd.plist
 
-    launchcl unload /System/Library/LaunchDaemons/com.apple.netbiosd.plist
+    launchctl unload /System/Library/LaunchDaemons/com.apple.netbiosd.plist
 
 ## Usage ##
 
