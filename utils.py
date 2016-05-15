@@ -101,16 +101,17 @@ def FindLocalIP(Iface, OURIP):
 		return '0.0.0.0'
 
 	try:
-            
-               if IsOsX():
-	           return OURIP
-               else:
-	           s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	           s.setsockopt(socket.SOL_SOCKET, 25, Iface+'\0')
-	           s.connect(("127.0.0.1",9))#RFC 863
-	           ret = s.getsockname()[0]
-	           s.close()
-	           return ret
+		if IsOsX():
+			return OURIP
+		elif OURIP == None:
+			s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+			s.setsockopt(socket.SOL_SOCKET, 25, Iface+'\0')
+			s.connect(("127.0.0.1",9))#RFC 863
+			ret = s.getsockname()[0]
+			s.close()
+			return ret
+		else:
+			return OURIP
                     
 	except socket.error:
 		print color("[!] Error: %s: Interface not found" % Iface, 1)
