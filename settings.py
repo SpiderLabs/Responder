@@ -148,6 +148,10 @@ class Settings:
 		self.DontRespondTo     = filter(None, [x.upper().strip() for x in config.get('Responder Core', 'DontRespondTo').strip().split(',')])
 		self.DontRespondToName = filter(None, [x.upper().strip() for x in config.get('Responder Core', 'DontRespondToName').strip().split(',')])
 
+		# Auto Ignore List
+		self.AutoIgnore        = self.toBool(config.get('Responder Core', 'AutoIgnoreAfterSuccess'))
+		self.AutoIgnoreList    = []
+
 		# CLI options
 		self.LM_On_Off       = options.LM_On_Off
 		self.WPAD_On_Off     = options.WPAD_On_Off
@@ -156,7 +160,7 @@ class Settings:
 		self.Basic           = options.Basic
 		self.Finger_On_Off   = options.Finger
 		self.Interface       = options.Interface
-                self.OURIP           = options.OURIP
+		self.OURIP           = options.OURIP
 		self.Force_WPAD_Auth = options.Force_WPAD_Auth
 		self.Upstream_Proxy  = options.Upstream_Proxy
 		self.AnalyzeMode     = options.Analyze

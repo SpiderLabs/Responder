@@ -55,6 +55,10 @@ def RespondToThisIP(ClientIp):
 	if ClientIp.startswith('127.0.0.'):
 		return False
 
+	if settings.Config.AutoIgnore and ClientIp in settings.Config.AutoIgnoreList:
+		print color('[*]', 3, 1), 'Received request from auto-ignored client %s, not answering.' % ClientIp
+		return False
+
 	if len(settings.Config.RespondTo) and ClientIp not in settings.Config.RespondTo:
 		return False
 
@@ -172,7 +176,7 @@ def SaveToDb(result):
 
 	if count == 0:
 		
-                # If we obtained cleartext credentials, write them to file
+		# If we obtained cleartext credentials, write them to file
 		# Otherwise, write JtR-style hash string to file
 		with open(logfile,"a") as outf:
 			if len(result['cleartext']):
@@ -205,9 +209,16 @@ def SaveToDb(result):
 			print text("[%s] %s Hash     : %s" % (result['module'], result['type'], color(result['fullhash'], 3)))
 		elif len(result['hash']):
 			print text("[%s] %s Hash     : %s" % (result['module'], result['type'], color(result['hash'], 3)))
-			
+
+		# Appending auto-ignore list if required
+		# Except if this is a machine account's hash
+		if settings.Config.AutoIgnore and not result['user'].endswith('$'):
+
+			settings.Config.AutoIgnoreList.append(result['client'])
+			print color('[*] Adding client %s to auto-ignore list' % result['client'], 4, 1)
+
 	else:
-		print color('[*]', 2, 1), 'Skipping previously captured hash for %s' % result['user']
+		print color('[*]', 3, 1), 'Skipping previously captured hash for %s' % result['user']
 
 
 def Parse_IPV6_Addr(data):
