@@ -280,26 +280,3 @@ class HTTPS(StreamRequestHandler):
 		except:
 			pass
 
-# SSL context handler
-class SSLSock(ThreadingMixIn, TCPServer):
-	def __init__(self, server_address, RequestHandlerClass):
-		from OpenSSL import SSL
-
-		BaseServer.__init__(self, server_address, RequestHandlerClass)
-		ctx = SSL.Context(SSL.TLSv1_METHOD)
-
-		cert = os.path.join(settings.Config.ResponderPATH, settings.Config.SSLCert)
-		key =  os.path.join(settings.Config.ResponderPATH, settings.Config.SSLKey)
-
-		ctx.use_privatekey_file(key)
-		ctx.use_certificate_file(cert)
-
-		self.socket = SSL.Connection(ctx, socket.socket(self.address_family, self.socket_type))
-		self.server_bind()
-		self.server_activate()
-
-	def shutdown_request(self,request):
-		try:
-			request.shutdown()
-		except:
-			pass
