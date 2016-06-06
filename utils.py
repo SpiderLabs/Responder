@@ -90,14 +90,12 @@ def OsInterfaceIsSupported():
 		return False if IsOsX() else True
 	else:
 		return False
-
 def IsOsX():
     Os_version = sys.platform
     if Os_version == "darwin":
         return True
     else:
         return False
-
 
 def FindLocalIP(Iface, OURIP):
 
@@ -280,7 +278,7 @@ def banner():
 	print banner
 	print "\n           \033[1;33mNBT-NS, LLMNR & MDNS %s\033[0m" % settings.__version__
 	print ""
-	print "  Original work by Laurent Gaffie (lgaffie@trustwave.com)"
+	print "  Author: Laurent Gaffie (laurent.gaffie@gmail.com)"
 	print "  To kill this script hit CRTL-C"
 	print ""
 
