@@ -2,7 +2,7 @@
 
 LLMNR/NBT-NS/mDNS Poisoner
 
-(Original work by Laurent Gaffie <lgaffie@trustwave.com> http://www.spiderlabs.com)
+Author: Laurent Gaffie <laurent.gaffie@gmail.com > http://www.spiderlabs.com
 
 
 

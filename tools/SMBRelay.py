@@ -15,8 +15,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sys, os, struct,re,socket,random, RelayPackets,optparse,thread
+sys.path.append('../')
 from fingerprint import RunSmbFinger
 from odict import OrderedDict
+from utils import longueur
 from socket import *
 from RelayPackets import *
 
@@ -61,7 +63,7 @@ Command  = options.CMD
 Target = options.TARGET
 Responder_IP = options.Responder_IP
 
-print "\nResponder SMBRelay 0.1\nPlease send bugs/comments to: lgaffie@trustwave.com"
+print "\nResponder SMBRelay 0.1\nPlease send bugs/comments to: laurent.gaffie@gmail.com"
 print '\033[31m'+'Use this script in combination with Responder.py for best results (remember to set SMB = Off in Responder.conf)..\nUsernames  to relay (-u) are case sensitive.'+'\033[0m'
 print 'To kill this script hit CRTL-C or Enter\nWill relay credentials for these users: '+'\033[1m\033[34m'+', '.join(UserToRelay)+'\033[0m\n'
 

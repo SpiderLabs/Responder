@@ -14,7 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import struct
+import struct, sys
+sys.path.append('../')
 from odict import OrderedDict
 
 class Packet:

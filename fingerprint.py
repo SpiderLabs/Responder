@@ -21,7 +21,7 @@ import struct
 import string
 import logging
 
-from utils import *
+#from utils import *
 from odict import OrderedDict
 from packets import SMBHeader, SMBNego, SMBNegoFingerData, SMBSessionFingerData
 

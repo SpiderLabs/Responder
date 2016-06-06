@@ -21,7 +21,7 @@ import logging
 import socket
 import time
 import settings
-
+import struct
 try:
 	import sqlite3
 except:
@@ -383,3 +383,7 @@ def hexdump(src, l=0x16):
 		res.append(('%08X:  %-'+str(l*(2+1)+1)+'s  |%s|') % (i, hexa, text))
 
 	return '\n'.join(res)
+
+def longueur(payload):
+    length = struct.pack(">i", len(''.join(payload)))
+    return length
