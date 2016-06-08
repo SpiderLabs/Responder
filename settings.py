@@ -21,8 +21,6 @@ import utils
 import logging
 import ConfigParser
 
-from utils import IsOsX
-
 __version__ = 'Responder 2.3'
 
 class Settings:
