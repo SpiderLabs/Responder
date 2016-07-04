@@ -50,6 +50,16 @@ def text(txt):
 
 	return '\r'+re.sub(r'\[([^]]*)\]', "\033[1;34m[\\1]\033[0m", txt)
 
+
+def IsOnTheSameSubnet(ip, net):
+	net += '/24'
+	ipaddr = int(''.join([ '%02x' % int(x) for x in ip.split('.') ]), 16)
+	netstr, bits = net.split('/')
+	netaddr = int(''.join([ '%02x' % int(x) for x in netstr.split('.') ]), 16)
+	mask = (0xffffffff << (32 - int(bits))) & 0xffffffff
+	return (ipaddr & mask) == (netaddr & mask)
+
+
 def RespondToThisIP(ClientIp):
 
 	if ClientIp.startswith('127.0.0.'):
@@ -90,6 +100,7 @@ def OsInterfaceIsSupported():
 		return False if IsOsX() else True
 	else:
 		return False
+
 def IsOsX():
     Os_version = sys.platform
     if Os_version == "darwin":

