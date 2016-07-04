@@ -14,14 +14,10 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import sys
 import optparse
-import socket
-import time
-import settings
 import ssl
 
-from SocketServer import TCPServer, UDPServer, ThreadingMixIn, StreamRequestHandler, BaseRequestHandler, BaseServer
+from SocketServer import TCPServer, UDPServer, ThreadingMixIn
 from threading import Thread
 from utils import *
 
@@ -45,8 +41,7 @@ options, args = parser.parse_args()
 if not os.geteuid() == 0:
     print color("[!] Responder must be run as root.")
     sys.exit(-1)
-
-if options.OURIP is None and IsOsX() is True:
+elif options.OURIP is None and IsOsX() is True:
     print "\n\033[1m\033[31mOSX detected, -i mandatory option is missing\033[0m\n"
     parser.print_help()
     exit(-1)
