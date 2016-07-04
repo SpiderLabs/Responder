@@ -16,6 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from SocketServer import BaseRequestHandler
 from utils import *
+import struct
 
 def ParseMSKerbv5TCP(Data):
 	MsgType     = Data[21:22]

@@ -17,6 +17,7 @@
 from SocketServer import BaseRequestHandler
 from packets import LDAPSearchDefaultPacket, LDAPSearchSupportedCapabilitiesPacket, LDAPSearchSupportedMechanismsPacket, LDAPNTLMChallenge
 from utils import *
+import struct
 
 def ParseSearch(data):
 	if re.search(r'(objectClass)', data):

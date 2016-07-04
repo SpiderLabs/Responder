@@ -17,6 +17,7 @@
 from SocketServer import BaseRequestHandler
 from packets import MSSQLPreLoginAnswer, MSSQLNTLMChallengeAnswer
 from utils import *
+import struct
 
 class TDS_Login_Packet:
 	def __init__(self, data):

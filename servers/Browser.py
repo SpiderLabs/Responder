@@ -17,6 +17,7 @@
 from packets import SMBHeader, SMBNegoData, SMBSessionData, SMBTreeConnectData, RAPNetServerEnum3Data, SMBTransRAPData
 from SocketServer import BaseRequestHandler
 from utils import *
+import struct
 
 
 def WorkstationFingerPrint(data):

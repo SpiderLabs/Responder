@@ -17,6 +17,7 @@
 
 from SocketServer import BaseRequestHandler, StreamRequestHandler
 from base64 import b64decode
+import struct
 from utils import *
 
 from packets import NTLM_Challenge

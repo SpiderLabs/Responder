@@ -14,11 +14,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import sys, os
-import socket
+import sys
+import os
 import thread
-import struct
-import time
 
 BASEDIR = os.path.realpath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, BASEDIR)
@@ -29,7 +27,6 @@ from threading import Lock
 from utils import *
 
 def ParseRoles(data):
-
 	if len(data) != 4:
 		return ''
 
@@ -62,81 +59,44 @@ def ParseRoles(data):
 		'Domain Enum':           (ord(data[3]) >> 7) & 1,
 	}
 
-	#print 'Workstation :              ',  AllRoles['Workstation']
-	#print 'Server :                   ',  AllRoles['Server']
-	#print 'SQL :                      ',  AllRoles['SQL']
-	#print 'Domain Controller :        ',  AllRoles['Domain Controller']
-	#print 'Backup Controller :        ',  AllRoles['Backup Controller']
-	#print 'Time Source :              ',  AllRoles['Time Source']
-	#print 'Apple :                    ',  AllRoles['Apple']
-	#print 'Novell :                   ',  AllRoles['Novell']
-	#print 'Member :                   ',  AllRoles['Member']
-	#print 'Print :                    ',  AllRoles['Print']
-	#print 'Dialin :                   ',  AllRoles['Dialin']
-	#print 'Xenix :                    ',  AllRoles['Xenix']
-	#print 'NT Workstation :           ',  AllRoles['NT Workstation']
-	#print 'WfW :                      ',  AllRoles['WfW']
-	#print 'Unused :                   ',  AllRoles['Unused']
-	#print 'NT Server :                ',  AllRoles['NT Server']
-	#print 'Potential Browser :        ',  AllRoles['Potential Browser']
-	#print 'Backup Browser :           ',  AllRoles['Backup Browser']
-	#print 'Master Browser :           ',  AllRoles['Master Browser']
-	#print 'Domain Master Browser :    ',  AllRoles['Domain Master Browser']
-	#print 'OSF :                      ',  AllRoles['OSF']
-	#print 'VMS :                      ',  AllRoles['VMS']
-	#print 'Windows 95+ :              ',  AllRoles['Windows 95+']
-	#print 'DFS :                      ',  AllRoles['DFS']
-	#print 'Local :                    ',  AllRoles['Local']
-	#print 'Domain Enum :              ',  AllRoles['Domain Enum']
+	return ', '.join(k for k,v in AllRoles.items() if v == 1)
 
-	Roles = []
-	for k,v in AllRoles.iteritems():
-		if v == 1:
-			Roles.append(k)
-
-	return ', '.join(Roles)
 
 class BrowserListener(BaseRequestHandler):
-
 	def handle(self):
-		#try:
-			data, socket = self.request
+		data, socket = self.request
 
-			lock = Lock()
-			lock.acquire()
+		lock = Lock()
+		lock.acquire()
 
-			DataOffset    = struct.unpack('<H',data[139:141])[0]
-			BrowserPacket = data[82+DataOffset:]
-			ReqType       = RequestType(BrowserPacket[0])
+		DataOffset    = struct.unpack('<H',data[139:141])[0]
+		BrowserPacket = data[82+DataOffset:]
+		ReqType       = RequestType(BrowserPacket[0])
 
-			Domain = Decode_Name(data[49:81])
-			Name   = Decode_Name(data[15:47])
-			Role1  = NBT_NS_Role(data[45:48])
-			Role2  = NBT_NS_Role(data[79:82])
-			Fprint = WorkstationFingerPrint(data[190:192])
-			Roles  = ParseRoles(data[192:196])
+		Domain = Decode_Name(data[49:81])
+		Name   = Decode_Name(data[15:47])
+		Role1  = NBT_NS_Role(data[45:48])
+		Role2  = NBT_NS_Role(data[79:82])
+		Fprint = WorkstationFingerPrint(data[190:192])
+		Roles  = ParseRoles(data[192:196])
 
-			print text("[BROWSER] Request Type : %s" % ReqType)
-			print text("[BROWSER] Address      : %s" % self.client_address[0])
-			print text("[BROWSER] Domain       : %s" % Domain)
-			print text("[BROWSER] Name         : %s" % Name)
-			print text("[BROWSER] Main Role    : %s" % Role1)
-			print text("[BROWSER] 2nd Role     : %s" % Role2)
-			print text("[BROWSER] Fingerprint  : %s" % Fprint)
-			print text("[BROWSER] Role List    : %s" % Roles)
+		print text("[BROWSER] Request Type : %s" % ReqType)
+		print text("[BROWSER] Address      : %s" % self.client_address[0])
+		print text("[BROWSER] Domain       : %s" % Domain)
+		print text("[BROWSER] Name         : %s" % Name)
+		print text("[BROWSER] Main Role    : %s" % Role1)
+		print text("[BROWSER] 2nd Role     : %s" % Role2)
+		print text("[BROWSER] Fingerprint  : %s" % Fprint)
+		print text("[BROWSER] Role List    : %s" % Roles)
 
-			RAPThisDomain(self.client_address[0], Domain)
+		RAPThisDomain(self.client_address[0], Domain)
 
-			lock.release()
-
-		#except Exception:
-		#	pass
+		lock.release()
 
 
 class ThreadingUDPServer(ThreadingMixIn, UDPServer):
 	def server_bind(self):
 		self.allow_reuse_address = 1
-		#self.socket.setsockopt(socket.SOL_SOCKET, 25, 'eth0\0')
 		UDPServer.server_bind(self)
 
 def serve_thread_udp_broadcast(host, port, handler):

@@ -18,6 +18,7 @@ from random import randrange
 from packets import SMBHeader, SMBNegoAnsLM, SMBNegoKerbAns, SMBSession1Data, SMBSession2Accept, SMBSessEmpty, SMBTreeData
 from SocketServer import BaseRequestHandler
 from utils import *
+import struct
 
 
 def Is_Anonymous(data):  # Detect if SMB auth was Anonymous

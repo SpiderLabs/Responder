@@ -36,7 +36,7 @@ class Settings:
 		return ret
 
 	def toBool(self, str):
-		return True if str.upper() == 'ON' else False
+		return str.upper() == 'ON'
 
 	def ExpandIPRanges(self):
 		def expand_ranges(lst):

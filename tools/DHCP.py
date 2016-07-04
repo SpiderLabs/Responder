@@ -16,8 +16,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sys
 import struct
-import socket
-import re
 import optparse
 import ConfigParser
 import os
@@ -46,16 +44,13 @@ def color(txt, code = 1, modifier = 0):
 if options.Interface is None:
 	print color("[!]", 1, 1), "-I mandatory option is missing, please provide an interface."
 	exit(-1)
-
-if options.RouterIP is None:
+elif options.RouterIP is None:
 	print color("[!]", 1, 1), "-r mandatory option is missing, please provide the router's IP."
 	exit(-1)
-
-if options.DNSIP is None:
+elif options.DNSIP is None:
 	print color("[!]", 1, 1), "-p mandatory option is missing, please provide the primary DNS server ip address or yours."
 	exit(-1)
-
-if options.DNSIP2 is None:
+elif options.DNSIP2 is None:
 	print color("[!]", 1, 1), "-s mandatory option is missing, please provide the secondary DNS server ip address or yours."
 	exit(-1)
 
@@ -230,21 +225,14 @@ def SpoofIP(Spoof):
 	return ROUTERIP if Spoof else Responder_IP
 
 def RespondToThisIP(ClientIp):
-
 	if ClientIp.startswith('127.0.0.'):
 		return False
-
-	if len(RespondTo) and ClientIp not in RespondTo:
+	elif RespondTo and ClientIp not in RespondTo:
 		return False
-
-	if ClientIp in RespondTo or RespondTo == []:
+	elif ClientIp in RespondTo or RespondTo == []:
 		if ClientIp not in DontRespondTo:
 			return True
-
 	return False
-
-def IsUDP(data):
-	return True if data[0][23:24] == "\x11" else False
 
 def ParseSrcDSTAddr(data):
 	SrcIP = socket.inet_ntoa(data[0][26:30])
@@ -254,7 +242,7 @@ def ParseSrcDSTAddr(data):
 	return SrcIP, SrcPort, DstIP, DstPort
 
 def FindIP(data):
-	IP = ''.join(re.findall('(?<=\x32\x04)[^EOF]*', data))
+	IP = ''.join(re.findall(r'(?<=\x32\x04)[^EOF]*', data))
 	return ''.join(IP[0:4])
 
 def ParseDHCPCode(data):
@@ -270,21 +258,17 @@ def ParseDHCPCode(data):
 	# DHCP Inform
 	if OpCode == "\x08": 
 		IP_Header = IPHead(SrcIP = socket.inet_aton(SpoofIP(Spoof)), DstIP=socket.inet_aton(CurrentIP))
-		Packet = DHCPInformACK(Tid=PTid, ClientMac=MacAddr, ActualClientIP=socket.inet_aton(CurrentIP), \
-								GiveClientIP=socket.inet_aton("0.0.0.0"), \
-								NextServerIP=socket.inet_aton("0.0.0.0"), \
-								RelayAgentIP=socket.inet_aton("0.0.0.0"), \
+		Packet = DHCPInformACK(Tid=PTid, ClientMac=MacAddr, ActualClientIP=socket.inet_aton(CurrentIP),
+								GiveClientIP=socket.inet_aton("0.0.0.0"),
+								NextServerIP=socket.inet_aton("0.0.0.0"),
+								RelayAgentIP=socket.inet_aton("0.0.0.0"),
 								ElapsedSec=Seconds)
-
 		Packet.calculate()
 		Buffer = UDP(Data = Packet)
 		Buffer.calculate()
 		SendDHCP(str(IP_Header)+str(Buffer), (CurrentIP, 68))
-
 		return 'Acknowledged DHCP Inform for IP: %s, Req IP: %s, MAC: %s Tid: %s' % (CurrentIP, RequestedIP, MacAddrStr, '0x'+PTid.encode('hex'))
-
-	# DHCP Request
-	if OpCode == "\x03" and Respond_To_Requests:
+	elif OpCode == "\x03" and Respond_To_Requests:  # DHCP Request
 		IP = FindIP(data)
 		if IP:
 			IPConv = socket.inet_ntoa(IP)
@@ -292,16 +276,11 @@ def ParseDHCPCode(data):
 				IP_Header = IPHead(SrcIP = socket.inet_aton(SpoofIP(Spoof)), DstIP=IP)
 				Packet = DHCPACK(Tid=PTid, ClientMac=MacAddr, GiveClientIP=IP, ElapsedSec=Seconds)
 				Packet.calculate()
-
 				Buffer = UDP(Data = Packet)
 				Buffer.calculate()
-
 				SendDHCP(str(IP_Header)+str(Buffer), (IPConv, 68))
-
 				return 'Acknowledged DHCP Request for IP: %s, Req IP: %s, MAC: %s Tid: %s' % (CurrentIP, RequestedIP, MacAddrStr, '0x'+PTid.encode('hex'))
-
-	# DHCP Discover
-	if OpCode == "\x01" and Respond_To_Requests:
+	elif OpCode == "\x01" and Respond_To_Requests:  # DHCP Discover
 		IP = FindIP(data)
 		if IP:
 			IPConv = socket.inet_ntoa(IP)
@@ -309,12 +288,9 @@ def ParseDHCPCode(data):
 				IP_Header = IPHead(SrcIP = socket.inet_aton(SpoofIP(Spoof)), DstIP=IP)
 				Packet = DHCPACK(Tid=PTid, ClientMac=MacAddr, GiveClientIP=IP, DHCPOpCode="\x02", ElapsedSec=Seconds)
 				Packet.calculate()
-
 				Buffer = UDP(Data = Packet)
 				Buffer.calculate()
-
 				SendDHCP(str(IP_Header)+str(Buffer), (IPConv, 0))
-
 				return 'Acknowledged DHCP Discover for IP: %s, Req IP: %s, MAC: %s Tid: %s' % (CurrentIP, RequestedIP, MacAddrStr, '0x'+PTid.encode('hex'))
 
 def SendDHCP(packet,Host):
@@ -329,7 +305,7 @@ if __name__ == "__main__":
 	while True:
 		try:
 			data = s.recvfrom(65535)
-			if IsUDP(data):
+			if data[0][23:24] == "\x11":  # is udp?
 				SrcIP, SrcPort, DstIP, DstPort = ParseSrcDSTAddr(data)
 
 				if SrcPort == 67 or DstPort == 67:
