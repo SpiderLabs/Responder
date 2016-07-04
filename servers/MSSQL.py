@@ -14,10 +14,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import os
-import struct
-import settings
-
 from SocketServer import BaseRequestHandler
 from packets import MSSQLPreLoginAnswer, MSSQLNTLMChallengeAnswer
 from utils import *
@@ -53,6 +49,7 @@ class TDS_Login_Packet:
 		self.LibraryName  = data[8+LibraryNameOff:8+LibraryNameOff+LibraryNameLen*2].replace('\x00', '')
 		self.Locale       = data[8+LocaleOff:8+LocaleOff+LocaleLen*2].replace('\x00', '')
 		self.DatabaseName = data[8+DatabaseNameOff:8+DatabaseNameOff+DatabaseNameLen*2].replace('\x00', '')
+
 
 def ParseSQLHash(data, client):
 	SSPIStart     = data[8:]
@@ -97,17 +94,17 @@ def ParseSQLHash(data, client):
 			'fullhash': WriteHash,
 		})
 
+
 def ParseSqlClearTxtPwd(Pwd):
 	Pwd = map(ord,Pwd.replace('\xa5',''))
-	Pw = []
+	Pw = ''
 	for x in Pwd:
-		Pw.append(hex(x ^ 0xa5)[::-1][:2].replace("x","0").decode('hex'))
-	return ''.join(Pw)
+		Pw += hex(x ^ 0xa5)[::-1][:2].replace("x", "0").decode('hex')
+	return Pw
+
 
 def ParseClearTextSQLPass(data, client):
-
 	TDS = TDS_Login_Packet(data)
-
 	SaveToDb({
 		'module': 'MSSQL', 
 		'type': 'Cleartext', 
@@ -120,7 +117,6 @@ def ParseClearTextSQLPass(data, client):
 
 # MSSQL Server class
 class MSSQL(BaseRequestHandler):
-
 	def handle(self):
 		if settings.Config.Verbose:
 			print text("[MSSQL] Received connection from %s" % self.client_address[0])
@@ -130,28 +126,24 @@ class MSSQL(BaseRequestHandler):
 				data = self.request.recv(1024)
 				self.request.settimeout(0.1)
 
-				# Pre-Login Message
-				if data[0] == "\x12":
+
+				if data[0] == "\x12":  # Pre-Login Message
 					Buffer = str(MSSQLPreLoginAnswer())
 					self.request.send(Buffer)
 					data = self.request.recv(1024)
 
-				# NegoSSP
-				if data[0] == "\x10":
+				if data[0] == "\x10":  # NegoSSP
 					if re.search("NTLMSSP",data):
 						Packet = MSSQLNTLMChallengeAnswer(ServerChallenge=settings.Config.Challenge)
 						Packet.calculate()
 						Buffer = str(Packet)
 						self.request.send(Buffer)
 						data = self.request.recv(1024)
-
 					else:
 						ParseClearTextSQLPass(data,self.client_address[0])
-				
-				# NegoSSP Auth
-				if data[0] == "\x11":
+
+				if data[0] == "\x11":  # NegoSSP Auth
 					ParseSQLHash(data,self.client_address[0])
 
 		except socket.timeout:
-			pass
 			self.request.close()

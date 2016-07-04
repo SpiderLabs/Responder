@@ -14,8 +14,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import re
-
 from packets import DNS_Ans
 from SocketServer import BaseRequestHandler
 from utils import *
@@ -24,13 +22,12 @@ def ParseDNSType(data):
 	QueryTypeClass = data[len(data)-4:]
 
 	# If Type A, Class IN, then answer.
-	return True if QueryTypeClass == "\x00\x01\x00\x01" else False
+	return QueryTypeClass == "\x00\x01\x00\x01"
 
-# DNS Server class
+
+
 class DNS(BaseRequestHandler):
-
 	def handle(self):
-
 		# Break out if we don't want to respond to this host
 		if RespondToThisIP(self.client_address[0]) is not True:
 			return None
@@ -43,7 +40,7 @@ class DNS(BaseRequestHandler):
 				buff.calculate(data)
 				soc.sendto(str(buff), self.client_address)
 
-				ResolveName = re.sub('[^0-9a-zA-Z]+', '.', buff.fields["QuestionName"])
+				ResolveName = re.sub(r'[^0-9a-zA-Z]+', '.', buff.fields["QuestionName"])
 				print color("[*] [DNS] Poisoned answer sent to: %-15s  Requested name: %s" % (self.client_address[0], ResolveName), 2, 1)
 
 		except Exception:
@@ -51,9 +48,7 @@ class DNS(BaseRequestHandler):
 
 # DNS Server TCP Class
 class DNSTCP(BaseRequestHandler):
-
 	def handle(self):
-
 		# Break out if we don't want to respond to this host
 		if RespondToThisIP(self.client_address[0]) is not True:
 			return None
@@ -61,7 +56,7 @@ class DNSTCP(BaseRequestHandler):
 		try:
 			data = self.request.recv(1024)
 
-			if ParseDNSType(data) and settings.Config.AnalyzeMode == False:
+			if ParseDNSType(data) and settings.Config.AnalyzeMode is False:
 				buff = DNS_Ans()
 				buff.calculate(data)
 				self.request.send(str(buff))

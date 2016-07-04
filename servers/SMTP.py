@@ -14,15 +14,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import os
-import settings
-
 from utils import *
-from base64 import b64decode, b64encode
+from base64 import b64decode
 from SocketServer import BaseRequestHandler
 from packets import SMTPGreeting, SMTPAUTH, SMTPAUTH1, SMTPAUTH2
 
-# ESMTP Server class
 class ESMTP(BaseRequestHandler):
 
 	def handle(self):
