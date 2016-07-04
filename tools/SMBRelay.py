@@ -15,8 +15,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import sys
-import re
-import socket
 import random
 import optparse
 import thread
@@ -26,6 +24,7 @@ from socket import *
 from RelayPackets import *
 from packets import *
 from servers.SMB import *
+from packets import Packet
 
 import logging
 Logs = logging
@@ -77,20 +76,6 @@ Responder_IP = options.Responder_IP
 print "\nResponder SMBRelay 0.1\nPlease send bugs/comments to: laurent.gaffie@gmail.com"
 print '\033[31m'+'Use this script in combination with Responder.py for best results (remember to set SMB = Off in Responder.conf)..\nUsernames  to relay (-u) are case sensitive.'+'\033[0m'
 print 'To kill this script hit CRTL-C or Enter\nWill relay credentials for these users: '+'\033[1m\033[34m'+', '.join(UserToRelay)+'\033[0m\n'
-
-class Packet:
-    fields = OrderedDict([
-        ("data", ""),
-    ])
-    def __init__(self, **kw):
-        self.fields = OrderedDict(self.__class__.fields)
-        for k,v in kw.items():
-            if callable(v):
-                self.fields[k] = v(self.fields[k])
-            else:
-                self.fields[k] = v
-    def __str__(self):
-        return "".join(map(str, self.fields.values()))
 
 #Function used to verify if a previous auth attempt was made.
 def ReadData(outfile,Client, User, cmd=None):

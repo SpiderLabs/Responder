@@ -25,6 +25,7 @@ from odict import OrderedDict
 from random import randrange
 from time import sleep
 from subprocess import call
+from packets import Packet
 
 parser = optparse.OptionParser(usage='python %prog -I eth0 -i 10.20.30.40 -g 10.20.30.254 -t 10.20.30.48 -r 10.20.40.1',
                                prog=sys.argv[0],
@@ -76,19 +77,6 @@ def Show_Help(ExtraHelpData):
     print(ExtraHelpData)
 
 MoreHelp = "Note that if the target is Windows, the poisoning will only last for 10mn, you can re-poison the target by launching this utility again\nIf you wish to respond to the traffic, for example DNS queries your target issues, launch this command as root:\n\niptables -A OUTPUT -p ICMP -j DROP && iptables -t nat -A PREROUTING -p udp --dst %s --dport 53 -j DNAT --to-destination %s:53\n\n"%(ToThisHost,OURIP)
-
-class Packet():
-    fields = OrderedDict([("data", ""),])
-    def __init__(self, **kw):
-        self.fields = OrderedDict(self.__class__.fields)
-        for k,v in kw.items():
-            if callable(v):
-                self.fields[k] = v(self.fields[k])
-            else:
-                self.fields[k] = v
-
-    def __str__(self):
-        return "".join(map(str, self.fields.values()))
 
 def GenCheckSum(data):
     s = 0
