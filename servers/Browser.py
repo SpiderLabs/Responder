@@ -14,16 +14,14 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import socket
-import struct
-import settings
-
 from packets import SMBHeader, SMBNegoData, SMBSessionData, SMBTreeConnectData, RAPNetServerEnum3Data, SMBTransRAPData
 from SocketServer import BaseRequestHandler
 from utils import *
+import struct
+
 
 def WorkstationFingerPrint(data):
-	Role = {
+	return {
 		"\x04\x00"    :"Windows 95",
 		"\x04\x10"    :"Windows 98",
 		"\x04\x90"    :"Windows ME",
@@ -35,12 +33,11 @@ def WorkstationFingerPrint(data):
 		"\x06\x02"    :"Windows 8/Server 2012",
 		"\x06\x03"    :"Windows 8.1/Server 2012R2",
 		"\x10\x00"    :"Windows 10/Server 2016",
-	}
+	}.get(data, 'Unknown')
 
-	return Role[data] if data in Role else "Unknown"
 
 def RequestType(data):
-	Type = {
+	return {
 		"\x01": 'Host Announcement',
 		"\x02": 'Request Announcement',
 		"\x08": 'Browser Election',
@@ -51,30 +48,23 @@ def RequestType(data):
 		"\x0d": 'Master Announcement',
 		"\x0e": 'Reset Browser State Announcement',
 		"\x0f": 'Local Master Announcement',
-	}
+	}.get(data, 'Unknown')
 
-	return Type[data] if data in Type else "Unknown"
 
 def PrintServerName(data, entries):
-	if entries > 0:
+	if entries <= 0:
+		return None
+	entrieslen = 26 * entries
+	chunks, chunk_size = len(data[:entrieslen]), entrieslen/entries
+	ServerName = [data[i:i+chunk_size] for i in range(0, chunks, chunk_size)]
 
-		entrieslen = 26*entries
-		chunks, chunk_size = len(data[:entrieslen]), entrieslen/entries
-		ServerName = [data[i:i+chunk_size] for i in range(0, chunks, chunk_size)]
+	l = []
+	for x in ServerName:
+		fingerprint = WorkstationFingerPrint(x[16:18])
+		name = x[:16].replace('\x00', '')
+		l.append('%s (%s)' % (name, fingerprint))
+	return l
 
-		l = []
-		for x in ServerName:
-			FP   = WorkstationFingerPrint(x[16:18])
-			Name = x[:16].replace('\x00', '')
-
-			if FP:
-				l.append(Name + ' (%s)' % FP)
-			else:
-				l.append(Name)
-
-		return l
-
-	return None
 
 def ParsePacket(Payload):
 	PayloadOffset = struct.unpack('<H',Payload[51:53])[0]
@@ -83,9 +73,8 @@ def ParsePacket(Payload):
 	if StatusCode == "\x00\x00":
 		EntriesNum = struct.unpack('<H',Payload[PayloadOffset:PayloadOffset+2])[0]
 		return PrintServerName(Payload[PayloadOffset+4:], EntriesNum)
+	return None
 
-	else:
-		return None
 
 def RAPThisDomain(Client,Domain):		
 	PDC = RapFinger(Client,Domain,"\x00\x00\x00\x80")
@@ -99,6 +88,7 @@ def RAPThisDomain(Client,Domain):
 	WKST = RapFinger(Client,Domain,"\xff\xff\xff\xff")
 	if WKST is not None:
 		print text("[LANMAN] Detected Workstations/Servers on domain %s: %s" % (Domain, ', '.join(WKST)))
+
 
 def RapFinger(Host, Domain, Type):
 	try:
@@ -201,7 +191,6 @@ class Browser(BaseRequestHandler):
 			if settings.Config.AnalyzeMode:
 				ParseDatagramNBTNames(request,self.client_address[0])
 				BecomeBackup(request,self.client_address[0])
-
 			BecomeBackup(request,self.client_address[0])
 
 		except Exception:

@@ -14,16 +14,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import os
-import settings
-
 from utils import *
 from SocketServer import BaseRequestHandler
 from packets import IMAPGreeting, IMAPCapability, IMAPCapabilityEnd
 
-# IMAP4 Server class
 class IMAP(BaseRequestHandler):
-
 	def handle(self):
 		try:
 			self.request.send(str(IMAPGreeting()))
@@ -50,6 +45,5 @@ class IMAP(BaseRequestHandler):
 				## FIXME: Close connection properly
 				## self.request.send(str(ditchthisconnection()))
 				## data = self.request.recv(1024)
-
 		except Exception:
 			pass

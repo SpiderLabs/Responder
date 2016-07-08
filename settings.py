@@ -14,12 +14,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import os
-import sys
-import socket
+
 import utils
-import logging
 import ConfigParser
+
+from utils import *
 
 __version__ = 'Responder 2.3'
 
@@ -37,7 +36,7 @@ class Settings:
 		return ret
 
 	def toBool(self, str):
-		return True if str.upper() == 'ON' else False
+		return str.upper() == 'ON'
 
 	def ExpandIPRanges(self):
 		def expand_ranges(lst):

@@ -21,7 +21,7 @@ import struct
 import socket
 
 sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..')))
-from packets import SMBHeader,SMB2Header, SMB2Nego, SMB2NegoData
+from packets import SMB2Header, SMB2Nego, SMB2NegoData
 
 def GetBootTime(data):
     Filetime = int(struct.unpack('<q',data)[0])
@@ -35,12 +35,8 @@ def IsDCVuln(t):
     if t[0] < Date:
        print "DC is up since:", t[1]
        print "This DC is vulnerable to MS14-068"
-    else:
-       print "DC is up since:", t[1]
+    print "DC is up since:", t[1]
 
-def NbtLen(data):
-    Len = struct.pack(">i", len(data))
-    return Len
 
 def run(host):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -52,7 +48,7 @@ def run(host):
     Nego.calculate()
 
     Packet = str(Header)+str(Nego)
-    Buffer = NbtLen(Packet)+Packet
+    Buffer = struct.pack(">i", len(Packet)) + Packet
     s.send(Buffer)
 
     try:

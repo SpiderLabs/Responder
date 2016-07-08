@@ -14,8 +14,6 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import os
-import settings
 
 from utils import *
 from SocketServer import BaseRequestHandler
@@ -47,7 +45,7 @@ class FTP(BaseRequestHandler):
 					'client': self.client_address[0], 
 					'user': User, 
 					'cleartext': Pass, 
-					'fullhash': User+':'+Pass
+					'fullhash': User + ':' + Pass
 				})
 
 			else:

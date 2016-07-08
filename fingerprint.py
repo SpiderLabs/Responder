@@ -14,15 +14,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import re
-import sys
+
 import socket
 import struct
-import string
-import logging
 
 from utils import color
-from odict import OrderedDict
 from packets import SMBHeader, SMBNego, SMBNegoFingerData, SMBSessionFingerData
 
 def OsNameClientVersion(data):
@@ -31,7 +27,6 @@ def OsNameClientVersion(data):
 		pack = tuple(data[47+length:].split('\x00\x00\x00'))[:2]
 		OsVersion, ClientVersion = tuple([e.replace('\x00','') for e in data[47+length:].split('\x00\x00\x00')[:2]])
 		return OsVersion, ClientVersion
-
 	except:
 	 	return "Could not fingerprint Os version.", "Could not fingerprint LanManager Client version"
 

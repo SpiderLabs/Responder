@@ -14,23 +14,11 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import struct, sys
+import struct
+import sys
 sys.path.append('../')
 from odict import OrderedDict
-
-class Packet:
-    fields = OrderedDict([
-        ("data", ""),
-    ])
-    def __init__(self, **kw):
-        self.fields = OrderedDict(self.__class__.fields)
-        for k,v in kw.items():
-            if callable(v):
-                self.fields[k] = v(self.fields[k])
-            else:
-                self.fields[k] = v
-    def __str__(self):
-        return "".join(map(str, self.fields.values()))
+from packets import Packet
 
 class SMBHeader(Packet):
     fields = OrderedDict([

