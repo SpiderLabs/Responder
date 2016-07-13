@@ -37,8 +37,8 @@ fi
 
 INTF=$1
 PATH="$PATH:/sbin"
-IPADDR=`ifconfig $INTF | grep 'inet addr' | tr ':' ' ' | awk '{print $3}'`
-NETMASK=`ifconfig $INTF | grep 'inet addr' | tr ':' ' ' | awk '{print $7}'`
+IPADDR=`ifconfig $INTF | sed -n 's/inet addr/inet/; s/inet[ :]//p' | awk '{print $1}'`
+NETMASK=`ifconfig $INTF | sed -n 's/.*[Mm]ask[: ]//p' | awk '{print $1}'`
 DOMAIN=`grep -E "^domain |^search " /etc/resolv.conf | sort | head -1 | awk '{print $2}'`
 DNS1=$IPADDR
 DNS2=`grep ^nameserver /etc/resolv.conf | head -1 | awk '{print $2}'`
