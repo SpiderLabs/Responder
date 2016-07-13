@@ -36,12 +36,13 @@ if [ ! -d "/sys/class/net/$1" ]; then
 fi
 
 INTF=$1
-IPADDR=`/sbin/ifconfig $INTF | grep 'inet addr' | tr ':' ' ' | awk '{print $3}'`
-NETMASK=`/sbin/ifconfig $INTF | grep 'inet addr' | tr ':' ' ' | awk '{print $7}'`
+PATH="$PATH:/sbin"
+IPADDR=`ifconfig $INTF | grep 'inet addr' | tr ':' ' ' | awk '{print $3}'`
+NETMASK=`ifconfig $INTF | grep 'inet addr' | tr ':' ' ' | awk '{print $7}'`
 DOMAIN=`grep -E "^domain |^search " /etc/resolv.conf | sort | head -1 | awk '{print $2}'`
 DNS1=$IPADDR
 DNS2=`grep ^nameserver /etc/resolv.conf | head -1 | awk '{print $2}'`
-ROUTER=`/sbin/route -n | grep ^0.0.0.0 | awk '{print $2}'`
+ROUTER=`route -n | grep ^0.0.0.0 | awk '{print $2}'`
 WPADSTR="http://$IPADDR/wpad.dat"
 if [ -z "$DOMAIN" ]; then
 	DOMAIN="  "
