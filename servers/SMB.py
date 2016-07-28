@@ -65,7 +65,7 @@ def ParseShare(data):
 	packet = data[:]
 	a = re.search('(\\x5c\\x00\\x5c.*.\\x00\\x00\\x00)', packet)
 	if a:
-		print text("[SMB] Requested Share     : %s" % a.group(0).replace('\x00', ''))
+		print text("[SMB] Requested Share     : %s" % a.group(0).decode('UTF-16LE'))
 
 
 def ParseSMBHash(data,client):  #Parse SMB NTLMSSP v1/v2
@@ -91,10 +91,10 @@ def ParseSMBHash(data,client):  #Parse SMB NTLMSSP v1/v2
 		SMBHash      = SSPIStart[NthashOffset:NthashOffset+NthashLen].encode("hex").upper()
 		DomainLen    = struct.unpack('<H',data[105:107])[0]
 		DomainOffset = struct.unpack('<H',data[107:109])[0]
-		Domain       = SSPIStart[DomainOffset:DomainOffset+DomainLen].replace('\x00','')
+		Domain       = SSPIStart[DomainOffset:DomainOffset+DomainLen].decode('UTF-16LE')
 		UserLen      = struct.unpack('<H',data[113:115])[0]
 		UserOffset   = struct.unpack('<H',data[115:117])[0]
-		Username     = SSPIStart[UserOffset:UserOffset+UserLen].replace('\x00','')
+		Username     = SSPIStart[UserOffset:UserOffset+UserLen].decode('UTF-16LE')
 		WriteHash    = '%s::%s:%s:%s:%s' % (Username, Domain, LMHash, SMBHash, settings.Config.NumChal)
 
 		SaveToDb({
@@ -110,10 +110,10 @@ def ParseSMBHash(data,client):  #Parse SMB NTLMSSP v1/v2
 		SMBHash      = SSPIStart[NthashOffset:NthashOffset+NthashLen].encode("hex").upper()
 		DomainLen    = struct.unpack('<H',data[109:111])[0]
 		DomainOffset = struct.unpack('<H',data[111:113])[0]
-		Domain       = SSPIStart[DomainOffset:DomainOffset+DomainLen].replace('\x00','')
+		Domain       = SSPIStart[DomainOffset:DomainOffset+DomainLen].decode('UTF-16LE')
 		UserLen      = struct.unpack('<H',data[117:119])[0]
 		UserOffset   = struct.unpack('<H',data[119:121])[0]
-		Username     = SSPIStart[UserOffset:UserOffset+UserLen].replace('\x00','')
+		Username     = SSPIStart[UserOffset:UserOffset+UserLen].decode('UTF-16LE')
 		WriteHash    = '%s::%s:%s:%s:%s' % (Username, Domain, settings.Config.NumChal, SMBHash[:32], SMBHash[32:])
 
 		SaveToDb({

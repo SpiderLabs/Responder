@@ -154,9 +154,9 @@ def SaveToDb(result):
 	if not count:
 		with open(logfile,"a") as outf:
 			if len(result['cleartext']):  # If we obtained cleartext credentials, write them to file
-				outf.write('%s:%s\n' % (result['user'], result['cleartext']))
+				outf.write('%s:%s\n' % (result['user'].encode('utf8', 'replace'), result['cleartext'].encode('utf8', 'replace')))
 			else:  # Otherwise, write JtR-style hash string to file
-				outf.write(result['fullhash'] + '\n')
+				outf.write(result['fullhash'].encode('utf8', 'replace') + '\n')
 
 		cursor.execute("INSERT INTO responder VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", (timestamp, result['module'], result['type'], result['client'], result['hostname'], result['user'], result['cleartext'], result['hash'], result['fullhash']))
 		cursor.commit()
