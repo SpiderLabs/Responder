@@ -65,7 +65,7 @@ class Settings:
 
 	def populate(self, options):
 
-		if options.Interface is None and IsOsX() is False:
+		if options.Interface is None and utils.IsOsX() is False:
 			print utils.color("Error: -I <if> mandatory option is missing", 1)
 			sys.exit(-1)
 
