@@ -143,12 +143,11 @@ def SaveToDb(result):
 	else:
 		fname = '%s-%s-%s.txt' % (result['module'], result['type'], result['client'])
 	
-	timestamp = time.strftime("%d-%m-%Y %H:%M:%S")
 	logfile = os.path.join(settings.Config.ResponderPATH, 'logs', fname)
 
 	cursor = sqlite3.connect(settings.Config.DatabaseFile)
 	cursor.text_factory = sqlite3.Binary  # We add a text factory to support different charsets
-	res = cursor.execute("SELECT COUNT(*) AS count FROM responder WHERE module=? AND type=? AND LOWER(user)=LOWER(?)", (result['module'], result['type'], result['user']))
+	res = cursor.execute("SELECT COUNT(*) AS count FROM responder WHERE module=? AND type=? AND client=? AND LOWER(user)=LOWER(?)", (result['module'], result['type'], result['client'], result['user']))
 	(count,) = res.fetchone()
 
 	if not count:
@@ -158,9 +157,8 @@ def SaveToDb(result):
 			else:  # Otherwise, write JtR-style hash string to file
 				outf.write(result['fullhash'].encode('utf8', 'replace') + '\n')
 
-		cursor.execute("INSERT INTO responder VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", (timestamp, result['module'], result['type'], result['client'], result['hostname'], result['user'], result['cleartext'], result['hash'], result['fullhash']))
+		cursor.execute("INSERT INTO responder VALUES(datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?)", (result['module'], result['type'], result['client'], result['hostname'], result['user'], result['cleartext'], result['hash'], result['fullhash']))
 		cursor.commit()
-	cursor.close()
 
 
 	if not count or settings.Config.Verbose:  # Print output
@@ -186,6 +184,9 @@ def SaveToDb(result):
 			print color('[*] Adding client %s to auto-ignore list' % result['client'], 4, 1)
 	else:
 		print color('[*]', 3, 1), 'Skipping previously captured hash for %s' % result['user']
+		cursor.execute("UPDATE responder SET timestamp=datetime('now') WHERE user=? AND client=?", (result['user'], result['client']))
+		cursor.commit()
+	cursor.close()
 
 
 def Parse_IPV6_Addr(data):
