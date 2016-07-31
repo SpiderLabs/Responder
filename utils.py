@@ -143,7 +143,6 @@ def SaveToDb(result):
 	else:
 		fname = '%s-%s-%s.txt' % (result['module'], result['type'], result['client'])
 	
-	timestamp = time.strftime("%d-%m-%Y %H:%M:%S")
 	logfile = os.path.join(settings.Config.ResponderPATH, 'logs', fname)
 
 	cursor = sqlite3.connect(settings.Config.DatabaseFile)
@@ -158,7 +157,7 @@ def SaveToDb(result):
 			else:  # Otherwise, write JtR-style hash string to file
 				outf.write(result['fullhash'] + '\n')
 
-		cursor.execute("INSERT INTO responder VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", (timestamp, result['module'], result['type'], result['client'], result['hostname'], result['user'], result['cleartext'], result['hash'], result['fullhash']))
+		cursor.execute("INSERT INTO responder VALUES(datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?)", (result['module'], result['type'], result['client'], result['hostname'], result['user'], result['cleartext'], result['hash'], result['fullhash']))
 		cursor.commit()
 
 
@@ -185,7 +184,7 @@ def SaveToDb(result):
 			print color('[*] Adding client %s to auto-ignore list' % result['client'], 4, 1)
 	else:
 		print color('[*]', 3, 1), 'Skipping previously captured hash for %s' % result['user']
-		cursor.execute("UPDATE responder SET timestamp=? WHERE user=? AND client=?", (timestamp, result['user'], result['client']))
+		cursor.execute("UPDATE responder SET timestamp=datetime('now') WHERE user=? AND client=?", (result['user'], result['client']))
 		cursor.commit()
 	cursor.close()
 
