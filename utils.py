@@ -160,7 +160,6 @@ def SaveToDb(result):
 
 		cursor.execute("INSERT INTO responder VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", (timestamp, result['module'], result['type'], result['client'], result['hostname'], result['user'], result['cleartext'], result['hash'], result['fullhash']))
 		cursor.commit()
-	cursor.close()
 
 
 	if not count or settings.Config.Verbose:  # Print output
@@ -186,6 +185,9 @@ def SaveToDb(result):
 			print color('[*] Adding client %s to auto-ignore list' % result['client'], 4, 1)
 	else:
 		print color('[*]', 3, 1), 'Skipping previously captured hash for %s' % result['user']
+		cursor.execute("UPDATE responder SET timestamp=? WHERE user=? AND client=?", (timestamp, result['user'], result['client']))
+		cursor.commit()
+	cursor.close()
 
 
 def Parse_IPV6_Addr(data):
