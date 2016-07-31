@@ -148,7 +148,7 @@ def SaveToDb(result):
 
 	cursor = sqlite3.connect(settings.Config.DatabaseFile)
 	cursor.text_factory = sqlite3.Binary  # We add a text factory to support different charsets
-	res = cursor.execute("SELECT COUNT(*) AS count FROM responder WHERE module=? AND type=? AND LOWER(user)=LOWER(?)", (result['module'], result['type'], result['user']))
+	res = cursor.execute("SELECT COUNT(*) AS count FROM responder WHERE module=? AND type=? AND client=? AND LOWER(user)=LOWER(?)", (result['module'], result['type'], result['client'], result['user']))
 	(count,) = res.fetchone()
 
 	if not count:
