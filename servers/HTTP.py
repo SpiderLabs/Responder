@@ -144,8 +144,8 @@ def GrabURL(data, host):
 
 # Handle HTTP packet sequence.
 def PacketSequence(data, client):
-	NTLM_Auth = re.findall(r'(?<=Authorization: NTLM )[^\\r]*', data)
-	Basic_Auth = re.findall(r'(?<=Authorization: Basic )[^\\r]*', data)
+	NTLM_Auth = re.findall(r'(?<=Authorization: NTLM )[^\r]*', data)
+	Basic_Auth = re.findall(r'(?<=Authorization: Basic )[^\r]*', data)
 
 	# Serve the .exe if needed
 	if settings.Config.Serve_Always is True or (settings.Config.Serve_Exe is True and re.findall('.exe', data)):
