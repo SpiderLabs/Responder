@@ -19,6 +19,7 @@ import socket
 import struct
 import optparse
 import pipes
+import sys
 from socket import *
 sys.path.append('../')
 from odict import OrderedDict
