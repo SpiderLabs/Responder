@@ -1,3 +1,6 @@
+:no_entry: [DEPRECATED] Active at https://github.com/lgandx/Responder
+
+
 # Responder.py #
 
 LLMNR/NBT-NS/mDNS Poisoner
